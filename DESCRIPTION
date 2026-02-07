@@ -1,17 +1,19 @@
 Package: GLLAMMR
 Type: Package
 Title: Generalized Linear Latent and Mixed Models
-Version: 0.5.0
+Version: 1.0.0
 Date: 2026-02-06
 Authors@R: c(
     person("Josh", "", email = "your.email@example.com", role = c("aut", "cre")),
     person("Claude", "Sonnet 4.5", role = "ctb", comment = "Implementation assistant"))
 Description: Comprehensive implementation of Generalized Linear Latent and Mixed
     Models (GLLAMM) following the Stata GLLAMM framework by Rabe-Hesketh, Skrondal,
-    and Pickles. Supports multilevel generalized linear models (GLMMs), factor models,
-    item response theory (IRT) models, latent class models, and structural equation
-    models with mixed response types. Uses Template Model Builder (TMB) for efficient
-    computation via automatic differentiation.
+    and Pickles. Supports multilevel generalized linear models (GLMMs) with Gaussian,
+    binomial, Poisson, ordinal, and multinomial responses; factor models; item response
+    theory (IRT) models (Rasch, 2PL, 3PL); latent class analysis; structural equation
+    models; mixed response models; and survival models. Uses Template Model Builder
+    (TMB) for efficient computation via automatic differentiation. Provides comprehensive
+    diagnostics, visualization, and model comparison tools.
 License: GPL-3
 Depends:
     R (>= 4.0.0)

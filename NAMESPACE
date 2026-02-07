@@ -13,6 +13,8 @@ S3method(simulate, gllamm)
 S3method(fixef, gllamm)
 S3method(ranef, gllamm)
 S3method(VarCorr, gllamm)
+S3method(plot, gllamm)
+S3method(influence, gllamm)
 
 # S3 methods - IRT
 S3method(print, gllamm_irt)
@@ -22,10 +24,28 @@ S3method(summary, gllamm_irt)
 S3method(print, gllamm_lca)
 S3method(summary, gllamm_lca)
 
+# S3 methods - Ordinal
+S3method(print, gllamm_ordinal)
+S3method(summary, gllamm_ordinal)
+
+# S3 methods - Multinomial
+S3method(print, gllamm_multinomial)
+S3method(summary, gllamm_multinomial)
+
 # Main functions
 export(gllamm)
 export(fit_irt)
 export(fit_lca)
+export(fit_ordinal)
+export(fit_multinomial)
+export(fit_survival)
+export(fit_mixed_response)
+export(fit_sem)
+
+# Diagnostic functions
+export(gof.gllamm)
+export(icc)
+export(find_outliers)
 
 # Utilities
 export(fixef)

@@ -1,0 +1,83 @@
+---
+title: "Advanced Features in GLLAMMR"
+author: "GLLAMMR Team"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Advanced Features in GLLAMMR}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  eval = FALSE
+)
+```
+
+## Mixed Response Models
+
+Multiple outcomes of different types:
+
+```{r}
+library(GLLAMMR)
+
+# Continuous + Binary outcomes sharing random effects
+fit_mixed <- fit_mixed_response(
+  formulas = list(
+    continuous = score ~ time + (1 | id),
+    binary = improved ~ time + (1 | id)
+  ),
+  data = clinical_data
+)
+```
+
+## Survival Models
+
+Time-to-event with random effects:
+
+```{r}
+fit_surv <- fit_survival(
+  Surv(time, event) ~ treatment + (1 | clinic),
+  data = survival_data,
+  distribution = "weibull"
+)
+```
+
+## Ordinal Responses
+
+Proportional odds model:
+
+```{r}
+fit_ord <- fit_ordinal(
+  pain_level ~ treatment + time + (1 | patient),
+  data = pain_data,
+  link = "logit"
+)
+```
+
+## Multinomial Responses
+
+Unordered categories:
+
+```{r}
+fit_multi <- fit_multinomial(
+  choice ~ price + quality + (1 | person),
+  data = choice_data
+)
+```
+
+## Diagnostic Tools
+
+```{r}
+# Comprehensive diagnostics
+plot(fit)
+gof.gllamm(fit)
+influence(fit)
+find_outliers(fit)
+
+# ICC
+icc(fit)
+```

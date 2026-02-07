@@ -60,8 +60,55 @@ predict.gllamm <- function(object,
     }
   }
 
-  # For new data
-  stop("Prediction on new data not yet implemented")
+  # For new data - implement prediction
+  # Parse formula to get structure
+  parsed <- parse_formula(object$formula, newdata)
+  new_mats <- make_model_matrices(parsed, newdata)
+
+  # Fixed effects predictions
+  fixed_pred <- as.numeric(new_mats$X %*% object$coefficients$fixed)
+
+  if (is.null(re.form) || (!is.na(re.form) && !identical(re.form, ~0))) {
+    # Include random effects - use posterior means (BLUPs) from training
+    # For new groups not in training, use 0 (population average)
+
+    # Get group identifiers from new data
+    if (length(object$random_terms) > 0) {
+      rt <- object$random_terms[[1]]
+      new_groups <- if (rt$nested) {
+        interaction(newdata[, rt$grouping], drop = TRUE)
+      } else {
+        factor(newdata[[rt$grouping]])
+      }
+
+      # Match to training groups
+      training_groups <- names(object$random_effects) %||%
+                        paste0("Group", seq_along(object$random_effects))
+
+      random_contrib <- numeric(nrow(newdata))
+      for (i in seq_along(new_groups)) {
+        g_name <- as.character(new_groups[i])
+        if (g_name %in% training_groups) {
+          g_idx <- which(training_groups == g_name)
+          random_contrib[i] <- sum(new_mats$Z[[1]][i, ] * object$random_effects[[g_idx]])
+        }
+        # else: use 0 (population average) for new groups
+      }
+
+      pred <- fixed_pred + random_contrib
+    } else {
+      pred <- fixed_pred
+    }
+  } else {
+    pred <- fixed_pred
+  }
+
+  # Apply inverse link if needed
+  if (type == "response" && object$family$family != "gaussian") {
+    pred <- object$family$linkinv(pred)
+  }
+
+  return(pred)
 }
 
 
