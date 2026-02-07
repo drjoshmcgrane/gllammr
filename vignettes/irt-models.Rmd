@@ -350,20 +350,446 @@ high_risk <- which(scores > high_risk_cutoff)
 print(paste("Number of high-risk individuals:", length(high_risk)))
 ```
 
-## Advanced Topics
+## Polytomous IRT Models
 
-### Differential Item Functioning (DIF)
+### Graded Response Model (GRM)
 
-```{r dif, eval=FALSE}
-# Future feature: Test if items function differently across groups
-# fit_dif <- fit_irt_dif(responses, group = gender, model = "Rasch")
+The Graded Response Model is used for ordered categorical responses (e.g., Likert scales):
+
+$$P(Y_{ij} \geq k | \theta_i, a_j, b_{jk}) = \frac{1}{1 + \exp(-a_j(\theta_i - b_{jk}))}$$
+
+where $b_{j1} < b_{j2} < ... < b_{j,K-1}$ are ordered thresholds.
+
+#### Simulating GRM Data
+
+```{r grm-simulation}
+set.seed(123)
+n_persons <- 300
+n_items <- 15
+n_categories <- 5  # e.g., 1="Strongly Disagree" to 5="Strongly Agree"
+
+# Generate person abilities
+theta <- rnorm(n_persons, 0, 1)
+
+# Generate item parameters
+discrimination <- runif(n_items, 0.8, 2.5)
+difficulty_base <- rnorm(n_items, 0, 1)
+
+# Create ordered thresholds for each item
+responses_grm <- matrix(NA, n_persons, n_items)
+for (i in 1:n_persons) {
+  for (j in 1:n_items) {
+    # Thresholds centered around item difficulty
+    thresholds <- difficulty_base[j] + seq(-2, 2, length.out = n_categories - 1)
+
+    # Compute cumulative probabilities
+    probs <- numeric(n_categories)
+    probs[1] <- plogis(discrimination[j] * (theta[i] - thresholds[1]))
+
+    for (k in 2:(n_categories - 1)) {
+      p_le_k <- plogis(discrimination[j] * (theta[i] - thresholds[k]))
+      p_le_k_minus_1 <- plogis(discrimination[j] * (theta[i] - thresholds[k-1]))
+      probs[k] <- p_le_k - p_le_k_minus_1
+    }
+
+    probs[n_categories] <- 1 - plogis(discrimination[j] * (theta[i] - thresholds[n_categories-1]))
+
+    # Sample response
+    responses_grm[i, j] <- sample(1:n_categories, 1, prob = probs)
+  }
+}
+
+# View response distribution
+table(responses_grm[, 1])
 ```
+
+#### Fitting the GRM
+
+```{r fit-grm}
+fit_grm <- fit_irt(responses_grm, model = "GRM")
+
+print(fit_grm)
+summary(fit_grm)
+```
+
+#### Examining GRM Parameters
+
+```{r grm-params}
+# Item discriminations
+discriminations <- fit_grm$item_parameters$discrimination
+print(head(discriminations))
+
+# Thresholds (one per category transition)
+thresholds <- fit_grm$item_parameters$thresholds
+print(thresholds[[1]])  # Thresholds for first item
+```
+
+### Partial Credit Model (PCM)
+
+The Partial Credit Model is used for partial credit scoring:
+
+$$P(Y_{ij} = k | \theta_i, \delta_{jk}) = \frac{\exp(\sum_{h=0}^{k}(\theta_i - \delta_{jh}))}{\sum_{m=0}^{K}\exp(\sum_{h=0}^{m}(\theta_i - \delta_{jh}))}$$
+
+#### Fitting the PCM
+
+```{r fit-pcm}
+# PCM constrains discrimination = 1 for all items
+fit_pcm <- fit_irt(responses_grm, model = "PCM")
+
+print(fit_pcm)
+```
+
+### Generalized Partial Credit Model (GPCM)
+
+GPCM extends PCM by allowing item-specific discriminations:
+
+```{r fit-gpcm}
+fit_gpcm <- fit_irt(responses_grm, model = "GPCM")
+
+print(fit_gpcm)
+```
+
+### Nominal Response Model (NRM)
+
+NRM is for unordered categorical responses (no natural ordering):
+
+```{r nrm-simulation}
+# Simulate nominal responses (e.g., multiple choice with plausible distractors)
+set.seed(456)
+n_persons <- 250
+n_items <- 12
+n_options <- 4
+
+responses_nrm <- matrix(sample(1:n_options, n_persons * n_items, replace = TRUE),
+                        n_persons, n_items)
+
+fit_nrm <- fit_irt(responses_nrm, model = "NRM")
+print(fit_nrm)
+```
+
+### Comparing Polytomous Models
+
+```{r compare-polytomous}
+# Model comparison for ordinal data
+comparison_poly <- data.frame(
+  Model = c("GRM", "PCM", "GPCM"),
+  LogLik = c(fit_grm$logLik, fit_pcm$logLik, fit_gpcm$logLik),
+  AIC = c(fit_grm$AIC, fit_pcm$AIC, fit_gpcm$AIC),
+  BIC = c(fit_grm$BIC, fit_pcm$BIC, fit_gpcm$BIC)
+)
+
+print(comparison_poly)
+# GRM typically fits better than PCM if discriminations vary
+# PCM is more parsimonious (fewer parameters)
+```
+
+## Differential Item Functioning (DIF)
+
+DIF analysis tests whether items function differently across groups (e.g., gender, ethnicity, language).
+
+### Types of DIF
+
+- **Uniform DIF**: Item difficulty differs between groups (parallel ICCs)
+- **Non-uniform DIF**: Item discrimination differs between groups (non-parallel ICCs)
+
+### Simulating Data with DIF
+
+```{r dif-simulation}
+set.seed(789)
+n_persons <- 400
+n_items <- 20
+
+# Create two groups
+group <- rep(c("Group A", "Group B"), each = n_persons/2)
+
+# Generate abilities (equal distribution across groups)
+theta <- rnorm(n_persons, 0, 1)
+
+# Item parameters
+difficulty <- rnorm(n_items, 0, 1)
+discrimination <- runif(n_items, 0.8, 2.0)
+
+# Add uniform DIF to items 5, 10, and 15 for Group B
+dif_items <- c(5, 10, 15)
+dif_amount <- c(0.8, 1.2, -0.6)
+
+responses_dif <- matrix(NA, n_persons, n_items)
+for (i in 1:n_persons) {
+  for (j in 1:n_items) {
+    diff_effective <- difficulty[j]
+
+    # Add DIF if applicable
+    if (j %in% dif_items && group[i] == "Group B") {
+      dif_idx <- which(dif_items == j)
+      diff_effective <- diff_effective + dif_amount[dif_idx]
+    }
+
+    p <- plogis(discrimination[j] * (theta[i] - diff_effective))
+    responses_dif[i, j] <- rbinom(1, 1, p)
+  }
+}
+```
+
+### Testing for DIF
+
+```{r dif-test}
+# Test all items for DIF
+dif_result <- dif_test_with_data(
+  responses_dif,
+  group = group,
+  model = "2PL",
+  alpha = 0.05
+)
+
+print(dif_result)
+```
+
+### Interpreting DIF Results
+
+```{r dif-interpret}
+# View detailed results
+summary(dif_result)
+
+# Items flagged for DIF
+cat("Flagged items:", dif_result$flagged_items, "\n")
+
+# Effect sizes (ETS Delta scale)
+dif_results_df <- dif_result$dif_results
+flagged_df <- dif_results_df[dif_results_df$item %in% dif_result$flagged_items, ]
+print(flagged_df)
+
+# Effect size interpretation:
+# |Delta| < 0.3: Negligible DIF
+# 0.3 <= |Delta| < 0.5: Moderate DIF
+# |Delta| >= 0.5: Large DIF
+```
+
+### Visualizing DIF
+
+```{r dif-plot}
+# Plot ICCs for an item showing DIF
+dif_plot(dif_result, item = 5)
+# Blue line: Group A, Red line: Group B
+# Large separation indicates DIF
+```
+
+### DIF with Polytomous Items
+
+```{r dif-polytomous}
+# DIF analysis also works with polytomous models
+dif_result_grm <- dif_test_with_data(
+  responses_grm,
+  group = sample(c("Male", "Female"), nrow(responses_grm), replace = TRUE),
+  model = "GRM",
+  alpha = 0.05
+)
+
+print(dif_result_grm)
+```
+
+## Explanatory IRT (EIRT)
+
+Explanatory IRT models item parameters as functions of item characteristics (covariates).
+
+### Motivation
+
+Instead of estimating $b_j$ and $a_j$ separately for each item, model them as:
+
+$$b_j = \gamma_0 + \gamma_1 W_{j1} + \gamma_2 W_{j2} + ... + \epsilon_{bj}$$
+$$\log(a_j) = \delta_0 + \delta_1 V_{j1} + \delta_2 V_{j2} + ... + \epsilon_{aj}$$
+
+where $W$ and $V$ are item-level covariates.
+
+### Example: Reading Test Items
+
+```{r eirt-setup}
+set.seed(111)
+n_persons <- 300
+n_items <- 25
+
+# Item characteristics
+item_data <- data.frame(
+  word_frequency = rnorm(n_items, 0, 1),      # Higher = more common words
+  passage_length = rpois(n_items, 100),       # Length in words
+  item_type = factor(sample(c("Literal", "Inferential", "Critical"),
+                             n_items, replace = TRUE))
+)
+
+# True covariate effects
+gamma_0 <- 0.0          # Intercept
+gamma_freq <- -0.6      # Higher word freq → easier (lower difficulty)
+gamma_length <- 0.003   # Longer passages → harder
+
+delta_0 <- 0.3          # Log-discrimination intercept
+delta_type_inf <- 0.4   # Inferential items discriminate better
+delta_type_crit <- 0.6  # Critical thinking items discriminate even better
+
+# Generate true item parameters from covariates
+theta <- rnorm(n_persons, 0, 1)
+
+difficulty <- gamma_0 +
+              gamma_freq * item_data$word_frequency +
+              gamma_length * item_data$passage_length +
+              rnorm(n_items, 0, 0.3)  # residual variation
+
+discrimination <- exp(delta_0 +
+                     delta_type_inf * (item_data$item_type == "Inferential") +
+                     delta_type_crit * (item_data$item_type == "Critical") +
+                     rnorm(n_items, 0, 0.2))
+
+# Generate responses
+responses_eirt <- matrix(NA, n_persons, n_items)
+for (i in 1:n_persons) {
+  for (j in 1:n_items) {
+    p <- plogis(discrimination[j] * (theta[i] - difficulty[j]))
+    responses_eirt[i, j] <- rbinom(1, 1, p)
+  }
+}
+```
+
+### Fitting EIRT Models
+
+```{r fit-eirt}
+# Fit EIRT with item covariates
+fit_eirt <- fit_eirt(
+  responses_eirt,
+  item_data = item_data,
+  difficulty_formula = ~ word_frequency + passage_length,
+  discrimination_formula = ~ item_type,
+  model = "2PL"
+)
+
+print(fit_eirt)
+```
+
+### Interpreting EIRT Results
+
+```{r eirt-results}
+# Difficulty regression coefficients
+gamma_hat <- fit_eirt$regression_coefficients$difficulty
+print("Difficulty regression:")
+print(gamma_hat)
+
+# Interpretation:
+# - Negative word_frequency: items with common words are easier
+# - Positive passage_length: longer passages are harder
+
+# Discrimination regression coefficients
+delta_hat <- fit_eirt$regression_coefficients$discrimination
+print("Discrimination regression:")
+print(delta_hat)
+
+# Interpretation:
+# - Positive coefficients for Inferential/Critical:
+#   these item types discriminate better than Literal items
+
+# Residual standard deviations
+print("Residual SDs:")
+print(fit_eirt$residual_sd)
+# How much variation remains after accounting for covariates
+```
+
+### Comparing EIRT to Standard IRT
+
+```{r eirt-comparison}
+# Standard IRT (no covariates)
+fit_standard <- fit_irt(responses_eirt, model = "2PL")
+
+# EIRT (with covariates)
+# fit_eirt already fitted above
+
+# Model comparison
+cat("Standard IRT:\n")
+cat("  Log-likelihood:", fit_standard$logLik, "\n")
+cat("  AIC:", fit_standard$AIC, "\n")
+
+cat("\nExplanatory IRT:\n")
+cat("  Log-likelihood:", fit_eirt$logLik, "\n")
+cat("  AIC:", fit_eirt$AIC, "\n")
+
+# EIRT may have better AIC if covariates explain substantial variation
+# EIRT provides interpretable regression coefficients
+```
+
+### EIRT with Polytomous Items
+
+```{r eirt-polytomous}
+# Create item characteristics for Likert-scale items
+item_data_likert <- data.frame(
+  complexity = rnorm(n_items, 0, 1),
+  reverse_coded = factor(sample(c("Yes", "No"), n_items, replace = TRUE))
+)
+
+# Fit EIRT with GRM
+fit_eirt_grm <- fit_eirt(
+  responses_grm,
+  item_data = item_data_likert,
+  difficulty_formula = ~ complexity + reverse_coded,
+  discrimination_formula = ~ complexity,
+  model = "GRM"
+)
+
+print(fit_eirt_grm)
+summary(fit_eirt_grm)
+```
+
+### Practical Applications of EIRT
+
+#### Test Development
+
+```{r test-development, eval=FALSE}
+# Use EIRT to:
+# 1. Identify item characteristics that predict difficulty
+# 2. Design new items with targeted difficulty
+# 3. Balance tests by controlling item characteristics
+
+# Example: Create a new item
+new_item <- data.frame(
+  word_frequency = 0.5,  # Moderately common words
+  passage_length = 90,   # Short passage
+  item_type = "Literal"
+)
+
+# Predict difficulty and discrimination
+W_new <- model.matrix(~ word_frequency + passage_length, data = new_item)
+gamma <- fit_eirt$regression_coefficients$difficulty
+predicted_difficulty <- sum(W_new * gamma)
+
+cat("Predicted difficulty for new item:", predicted_difficulty, "\n")
+```
+
+#### Item Revision
+
+```{r item-revision, eval=FALSE}
+# Identify items with large residuals (not well-explained by covariates)
+item_params <- fit_eirt$item_parameters
+predicted_diffs <- model.matrix(~ word_frequency + passage_length,
+                                data = item_data) %*%
+                   fit_eirt$regression_coefficients$difficulty
+
+residuals_diff <- item_params$difficulty - predicted_diffs
+
+# Items with large positive residuals are unexpectedly hard
+problematic_items <- which(abs(residuals_diff) > 1)
+cat("Items to review:", problematic_items, "\n")
+```
+
+## Advanced Topics
 
 ### Multidimensional IRT
 
 ```{r mirt, eval=FALSE}
 # Future feature: Multiple latent dimensions
+# Useful for tests measuring multiple constructs
 # fit_mirt <- fit_irt(responses, model = "2PL", dimensions = 2)
+```
+
+### Computerized Adaptive Testing (CAT)
+
+```{r cat, eval=FALSE}
+# Future feature: Item selection algorithms
+# Select next item based on current ability estimate
+# next_item <- select_item_cat(fit_irt, current_ability, method = "MFI")
 ```
 
 ## References

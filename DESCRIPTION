@@ -11,10 +11,12 @@ Description: Comprehensive implementation of Generalized Linear Latent and Mixed
     and Pickles. Supports multilevel generalized linear models (GLMMs) with Gaussian,
     binomial, Poisson, ordinal, and multinomial responses; factor models; item response
     theory (IRT) models including dichotomous (Rasch, 2PL, 3PL) and polytomous (GRM,
-    PCM, GPCM, NRM) models; latent class analysis; structural equation models; mixed
-    response models; and survival models. Uses Template Model Builder (TMB) for
-    efficient computation via automatic differentiation. Provides comprehensive
-    diagnostics, visualization, and model comparison tools.
+    PCM, GPCM, NRM) models; differential item functioning (DIF) analysis; explanatory
+    IRT (EIRT) with item covariates for both dichotomous and polytomous models; latent
+    class analysis; structural equation models; mixed response models; and survival
+    models. Uses Template Model Builder (TMB) for efficient computation via automatic
+    differentiation. Provides comprehensive diagnostics, visualization, and model
+    comparison tools.
 License: GPL-3
 Depends:
     R (>= 4.0.0)

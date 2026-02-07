@@ -20,6 +20,14 @@ S3method(influence, gllamm)
 S3method(print, gllamm_irt)
 S3method(summary, gllamm_irt)
 
+# S3 methods - EIRT
+S3method(print, gllamm_eirt)
+S3method(summary, gllamm_eirt)
+
+# S3 methods - DIF
+S3method(print, dif_analysis)
+S3method(summary, dif_analysis)
+
 # S3 methods - Latent Class
 S3method(print, gllamm_lca)
 S3method(summary, gllamm_lca)
@@ -35,12 +43,18 @@ S3method(summary, gllamm_multinomial)
 # Main functions
 export(gllamm)
 export(fit_irt)
+export(fit_eirt)
 export(fit_lca)
 export(fit_ordinal)
 export(fit_multinomial)
 export(fit_survival)
 export(fit_mixed_response)
 export(fit_sem)
+
+# IRT diagnostic functions
+export(dif_test)
+export(dif_test_with_data)
+export(dif_plot)
 
 # Diagnostic functions
 export(gof.gllamm)
