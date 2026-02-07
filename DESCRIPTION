@@ -10,9 +10,10 @@ Description: Comprehensive implementation of Generalized Linear Latent and Mixed
     Models (GLLAMM) following the Stata GLLAMM framework by Rabe-Hesketh, Skrondal,
     and Pickles. Supports multilevel generalized linear models (GLMMs) with Gaussian,
     binomial, Poisson, ordinal, and multinomial responses; factor models; item response
-    theory (IRT) models (Rasch, 2PL, 3PL); latent class analysis; structural equation
-    models; mixed response models; and survival models. Uses Template Model Builder
-    (TMB) for efficient computation via automatic differentiation. Provides comprehensive
+    theory (IRT) models including dichotomous (Rasch, 2PL, 3PL) and polytomous (GRM,
+    PCM, GPCM, NRM) models; latent class analysis; structural equation models; mixed
+    response models; and survival models. Uses Template Model Builder (TMB) for
+    efficient computation via automatic differentiation. Provides comprehensive
     diagnostics, visualization, and model comparison tools.
 License: GPL-3
 Depends:
@@ -30,7 +31,9 @@ Suggests:
     knitr,
     rmarkdown,
     ggplot2,
-    lme4
+    lme4,
+    mirt,
+    TAM
 Encoding: UTF-8
 RoxygenNote: 7.3.0
 VignetteBuilder: knitr
