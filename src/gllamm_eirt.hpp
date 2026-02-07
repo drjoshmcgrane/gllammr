@@ -1,8 +1,6 @@
 // Explanatory IRT: Item parameters as functions of item covariates
 // Supports dichotomous and polytomous models
 
-#include <TMB.hpp>
-
 template<class Type>
 Type objective_function<Type>::operator() ()
 {

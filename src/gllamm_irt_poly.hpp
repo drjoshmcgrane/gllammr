@@ -1,8 +1,6 @@
 // Polytomous IRT Models: GRM, PCM, GPCM, NRM
 // Template for ordered and unordered categorical item responses
 
-#include <TMB.hpp>
-
 template<class Type>
 Type objective_function<Type>::operator() ()
 {

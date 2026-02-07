@@ -165,18 +165,31 @@ fit_eirt <- function(response_matrix,
   delta_hat <- par_full[names(par_full) == "delta"]
   names(delta_hat) <- colnames(W_disc)
 
-  difficulty_hat <- par_full[names(par_full) == "difficulty"]
-  names(difficulty_hat) <- paste0("Item", 1:n_items)
+  # Extract ADREPORT quantities from sdreport
+  if (!inherits(sdr, "try-error")) {
+    sdr_summary <- summary(sdr, "report")
 
-  discrimination_hat <- par_full[names(par_full) == "discrimination"]
-  names(discrimination_hat) <- paste0("Item", 1:n_items)
+    difficulty_hat <- sdr_summary[rownames(sdr_summary) == "difficulty", "Estimate"]
+    names(difficulty_hat) <- paste0("Item", 1:n_items)
 
-  theta_hat <- par_full[names(par_full) == "theta"]
-  names(theta_hat) <- paste0("Person", 1:n_persons)
+    discrimination_hat <- sdr_summary[rownames(sdr_summary) == "discrimination", "Estimate"]
+    names(discrimination_hat) <- paste0("Item", 1:n_items)
 
-  sigma_epsilon_b_hat <- exp(par_full[names(par_full) == "log_sigma_epsilon_b"])
-  sigma_epsilon_a_hat <- exp(par_full[names(par_full) == "log_sigma_epsilon_a"])
-  sigma_theta_hat <- exp(par_full[names(par_full) == "log_sigma_theta"])
+    theta_hat <- sdr_summary[rownames(sdr_summary) == "theta", "Estimate"]
+    names(theta_hat) <- paste0("Person", 1:n_persons)
+
+    sigma_epsilon_b_hat <- sdr_summary[rownames(sdr_summary) == "sigma_epsilon_b", "Estimate"]
+    sigma_epsilon_a_hat <- sdr_summary[rownames(sdr_summary) == "sigma_epsilon_a", "Estimate"]
+    sigma_theta_hat <- sdr_summary[rownames(sdr_summary) == "sigma_theta", "Estimate"]
+  } else {
+    # Fallback: compute manually from parameters
+    difficulty_hat <- rep(NA, n_items)
+    discrimination_hat <- rep(NA, n_items)
+    theta_hat <- par_full[names(par_full) == "theta"]
+    sigma_epsilon_b_hat <- exp(par_full[names(par_full) == "log_sigma_epsilon_b"])
+    sigma_epsilon_a_hat <- exp(par_full[names(par_full) == "log_sigma_epsilon_a"])
+    sigma_theta_hat <- exp(par_full[names(par_full) == "log_sigma_theta"])
+  }
 
   # Construct result
   result <- list(
