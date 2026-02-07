@@ -72,20 +72,27 @@ parse_random_term <- function(term, data) {
   }
 
   # Remove outer parentheses
-  term <- gsub("^\\((.*)\\)$", "\\1", term)
+  term_inner <- gsub("^\\((.*)\\)$", "\\1", term)
 
-  # Split on |
-  parts <- strsplit(term, "\\|")[[1]]
+  # Check for || (uncorrelated random effects) BEFORE splitting
+  uncorrelated <- grepl("\\|\\|", term_inner)
+
+  # Split on | (for || this gives 3 parts, for | gives 2)
+  if (uncorrelated) {
+    # For ||, split and remove empty middle part
+    parts <- strsplit(term_inner, "\\|")[[1]]
+    parts <- parts[parts != ""]  # Remove empty strings
+  } else {
+    # For single |
+    parts <- strsplit(term_inner, "\\|")[[1]]
+  }
 
   if (length(parts) != 2) {
-    stop("Random effects syntax must be: (term | group)")
+    stop("Random effects syntax must be: (term | group) or (term || group)")
   }
 
   re_terms <- parts[1]
   grouping <- parts[2]
-
-  # Check for || (uncorrelated random effects)
-  uncorrelated <- grepl("\\|\\|", term)
 
   # Parse nested grouping (e.g., "school/class")
   if (grepl("/", grouping)) {

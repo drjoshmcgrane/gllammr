@@ -1,0 +1,380 @@
+---
+title: "Item Response Theory Models with GLLAMMR"
+author: "GLLAMMR Team"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Item Response Theory Models with GLLAMMR}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  eval = FALSE
+)
+```
+
+## Introduction to IRT
+
+Item Response Theory (IRT) provides a framework for analyzing test and survey data. IRT models relate person abilities (latent traits) to item responses through mathematical functions.
+
+GLLAMMR implements major IRT models:
+- **Rasch model** (1-parameter logistic)
+- **2PL model** (2-parameter logistic)
+- **3PL model** (3-parameter logistic with guessing)
+
+## The Rasch Model
+
+The Rasch model is the simplest IRT model:
+
+$$P(Y_{ij} = 1 | \theta_i, b_j) = \frac{1}{1 + \exp(-([\theta_i - b_j]))}$$
+
+where:
+- $\theta_i$ is the ability of person $i$
+- $b_j$ is the difficulty of item $j$
+
+### Simulating Rasch Data
+
+```{r rasch-simulation}
+library(GLLAMMR)
+
+set.seed(123)
+n_persons <- 500
+n_items <- 20
+
+# True parameters
+true_ability <- rnorm(n_persons, mean = 0, sd = 1)
+true_difficulty <- seq(-2, 2, length.out = n_items)
+
+# Generate responses
+responses <- matrix(NA, n_persons, n_items)
+for (i in 1:n_persons) {
+  for (j in 1:n_items) {
+    p <- plogis(true_ability[i] - true_difficulty[j])
+    responses[i, j] <- rbinom(1, 1, p)
+  }
+}
+
+# Item names
+colnames(responses) <- paste0("Item", 1:n_items)
+
+# View first few rows
+head(responses)
+```
+
+### Fitting the Rasch Model
+
+```{r fit-rasch}
+fit_rasch <- fit_irt(responses, model = "Rasch")
+
+print(fit_rasch)
+```
+
+### Examining Item Parameters
+
+```{r rasch-items}
+# Item difficulties
+item_params <- fit_rasch$item_parameters
+print(item_params)
+
+# Plot item difficulties
+plot(true_difficulty, item_params$difficulty,
+     xlab = "True Difficulty",
+     ylab = "Estimated Difficulty",
+     main = "Rasch Model: Parameter Recovery")
+abline(0, 1, col = "red", lty = 2)
+```
+
+### Examining Person Parameters
+
+```{r rasch-persons}
+# Person abilities
+abilities <- fit_rasch$person_abilities
+
+# Distribution of abilities
+hist(abilities, main = "Distribution of Estimated Abilities",
+     xlab = "Ability (theta)", col = "lightblue")
+
+# Correlation with true abilities
+cor(abilities, true_ability)
+```
+
+## The 2PL Model
+
+The 2-parameter logistic model adds item discrimination:
+
+$$P(Y_{ij} = 1 | \theta_i, a_j, b_j) = \frac{1}{1 + \exp(-a_j(\theta_i - b_j))}$$
+
+where:
+- $a_j$ is the discrimination parameter for item $j$
+- Higher $a_j$ means the item better distinguishes between ability levels
+
+### Simulating 2PL Data
+
+```{r 2pl-simulation}
+set.seed(456)
+n_persons <- 500
+n_items <- 15
+
+true_ability <- rnorm(n_persons, 0, 1)
+true_difficulty <- rnorm(n_items, 0, 1)
+true_discrimination <- runif(n_items, 0.5, 2.5)
+
+responses_2pl <- matrix(NA, n_persons, n_items)
+for (i in 1:n_persons) {
+  for (j in 1:n_items) {
+    p <- plogis(true_discrimination[j] * (true_ability[i] - true_difficulty[j]))
+    responses_2pl[i, j] <- rbinom(1, 1, p)
+  }
+}
+
+colnames(responses_2pl) <- paste0("Q", 1:n_items)
+```
+
+### Fitting the 2PL Model
+
+```{r fit-2pl}
+fit_2pl <- fit_irt(responses_2pl, model = "2PL")
+
+print(fit_2pl)
+summary(fit_2pl)
+```
+
+### Comparing Item Parameters
+
+```{r 2pl-params}
+# Extract parameters
+difficulty_2pl <- fit_2pl$item_parameters$difficulty
+discrimination_2pl <- fit_2pl$item_parameters$discrimination
+
+# Plot difficulties
+plot(true_difficulty, difficulty_2pl,
+     xlab = "True Difficulty", ylab = "Estimated Difficulty",
+     main = "2PL: Difficulty Recovery")
+abline(0, 1, col = "red", lty = 2)
+
+# Plot discriminations
+plot(true_discrimination, discrimination_2pl,
+     xlab = "True Discrimination", ylab = "Estimated Discrimination",
+     main = "2PL: Discrimination Recovery")
+abline(0, 1, col = "red", lty = 2)
+```
+
+## The 3PL Model
+
+The 3-parameter logistic model adds a guessing parameter:
+
+$$P(Y_{ij} = 1 | \theta_i, a_j, b_j, c_j) = c_j + (1 - c_j) \frac{1}{1 + \exp(-a_j(\theta_i - b_j))}$$
+
+where $c_j$ is the pseudo-guessing parameter (lower asymptote).
+
+### Fitting the 3PL Model
+
+```{r fit-3pl}
+# Add guessing to data generation
+set.seed(789)
+true_guessing <- runif(n_items, 0.1, 0.3)
+
+responses_3pl <- matrix(NA, n_persons, n_items)
+for (i in 1:n_persons) {
+  for (j in 1:n_items) {
+    p <- true_guessing[j] + (1 - true_guessing[j]) *
+         plogis(true_discrimination[j] * (true_ability[i] - true_difficulty[j]))
+    responses_3pl[i, j] <- rbinom(1, 1, p)
+  }
+}
+
+fit_3pl <- fit_irt(responses_3pl, model = "3PL")
+
+print(fit_3pl)
+```
+
+## Item Characteristic Curves
+
+```{r icc, eval=FALSE}
+# Function to plot ICC for Rasch model
+plot_icc_rasch <- function(difficulty, theta_range = c(-3, 3)) {
+  theta <- seq(theta_range[1], theta_range[2], length.out = 100)
+  p <- plogis(theta - difficulty)
+
+  plot(theta, p, type = "l", lwd = 2,
+       xlab = "Ability (theta)",
+       ylab = "P(Correct)",
+       main = paste("ICC: Difficulty =", round(difficulty, 2)),
+       ylim = c(0, 1))
+  abline(h = 0.5, col = "gray", lty = 2)
+  abline(v = difficulty, col = "red", lty = 2)
+}
+
+# Plot ICCs for selected items
+par(mfrow = c(2, 2))
+plot_icc_rasch(item_params$difficulty[1])
+plot_icc_rasch(item_params$difficulty[5])
+plot_icc_rasch(item_params$difficulty[10])
+plot_icc_rasch(item_params$difficulty[15])
+par(mfrow = c(1, 1))
+```
+
+## Item Information Functions
+
+```{r iif, eval=FALSE}
+# Function to compute item information for 2PL
+item_information_2pl <- function(theta, a, b) {
+  p <- plogis(a * (theta - b))
+  info <- a^2 * p * (1 - p)
+  return(info)
+}
+
+# Plot information for items with different discriminations
+theta <- seq(-3, 3, length.out = 100)
+
+plot(theta, item_information_2pl(theta, a = 0.5, b = 0),
+     type = "l", lwd = 2, col = "blue",
+     xlab = "Ability", ylab = "Information",
+     main = "Item Information: Effect of Discrimination",
+     ylim = c(0, 1))
+lines(theta, item_information_2pl(theta, a = 1.0, b = 0),
+      lwd = 2, col = "green")
+lines(theta, item_information_2pl(theta, a = 2.0, b = 0),
+      lwd = 2, col = "red")
+legend("topright",
+       legend = c("a = 0.5", "a = 1.0", "a = 2.0"),
+       col = c("blue", "green", "red"),
+       lwd = 2)
+```
+
+## Model Comparison
+
+```{r model-comparison, eval=FALSE}
+# Compare Rasch vs 2PL
+comparison <- data.frame(
+  Model = c("Rasch", "2PL", "3PL"),
+  LogLik = c(fit_rasch$logLik, fit_2pl$logLik, fit_3pl$logLik),
+  AIC = c(fit_rasch$AIC, fit_2pl$AIC, fit_3pl$AIC),
+  BIC = c(fit_rasch$BIC, fit_2pl$BIC, fit_3pl$BIC)
+)
+
+print(comparison)
+
+# Lower AIC/BIC is better
+# 2PL should fit better than Rasch if discrimination varies
+# 3PL should fit better if there's guessing
+```
+
+## Ability Estimation
+
+```{r ability-est}
+# Get person abilities from fitted model
+abilities_rasch <- fit_rasch$person_abilities
+
+# Create ability score groups
+ability_groups <- cut(abilities_rasch,
+                      breaks = quantile(abilities_rasch, c(0, 0.25, 0.5, 0.75, 1)),
+                      include.lowest = TRUE,
+                      labels = c("Low", "Medium-Low", "Medium-High", "High"))
+
+# Average score by ability group
+score_by_group <- tapply(rowMeans(responses), ability_groups, mean)
+print(score_by_group)
+```
+
+## Practical Applications
+
+### Educational Assessment
+
+```{r education, eval=FALSE}
+# Simulate reading test data
+n_students <- 1000
+n_questions <- 30
+
+# Items vary in difficulty (easy to hard)
+difficulty_reading <- seq(-2, 2, length.out = n_questions)
+
+# Generate abilities (normally distributed)
+student_ability <- rnorm(n_students, mean = 0, sd = 1)
+
+# Generate responses
+reading_test <- matrix(NA, n_students, n_questions)
+for (i in 1:n_students) {
+  for (j in 1:n_questions) {
+    p <- plogis(student_ability[i] - difficulty_reading[j])
+    reading_test[i, j] <- rbinom(1, 1, p)
+  }
+}
+
+# Fit model
+fit_reading <- fit_irt(reading_test, model = "Rasch")
+
+# Identify problematic items
+item_fit <- fit_reading$item_parameters
+
+# Items that are too easy or too hard
+extreme_items <- which(abs(item_fit$difficulty) > 2)
+print(paste("Extreme items:", paste(extreme_items, collapse = ", ")))
+```
+
+### Psychological Scales
+
+```{r psychology, eval=FALSE}
+# Simulate depression scale
+n_respondents <- 800
+n_symptoms <- 15
+
+# Symptoms have varying severity (difficulty)
+symptom_severity <- rnorm(n_symptoms, mean = 0, sd = 1)
+
+# Respondents have varying depression levels
+depression_level <- rnorm(n_respondents, mean = 0, sd = 1.5)
+
+# Generate endorsements
+depression_scale <- matrix(NA, n_respondents, n_symptoms)
+for (i in 1:n_respondents) {
+  for (j in 1:n_symptoms) {
+    p <- plogis(depression_level[i] - symptom_severity[j])
+    depression_scale[i, j] <- rbinom(1, 1, p)
+  }
+}
+
+# Fit model
+fit_depression <- fit_irt(depression_scale, model = "Rasch")
+
+# Score respondents
+scores <- fit_depression$person_abilities
+
+# Identify high-risk individuals (top 10%)
+high_risk_cutoff <- quantile(scores, 0.90)
+high_risk <- which(scores > high_risk_cutoff)
+print(paste("Number of high-risk individuals:", length(high_risk)))
+```
+
+## Advanced Topics
+
+### Differential Item Functioning (DIF)
+
+```{r dif, eval=FALSE}
+# Future feature: Test if items function differently across groups
+# fit_dif <- fit_irt_dif(responses, group = gender, model = "Rasch")
+```
+
+### Multidimensional IRT
+
+```{r mirt, eval=FALSE}
+# Future feature: Multiple latent dimensions
+# fit_mirt <- fit_irt(responses, model = "2PL", dimensions = 2)
+```
+
+## References
+
+- Rasch, G. (1960). Probabilistic Models for Some Intelligence and Attainment Tests.
+- Lord, F. M. (1980). Applications of Item Response Theory to Practical Testing Problems.
+- Embretson, S. E., & Reise, S. P. (2000). Item Response Theory for Psychologists.
+- Baker, F. B., & Kim, S. H. (2004). Item Response Theory: Parameter Estimation Techniques.
+
+## See Also
+
+- `vignette("latent-class")` - Latent class models
+- `vignette("factor-analysis")` - Factor analysis with GLLAMMR
+- `vignette("mixed-response")` - Mixed response models

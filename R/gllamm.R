@@ -129,13 +129,23 @@ gllamm <- function(formula,
   # Create model matrices
   model_data <- make_model_matrices(parsed, data)
 
-  # Fit model using TMB
-  fit_result <- fit_tmb_gllamm(
-    model_data = model_data,
-    family = family,
-    start_params = start,
-    control = control
-  )
+  # Fit model using TMB (use v2 interface if available)
+  if (exists("fit_tmb_gllamm_v2")) {
+    fit_result <- fit_tmb_gllamm_v2(
+      model_data = model_data,
+      family = family,
+      random_terms = parsed$random_terms,
+      start_params = start,
+      control = control
+    )
+  } else {
+    fit_result <- fit_tmb_gllamm(
+      model_data = model_data,
+      family = family,
+      start_params = start,
+      control = control
+    )
+  }
 
   # Calculate residuals
   resids <- model_data$y - fit_result$fitted.values

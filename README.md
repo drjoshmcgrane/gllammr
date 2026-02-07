@@ -62,26 +62,61 @@ library(GLLAMMR)
 
 ## Quick Start
 
-### Basic Random Intercept Model
+### Basic GLMM
 
 ```r
 library(GLLAMMR)
 
-# Simulate data
-set.seed(123)
-n_groups <- 30
-n_per_group <- 10
-data <- data.frame(
-  y = rnorm(n_groups * n_per_group),
-  x = rnorm(n_groups * n_per_group),
-  group = rep(1:n_groups, each = n_per_group)
-)
+# Gaussian GLMM with random intercept
+fit1 <- gllamm(y ~ x + (1 | group), data = mydata, family = gaussian())
 
-# Fit model
-fit <- gllamm(y ~ x + (1 | group), data = data)
+# Binomial GLMM (logistic regression)
+fit2 <- gllamm(y ~ x + (1 | group), data = mydata, family = binomial())
 
-# View results
-summary(fit)
+# Poisson GLMM (count data)
+fit3 <- gllamm(y ~ x + (1 | group), data = mydata, family = poisson())
+
+# Random slopes
+fit4 <- gllamm(y ~ x + (x | group), data = mydata)
+
+summary(fit1)
+```
+
+### Item Response Theory
+
+```r
+# Fit Rasch model
+fit_rasch <- fit_irt(response_matrix, model = "Rasch")
+
+# Fit 2PL model
+fit_2pl <- fit_irt(response_matrix, model = "2PL")
+
+# Fit 3PL model
+fit_3pl <- fit_irt(response_matrix, model = "3PL")
+
+# Extract item parameters
+fit_rasch$item_parameters
+
+# Extract person abilities
+fit_rasch$person_abilities
+```
+
+### Latent Class Analysis
+
+```r
+# Fit 2-class model
+fit_lca <- fit_lca(binary_data, nclass = 2)
+
+# Examine class probabilities
+fit_lca$class_probs
+
+# Examine item response probabilities
+fit_lca$item_probs
+
+# Get posterior class membership
+fit_lca$posterior
+
+summary(fit_lca)
 ```
 
 ### Random Intercept and Slope
@@ -139,31 +174,53 @@ GLLAMMR uses lme4-style formula syntax:
 
 ## Supported Models
 
-### Current Implementation (Phase 1)
+### Current Implementation
 
+#### Phase 1: Basic GLMM ✅
 - ✅ **Gaussian GLMM** with identity link
 - ✅ Random intercepts (single and multiple levels)
-- ✅ Basic 2-level models
-- ✅ lme4-style formula parsing
+- ✅ Random slopes with `(x | group)` syntax
+- ✅ Uncorrelated random effects with `(x || group)`
+- ✅ lme4-style formula parsing (standalone)
+
+#### Phase 2: Enhanced GLMM ✅
+- ✅ **Binomial family** (logit, probit, cloglog links)
+- ✅ **Poisson family** (log link)
+- ✅ Random slopes and variance-covariance structures
+- ✅ Sparse matrix support for efficiency
+
+#### Phase 4: IRT Models ✅
+- ✅ **Rasch model** (1-parameter logistic)
+- ✅ **2PL model** (2-parameter logistic)
+- ✅ **3PL model** (3-parameter with guessing)
+- ✅ Person ability estimation
+- ✅ Item parameter estimation
+
+#### Phase 5: Latent Class Analysis ✅
+- ✅ **Latent class models** for binary indicators
+- ✅ Posterior class membership probabilities
+- ✅ Model selection via AIC/BIC
+- ✅ Multiple random starts for optimization
 
 ### Coming Soon
 
-- **Phase 2 (Weeks 5-8)**: Random slopes, binomial/Poisson families, 3+ levels, adaptive quadrature
-- **Phase 3 (Weeks 9-10)**: Ordinal and multinomial responses
-- **Phase 4 (Weeks 11-14)**: Factor models and IRT (Rasch, 2PL, 3PL, GRM)
-- **Phase 5 (Weeks 15-17)**: Latent class models
-- **Phase 6 (Weeks 18-20)**: Mixed response models and SEM
-- **Phase 7 (Weeks 21-22)**: Survival models, constraints, advanced features
-- **Phase 8 (Week 23)**: Enhanced prediction and simulation
-- **Phase 9 (Week 24)**: Comprehensive documentation and CRAN release
+- **Phase 3**: Ordinal and multinomial responses
+- **Phase 4+**: Graded response model (GRM), multidimensional IRT
+- **Phase 5+**: Growth mixture models, latent class regression
+- **Phase 6**: Mixed response models and SEM
+- **Phase 7**: Survival models, constraints, advanced features
+- **Phase 8**: Enhanced prediction and simulation
+- **Phase 9**: Comprehensive documentation and CRAN release
 
 ## Comparison to Other Packages
 
 | Feature | GLLAMMR | lme4 | galamm | mirt | poLCA |
 |---------|---------|------|--------|------|-------|
 | Basic GLMM | ✅ | ✅ | ✅ | ❌ | ❌ |
-| IRT Models | 🚧 | ❌ | ❌ | ✅ | ❌ |
-| Latent Class | 🚧 | ❌ | ❌ | ✅ | ✅ |
+| Random Slopes | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Binomial/Poisson | ✅ | ✅ | ✅ | ❌ | ❌ |
+| IRT Models | ✅ | ❌ | ❌ | ✅ | ❌ |
+| Latent Class | ✅ | ❌ | ❌ | ✅ | ✅ |
 | Factor Models | 🚧 | ❌ | ✅ | ✅ | ❌ |
 | Mixed Response | 🚧 | ❌ | ❌ | ❌ | ❌ |
 | SEM | 🚧 | ❌ | ❌ | ❌ | ❌ |
@@ -205,15 +262,17 @@ help(package = "GLLAMMR")
 
 ## Development Status
 
-**Current Phase**: Phase 1 - Foundation & Basic GLMM (Week 1 of 24)
+**Current Progress**: Phases 1, 2, 4, 5 Complete (Major Features)
 
-GLLAMMR is under active development. The current release provides:
-- Basic 2-level Gaussian GLMMs
-- Random intercepts
-- lme4-style formula interface
-- Core infrastructure for future development
+GLLAMMR provides:
+- ✅ **GLMMs**: Gaussian, binomial, Poisson families
+- ✅ **Random effects**: Intercepts and slopes with full variance-covariance
+- ✅ **IRT models**: Rasch, 2PL, 3PL
+- ✅ **Latent class analysis**: Binary indicators with flexible class numbers
+- ✅ **TMB backend**: Fast, efficient computation
+- 🚧 **In progress**: Ordinal/multinomial, factor analysis, SEM
 
-See the [implementation plan](https://github.com/yourusername/GLLAMMR/blob/main/PLAN.md) for the complete 24-week roadmap.
+See `ROADMAP.md` for the complete implementation plan.
 
 ## Contributing
 

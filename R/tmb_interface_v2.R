@@ -1,81 +1,110 @@
-#' Interface to TMB for GLLAMM models
+#' Enhanced interface to TMB for GLLAMMR models
 #'
-#' Prepares data and parameters for TMB, compiles and runs optimization
+#' Supports random intercepts, random slopes, and multiple GLM families
 #'
 #' @param model_data List from make_model_matrices()
 #' @param family GLM family object
+#' @param random_terms Parsed random effects terms
 #' @param start_params Optional starting values
 #' @param control Control parameters for optimization
 #'
 #' @return TMB fit object with parameter estimates
 #' @keywords internal
-fit_tmb_gllamm <- function(model_data, family, start_params = NULL, control = list()) {
-
-  # Currently only support Gaussian
-  if (family$family != "gaussian" || family$link != "identity") {
-    stop("Only Gaussian family with identity link currently supported")
-  }
+fit_tmb_gllamm_v2 <- function(model_data, family, random_terms, start_params = NULL, control = list()) {
 
   # For now, only handle single random effect term
   if (model_data$n_random_terms != 1) {
     stop("Currently only single random effects term supported")
   }
 
-  # Determine which template to use based on number of random coefficients
+  # Determine model type
   n_random <- model_data$n_random_coefs[1]
-  use_slopes <- (n_random > 1)
+  correlated <- !random_terms[[1]]$uncorrelated
+
+  # Convert Z to sparse matrix for efficiency
+  Z_sparse <- Matrix::Matrix(model_data$Z[[1]], sparse = TRUE)
 
   # Prepare TMB data
   tmb_data <- list(
     y = as.numeric(model_data$y),
     X = as.matrix(model_data$X),
-    Z = as.matrix(model_data$Z[[1]]),
+    Z = Z_sparse,
     groups = as.integer(model_data$groups[[1]]),
     n_groups = as.integer(model_data$n_groups[1]),
     n_obs = as.integer(model_data$n_obs),
     n_fixed = as.integer(model_data$n_fixed),
-    n_random = as.integer(model_data$n_random_coefs[1])
+    n_random = as.integer(n_random),
+    correlated = as.integer(correlated)
   )
+
+  # Add family-specific data
+  if (family$family == "binomial") {
+    tmb_data$link = switch(family$link,
+                           logit = 1L,
+                           probit = 2L,
+                           cloglog = 3L,
+                           1L)
+  } else if (family$family == "poisson") {
+    tmb_data$link = 1L  # log link
+  }
 
   # Initialize parameters
   if (is.null(start_params)) {
-    # Fit simple lm for initial values
-    lm_fit <- lm(model_data$y ~ model_data$X - 1)
-
-    beta_init <- coef(lm_fit)
-    sigma_init <- summary(lm_fit)$sigma
+    # Fit simple model for initial values
+    if (family$family == "gaussian") {
+      lm_fit <- lm(model_data$y ~ model_data$X - 1)
+      beta_init <- coef(lm_fit)
+      sigma_init <- summary(lm_fit)$sigma
+    } else {
+      glm_fit <- glm(model_data$y ~ model_data$X - 1, family = family)
+      beta_init <- coef(glm_fit)
+      sigma_init <- 1.0  # Not used for non-Gaussian
+    }
 
     # Initialize random effects to zero
-    u_init <- rep(0, tmb_data$n_groups * tmb_data$n_random)
+    u_init <- rep(0, tmb_data$n_groups * n_random)
 
     # Initialize variance components
-    # Use 50% of residual variance for random effect
-    sigma_u_init <- sigma_init * 0.7
+    log_sigma_u_init <- rep(log(0.5), n_random)
+
+    # Initialize correlation parameters (Cholesky)
+    n_theta <- n_random * (n_random - 1) / 2
+    theta_init <- rep(0, max(n_theta, 1))
 
     tmb_params <- list(
       beta = beta_init,
       u = u_init,
-      log_sigma = log(sigma_init),
-      log_sigma_u = log(sigma_u_init)
+      log_sigma = log(max(sigma_init, 0.1)),
+      log_sigma_u = log_sigma_u_init,
+      theta = theta_init
     )
   } else {
     tmb_params <- start_params
   }
 
+  # Select appropriate DLL/template
+  dll_name <- if (n_random > 1) {
+    "gllamm_gaussian_slopes"
+  } else if (family$family == "binomial") {
+    "gllamm_binomial"
+  } else if (family$family == "poisson") {
+    "gllamm_poisson"
+  } else {
+    "gllamm_gaussian"
+  }
+
   # Create TMB object
-  # Note: In practice, would need to compile the C++ template first
-  # For now, assume it's compiled
   tryCatch({
     obj <- TMB::MakeADFun(
       data = tmb_data,
       parameters = tmb_params,
-      random = "u",  # Integrate out random effects
-      DLL = "GLLAMMR",
+      random = "u",
+      DLL = dll_name,
       silent = TRUE
     )
   }, error = function(e) {
     stop("Failed to create TMB object. Ensure TMB template is compiled.\n",
-         "Run: TMB::compile('src/gllamm_gaussian.cpp') first.\n",
+         "Run: TMB::compile('src/", dll_name, ".cpp')\n",
          "Error: ", e$message)
   })
 
@@ -113,27 +142,50 @@ fit_tmb_gllamm <- function(model_data, family, start_params = NULL, control = li
   }
 
   # Extract results
-  par_full <- obj$env$last.par.best  # Includes random effects
+  par_full <- obj$env$last.par.best
 
   # Fixed effects
   beta_hat <- par_full[names(par_full) == "beta"]
   names(beta_hat) <- colnames(model_data$X)
 
   # Variance components
-  log_sigma_hat <- par_full[names(par_full) == "log_sigma"]
   log_sigma_u_hat <- par_full[names(par_full) == "log_sigma_u"]
-  sigma_hat <- exp(log_sigma_hat)
   sigma_u_hat <- exp(log_sigma_u_hat)
+
+  # Build variance-covariance matrix for random effects
+  if (n_random > 1 && correlated) {
+    theta_hat <- par_full[names(par_full) == "theta"]
+
+    # Reconstruct Cholesky factor
+    L <- matrix(0, n_random, n_random)
+    diag(L) <- 1
+    idx <- 1
+    for (i in 2:n_random) {
+      for (j in 1:(i-1)) {
+        L[i, j] <- theta_hat[idx]
+        idx <- idx + 1
+      }
+    }
+
+    # Correlation matrix
+    R <- L %*% t(L)
+
+    # Covariance matrix
+    D <- diag(sigma_u_hat)
+    Sigma_u <- D %*% R %*% D
+  } else {
+    # Diagonal covariance
+    Sigma_u <- diag(sigma_u_hat^2)
+  }
 
   # Random effects
   u_hat <- par_full[names(par_full) == "u"]
 
   # Organize random effects by group
-  n_re_per_group <- tmb_data$n_random
   random_effects <- list()
   for (g in 1:tmb_data$n_groups) {
-    idx_start <- (g - 1) * n_re_per_group + 1
-    idx_end <- g * n_re_per_group
+    idx_start <- (g - 1) * n_random + 1
+    idx_end <- g * n_random
     random_effects[[g]] <- u_hat[idx_start:idx_end]
   }
 
@@ -151,20 +203,28 @@ fit_tmb_gllamm <- function(model_data, family, start_params = NULL, control = li
   # Fitted values
   fitted_vals <- as.numeric(model_data$X %*% beta_hat)
   for (i in 1:length(fitted_vals)) {
-    g <- tmb_data$groups[i] + 1  # Convert back to 1-indexed
+    g <- tmb_data$groups[i] + 1
     fitted_vals[i] <- fitted_vals[i] + sum(model_data$Z[[1]][i, ] * random_effects[[g]])
+  }
+
+  # Apply inverse link for GLMs
+  if (family$family != "gaussian") {
+    fitted_vals <- family$linkinv(fitted_vals)
   }
 
   # Log-likelihood
   loglik <- -opt$objective
 
   # Number of parameters
-  n_params <- length(beta_hat) + 2  # beta + sigma + sigma_u
+  n_params <- length(beta_hat) + n_random + ifelse(family$family == "gaussian", 1, 0)
+  if (n_random > 1 && correlated) {
+    n_params <- n_params + n_random * (n_random - 1) / 2
+  }
 
   list(
     coefficients = list(
       fixed = beta_hat,
-      random_var = list(sigma_u_hat^2)
+      random_var = list(Sigma_u)
     ),
     vcov = list(
       fixed = vcov_fixed,
@@ -183,31 +243,4 @@ fit_tmb_gllamm <- function(model_data, family, start_params = NULL, control = li
     tmb_opt = opt,
     tmb_sdr = sdr
   )
-}
-
-
-#' Compile TMB template
-#'
-#' Helper function to compile the C++ TMB template
-#'
-#' @param template Name of template file (without .hpp extension)
-#' @param dir Source directory (default: "src")
-#'
-#' @return TRUE if successful
-#' @export
-compile_gllamm_tmb <- function(template = "gllamm_gaussian", dir = "src") {
-  template_file <- file.path(dir, paste0(template, ".cpp"))
-
-  if (!file.exists(template_file)) {
-    stop("Template file not found: ", template_file)
-  }
-
-  message("Compiling TMB template: ", template_file)
-  TMB::compile(template_file)
-
-  message("Loading compiled TMB DLL")
-  dyn.load(TMB::dynlib(file.path(dir, template)))
-
-  message("TMB template compiled successfully")
-  invisible(TRUE)
 }
