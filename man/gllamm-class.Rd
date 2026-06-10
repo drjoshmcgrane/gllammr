@@ -17,7 +17,7 @@
 
 \method{coef}{gllamm}(object, ...)
 
-\method{vcov}{gllamm}(object, which = "fixed", ...)
+\method{vcov}{gllamm}(object, which = "fixed", type = c("model", "sandwich"), ...)
 
 \method{logLik}{gllamm}(object, ...)
 

@@ -101,7 +101,13 @@ coef.gllamm <- function(object, ...) {
 
 #' @export
 #' @rdname gllamm-class
-vcov.gllamm <- function(object, which = "fixed", ...) {
+vcov.gllamm <- function(object, which = "fixed",
+                        type = c("model", "sandwich"), ...) {
+  type <- match.arg(type)
+  if (type == "sandwich") {
+    V <- sandwich_vcov_gllamm(object)
+    return(attr(V, "fixed"))
+  }
   if (which == "fixed") {
     return(object$vcov$fixed)
   } else if (which == "all") {
