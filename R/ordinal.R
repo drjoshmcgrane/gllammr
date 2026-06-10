@@ -8,6 +8,7 @@
 #' @param formula Formula with syntax: y ~ x + (terms | group)
 #' @param data Data frame
 #' @param link Link function: "logit" (proportional odds) or "probit"
+#' @param weights Optional vector of case weights (one per observation)
 #' @param start Optional starting values
 #' @param control Control parameters
 #'
@@ -614,6 +615,8 @@ summary.gllamm_multinomial <- function(object, ...) {
 #' print(po_test)
 #' }
 #'
+#' @param data The data frame used to fit the model (required when the
+#'   fitted object does not store its data)
 #' @export
 test_proportional_odds <- function(object, data = NULL) {
 

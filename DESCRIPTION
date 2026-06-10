@@ -43,7 +43,11 @@ Suggests:
     TAM,
     MASS,
     lavaan,
-    npmlreg
+    npmlreg,
+    glmmTMB,
+    ordinal,
+    poLCA,
+    survival
 Encoding: UTF-8
 RoxygenNote: 7.3.3
 VignetteBuilder: knitr

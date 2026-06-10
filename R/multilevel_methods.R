@@ -95,8 +95,7 @@ print.VarCorr.gllamm <- function(x, digits = 4, ...) {
 #' Calculate ICCs for multi-level IRT models
 #'
 #' @param x A fitted multi-level IRT model
-#' @param level Optional: specific level to compute ICC for. If NULL, returns all levels.
-#' @param ... Additional arguments (not used)
+#' @param ... Additional arguments (not used; methods may add \code{level})
 #'
 #' @return A named vector of ICCs, or a single ICC if level specified
 #'
@@ -225,7 +224,6 @@ ranef.gllamm_irt_multilevel <- function(object, level = NULL, ...) {
 #' Use \code{composite_theta} to get total abilities including random effects.
 #'
 #' @param object A fitted IRT model
-#' @param composite Logical. For multi-level models, return composite abilities
 #'   (theta_0 + random effects) instead of just theta_0. Default FALSE.
 #' @param ... Additional arguments (not used)
 #'
@@ -252,6 +250,13 @@ abilities.gllamm_irt <- function(object, ...) {
 }
 
 
+#' Total abilities for multi-level IRT fits
+#'
+#' @param object A fitted multi-level IRT model
+#' @param composite If TRUE, return person deviation plus group effects
+#'   (total ability); if FALSE (default), the person deviation only
+#' @param ... Additional arguments (not used)
+#' @return A named vector of person abilities
 #' @export
 abilities.gllamm_irt_multilevel <- function(object, composite = FALSE, ...) {
   if (composite) {

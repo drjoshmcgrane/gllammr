@@ -4,6 +4,9 @@
 #'
 #' @param x A gllamm object
 #' @param object A gllamm object
+#' @param which Which covariance block to return: "fixed" (default) or "all"
+#' @param type Covariance type: "model" (default) or "sandwich"
+#'   (cluster-robust)
 #' @param ... Additional arguments
 #'
 #' @name gllamm-class
@@ -205,32 +208,23 @@ ranef <- function(object, ...) {
 
 #' Extract variance components
 #'
-#' @param object A gllamm object
+#' @param x A gllamm object
 #' @param ... Additional arguments (ignored)
 #'
 #' @return List of variance-covariance matrices for random effects
 #' @export
-VarCorr.gllamm <- function(object, ...) {
-  vc <- object$coefficients$random_var
+VarCorr.gllamm <- function(x, ...) {
+  vc <- x$coefficients$random_var
   if (is.null(vc) || length(vc) == 0) {
     stop("VarCorr is only available for multi-level models. ",
          "Model does not contain random effects.")
   }
-  if (!is.null(object$random_terms)) {
-    names(vc) <- sapply(object$random_terms,
+  if (!is.null(x$random_terms)) {
+    names(vc) <- sapply(x$random_terms,
                         function(rt) paste(rt$grouping, collapse = "/"))
   }
   class(vc) <- "VarCorr.gllamm"
   vc
-}
-
-
-#' Generic VarCorr
-#' @param object A fitted model object
-#' @param ... Additional arguments
-#' @export
-VarCorr <- function(object, ...) {
-  UseMethod("VarCorr")
 }
 
 

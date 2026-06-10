@@ -4,6 +4,7 @@
 
 #' @useDynLib GLLAMMR, .registration = TRUE
 #' @importFrom stats lm glm coef fitted residuals predict simulate logLik vcov
+#'   cooks.distance
 #'   model.matrix model.frame model.response terms as.formula update.formula
 #'   nlminb optim plogis qlogis pnorm qnorm dnorm rnorm rbinom rpois runif
 #'   sd var quantile aggregate na.omit complete.cases setNames pchisq qchisq

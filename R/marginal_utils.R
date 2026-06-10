@@ -10,7 +10,7 @@ NULL
 
 #' Monte Carlo integration for marginal predictions
 #'
-#' Computes E[g^{-1}(X'β + Z'u)] by averaging over draws from u ~ N(0, Σ_u)
+#' Computes E[g^(-1)(X'beta + Z'u)] by averaging over draws from u ~ N(0, Sigma_u)
 #'
 #' @param X Fixed effects design matrix (n x p)
 #' @param Z Random effects design matrix (n x q) for a single observation

@@ -5,6 +5,7 @@
 #' @param formula Formula specifying manifest variables (can be a matrix)
 #' @param data Data frame containing variables
 #' @param nclass Number of latent classes
+#' @param weights Optional vector of case weights (one per observation)
 #' @param start Optional starting values
 #' @param control Control parameters
 #'

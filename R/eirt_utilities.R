@@ -242,6 +242,7 @@ print.eirt_test <- function(x, ...) {
 #'
 #' @param object A gllamm_eirt object
 #' @param se Logical; include standard errors?
+#' @param ... Additional arguments (ignored)
 #'
 #' @return A data frame with item parameters
 #'

@@ -243,17 +243,17 @@ gof.gllamm <- function(object, ...) {
 
 #' Variance decomposition (ICC)
 #'
-#' @param object A gllamm object
+#' @param x A gllamm object
 #' @param quiet Suppress printed output and messages (default: FALSE)
 #' @param ... Additional arguments
 #'
 #' @export
-icc.gllamm <- function(object, quiet = FALSE, ...) {
+icc.gllamm <- function(x, quiet = FALSE, ...) {
   cat <- if (quiet) function(...) invisible(NULL) else base::cat
   message <- if (quiet) function(...) invisible(NULL) else base::message
   print <- if (quiet) function(...) invisible(NULL) else base::print
 
-  if (length(object$coefficients$random_var) == 0) {
+  if (length(x$coefficients$random_var) == 0) {
     stop("icc is only available for multi-level models. ",
          "Model does not contain random effects.")
   }
@@ -266,18 +266,18 @@ icc.gllamm <- function(object, quiet = FALSE, ...) {
     }))
   }
 
-  fam <- object$family$family
+  fam <- x$family$family
   if (is.null(fam)) {
-    fam <- if (inherits(object, "gllamm_binomial")) "binomial" else "gaussian"
+    fam <- if (inherits(x, "gllamm_binomial")) "binomial" else "gaussian"
   }
 
   # For Gaussian models
   if (fam == "gaussian") {
     # Residual variance
-    resid_var <- var(residuals(object))
+    resid_var <- var(residuals(x))
 
     # Random effects variance
-    re_vars <- .re_variances(object$coefficients$random_var)
+    re_vars <- .re_variances(x$coefficients$random_var)
 
     # Total variance
     total_var <- sum(re_vars) + resid_var
@@ -303,7 +303,7 @@ icc.gllamm <- function(object, quiet = FALSE, ...) {
 
     # Approximate ICC for GLMMs
     # Use latent variable formulation
-    re_vars <- .re_variances(object$coefficients$random_var)
+    re_vars <- .re_variances(x$coefficients$random_var)
 
     if (fam == "binomial") {
       # Logistic: residual variance = pi^2/3
@@ -329,7 +329,7 @@ icc.gllamm <- function(object, quiet = FALSE, ...) {
 #' Group-level Cook's distance for GLLAMM models
 #'
 #' Influence of each cluster on the fixed effects, computed by refitting the
-#' model with the cluster deleted: D_j = (beta - beta_(-j))' V^{-1}
+#' model with the cluster deleted: D_j = (beta - beta_(-j))' V^(-1)
 #' (beta - beta_(-j)) / p, with V the estimated covariance of the fixed
 #' effects. Case deletion at the cluster level is the standard influence
 #' measure for mixed models; observation-level deletion would break the

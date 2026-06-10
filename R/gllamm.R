@@ -29,6 +29,16 @@
 #'     \item{trace}{Integer controlling printed output (default: 0)}
 #'   }
 #'
+#' @param weights Optional case weights: a numeric vector of observation
+#'   (level-1) weights, or a list with elements \code{level1} and/or
+#'   \code{level2} for survey designs with weights at both levels.
+#' @param random For matrix-response families (\code{irt()}, \code{lca()}):
+#'   an optional person-level random-effects formula such as
+#'   \code{~ (1 | class)}.
+#' @param integration Optional integration specification; \code{aghq(k)}
+#'   selects adaptive Gauss-Hermite quadrature with \code{k} nodes for
+#'   two-level random-intercept models (default is the Laplace
+#'   approximation).
 #' @param ... Additional arguments (reserved for future use).
 #'
 #' @return An object of class \code{gllamm} with components:

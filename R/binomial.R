@@ -8,6 +8,7 @@
 #' @param formula Formula with syntax: y ~ x + (terms | group)
 #' @param data Data frame
 #' @param link Link function: "logit" (default), "probit", or "cloglog"
+#' @param weights Optional vector of case weights (one per observation)
 #' @param start Optional starting values
 #' @param control Control parameters for optimization
 #'
@@ -25,7 +26,7 @@
 #'   \item{tmb_sdr}{Standard errors via sdreport}
 #'
 #' @details
-#' For binary response Y in {0, 1} or binomial response Y/n, the model is:
+#' For binary response Y in \{0, 1\} or binomial response Y/n, the model is:
 #'
 #' \strong{Logit link (default - logistic regression):}
 #' \deqn{P(Y=1|x) = \frac{1}{1 + \exp(-x'\beta - Z'u)}}

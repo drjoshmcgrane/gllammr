@@ -28,7 +28,7 @@ NULL
 #' \strong{IRT models:}
 #' \itemize{
 #'   \item Log-likelihood, AIC, BIC
-#'   \item Item fit statistics (S-X²)
+#'   \item Item fit statistics (S-X^2)
 #'   \item Person fit statistics (outfit/infit)
 #'   \item Reliability estimates
 #'   \item Test information function
@@ -45,7 +45,7 @@ NULL
 #' \strong{Ordinal models:}
 #' \itemize{
 #'   \item Log-likelihood, AIC, BIC
-#'   \item Pseudo-R² (McFadden)
+#'   \item Pseudo-R^2 (McFadden)
 #'   \item Proportional odds test (for PO/probit models)
 #' }
 #'
@@ -134,10 +134,10 @@ fit.gllamm <- function(object, quiet = FALSE, ...) {
     # Total variance
     var_total <- var_fixed + var_random + var_resid
 
-    # Marginal R²: variance explained by fixed effects
+    # Marginal R^2: variance explained by fixed effects
     fit_stats$R2_marginal <- var_fixed / var_total
 
-    # Conditional R²: variance explained by fixed + random effects
+    # Conditional R^2: variance explained by fixed + random effects
     fit_stats$R2_conditional <- (var_fixed + var_random) / var_total
   }
 
@@ -162,7 +162,7 @@ fit.gllamm <- function(object, quiet = FALSE, ...) {
 #' Fit Statistics for IRT Models
 #'
 #' @param object A gllamm_irt object
-#' @param compute_item_fit Compute item fit statistics (S-X²) (default: TRUE)
+#' @param compute_item_fit Compute item fit statistics (S-X^2) (default: TRUE)
 #' @param compute_person_fit Compute person fit statistics (outfit/infit) (default: TRUE)
 #' @param ... Additional arguments
 #'
@@ -280,8 +280,8 @@ fit.gllamm_ordinal <- function(object, test_po = TRUE, ...) {
     n_obs = object$n_obs
   )
 
-  # McFadden's pseudo-R²
-  # R² = 1 - (logLik_model / logLik_null)
+  # McFadden's pseudo-R^2
+  # R^2 = 1 - (logLik_model / logLik_null)
   # Null model: equal probability for all categories
   logLik_null <- object$n_obs * log(1 / object$n_categories)
   fit_stats$pseudo_R2 <- 1 - (object$logLik / logLik_null)
@@ -325,7 +325,7 @@ fit.gllamm_eirt <- function(object, ...) {
   fit_stats$difficulty_formula <- deparse(object$formulas$difficulty)
   fit_stats$discrimination_formula <- deparse(object$formulas$discrimination)
 
-  # R² for item parameter regressions
+  # R^2 for item parameter regressions
   # Using the eirt_r_squared function if available
   if (requireNamespace("GLLAMMR", quietly = TRUE)) {
     fit_stats$R2_difficulty <- tryCatch({
@@ -371,7 +371,7 @@ fit.gllamm_multinomial <- function(object, ...) {
     categories = object$categories
   )
 
-  # McFadden's pseudo-R²
+  # McFadden's pseudo-R^2
   # Null model: equal probability for all categories
   logLik_null <- object$n_obs * log(1 / object$n_categories)
   fit_stats$pseudo_R2 <- 1 - (object$logLik / logLik_null)
@@ -473,7 +473,7 @@ print.fit_statistics <- function(x, ...) {
   if (inherits(x, "fit_ordinal")) {
     cat("\n--- Ordinal Model Fit Statistics ---\n")
     cat("Number of categories:", x$n_categories, "\n")
-    cat("Pseudo-R² (McFadden):", round(x$pseudo_R2, 3), "\n")
+    cat("Pseudo-R^2 (McFadden):", round(x$pseudo_R2, 3), "\n")
 
     if (!is.null(x$proportional_odds_test)) {
       cat("\nProportional Odds Test:\n")
@@ -492,7 +492,7 @@ print.fit_statistics <- function(x, ...) {
     cat("  Formula:", x$difficulty_formula, "\n")
     cat("  Predictors:", x$n_difficulty_predictors, "\n")
     if (!is.null(x$R2_difficulty) && !is.na(x$R2_difficulty)) {
-      cat("  R²:", round(x$R2_difficulty, 3), "\n")
+      cat("  R^2:", round(x$R2_difficulty, 3), "\n")
     }
     cat("  Residual SD:", round(x$residual_sd_difficulty, 3), "\n")
 
@@ -500,7 +500,7 @@ print.fit_statistics <- function(x, ...) {
     cat("  Formula:", x$discrimination_formula, "\n")
     cat("  Predictors:", x$n_discrimination_predictors, "\n")
     if (!is.null(x$R2_discrimination) && !is.na(x$R2_discrimination)) {
-      cat("  R²:", round(x$R2_discrimination, 3), "\n")
+      cat("  R^2:", round(x$R2_discrimination, 3), "\n")
     }
     cat("  Residual SD:", round(x$residual_sd_discrimination, 3), "\n")
   }
@@ -509,7 +509,7 @@ print.fit_statistics <- function(x, ...) {
     cat("\n--- Multinomial Regression Fit Statistics ---\n")
     cat("Number of categories:", x$n_categories, "\n")
     cat("Reference category:", x$reference, "\n")
-    cat("Pseudo-R² (McFadden):", round(x$pseudo_R2, 3), "\n")
+    cat("Pseudo-R^2 (McFadden):", round(x$pseudo_R2, 3), "\n")
 
     if (!is.null(x$random_effects_var)) {
       cat("\nRandom Effects Variance:", round(x$random_effects_var, 3), "\n")
@@ -524,8 +524,8 @@ print.fit_statistics <- function(x, ...) {
     cat("\n--- GLMM Fit Statistics ---\n")
 
     if (!is.null(x$R2_marginal)) {
-      cat("R² (marginal):", round(x$R2_marginal, 3), "\n")
-      cat("R² (conditional):", round(x$R2_conditional, 3), "\n")
+      cat("R^2 (marginal):", round(x$R2_marginal, 3), "\n")
+      cat("R^2 (conditional):", round(x$R2_conditional, 3), "\n")
     }
 
     if (!is.null(x$ICC) && !all(is.na(x$ICC))) {
@@ -541,10 +541,10 @@ print.fit_statistics <- function(x, ...) {
 # Helper functions for IRT fit statistics
 # ============================================================================
 
-#' Compute S-X² item fit statistic
+#' Compute S-X^2 item fit statistic
 #' @keywords internal
 compute_item_fit_sx2 <- function(object) {
-  # Simplified S-X² implementation
+  # Simplified S-X^2 implementation
   # Full implementation would bin persons by ability and compare obs vs exp
 
   n_items <- object$n_items

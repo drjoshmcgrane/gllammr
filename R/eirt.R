@@ -30,8 +30,8 @@
 #'
 #' @details
 #' **Dichotomous models:**
-#' - **Rasch**: P(Y=1) = logit^{-1}(theta - b_i), where b_i = W_diff \%*\% gamma [+ epsilon_b]
-#' - **2PL**: P(Y=1) = logit^{-1}(a_i * (theta - b_i)), where log(a_i) = W_disc \%*\% delta [+ epsilon_a]
+#' - **Rasch**: P(Y=1) = logit^(-1)(theta - b_i), where b_i = W_diff \%*\% gamma [+ epsilon_b]
+#' - **2PL**: P(Y=1) = logit^(-1)(a_i * (theta - b_i)), where log(a_i) = W_disc \%*\% delta [+ epsilon_a]
 #'
 #' **Polytomous models (Kim & Wilson 2019; De Boeck & Wilson 2004 framework):**
 #' - **GRM**: Cumulative logit with ordered thresholds. b_i provides item location;
