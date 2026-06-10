@@ -69,7 +69,9 @@ Type gllamm_poisson(objective_function<Type>* obj)
   Type log_det_Sigma_u = atomic::logdet(Sigma_u);
 
   // Initialize negative log-likelihood
-  Type nll = 0.0;
+  // parallel_accumulator splits the likelihood across OpenMP threads
+  // when available (no-op on single-threaded builds)
+  parallel_accumulator<Type> nll(obj);
 
   // Prior for random effects
   for (int j = 0; j < n_groups; j++) {
@@ -119,7 +121,7 @@ Type gllamm_poisson(objective_function<Type>* obj)
     fitted(i) = exp(eta);
   }
 
-  ADREPORT(fitted);
+  REPORT(fitted);
   ADREPORT(sigma_u);
 
   return nll;

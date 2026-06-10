@@ -429,7 +429,9 @@ fit_eirt <- function(response_matrix,
     discrimination_hat <- sdr_summary[rownames(sdr_summary) == "discrimination", "Estimate"]
     names(discrimination_hat) <- paste0("Item", seq_len(n_items))
 
-    theta_hat <- sdr_summary[rownames(sdr_summary) == "theta", "Estimate"]
+    # theta is a random parameter: its plug-in estimate lives in the
+    # parameter vector (REPORTed, not ADREPORTed, to keep sdreport fast)
+    theta_hat <- unname(par_full[names(par_full) == "theta"])
     names(theta_hat) <- paste0("Person", seq_len(n_persons))
 
     sigma_epsilon_b_hat <- sdr_summary[rownames(sdr_summary) == "sigma_epsilon_b", "Estimate"]

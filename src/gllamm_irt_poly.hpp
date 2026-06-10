@@ -44,7 +44,9 @@ Type gllamm_irt_poly(objective_function<Type>* obj)
   // INITIALIZE NEGATIVE LOG-LIKELIHOOD
   // ============================================================================
 
-  Type nll = 0.0;
+  // parallel_accumulator splits the likelihood across OpenMP threads
+  // when available (no-op on single-threaded builds)
+  parallel_accumulator<Type> nll(obj);
 
   // ============================================================================
   // PRIOR FOR PERSON ABILITIES
@@ -194,7 +196,7 @@ Type gllamm_irt_poly(objective_function<Type>* obj)
   // REPORT ESTIMATES
   // ============================================================================
 
-  ADREPORT(theta);
+  REPORT(theta);
   ADREPORT(discrimination);
   ADREPORT(sigma_theta);
 

@@ -147,7 +147,10 @@ fit_tmb_gllamm_v2 <- function(model_data, family, random_terms, start_params = N
     stop("Failed to create TMB object: ", e$message)
   })
 
-  # Optimize
+  # Optimize. control$optimizer selects the outer optimizer:
+  # "nlminb" (default) or "BFGS" (stats::optim).
+  optimizer <- control$optimizer %||% "nlminb"
+  control$optimizer <- NULL
   control_defaults <- list(
     eval.max = 1000,
     iter.max = 500,
@@ -155,15 +158,28 @@ fit_tmb_gllamm_v2 <- function(model_data, family, random_terms, start_params = N
   )
   control <- modifyList(control_defaults, control)
 
-  opt <- try(
-    nlminb(
-      start = obj$par,
-      objective = obj$fn,
-      gradient = obj$gr,
-      control = control
-    ),
-    silent = FALSE
-  )
+  if (identical(optimizer, "BFGS")) {
+    opt <- try(
+      optim(obj$par, obj$fn, obj$gr, method = "BFGS",
+            control = list(maxit = control$iter.max, trace = control$trace)),
+      silent = FALSE
+    )
+    if (!inherits(opt, "try-error")) {
+      # Align with the nlminb result shape used downstream
+      opt$objective <- opt$value
+      opt$iterations <- opt$counts[["function"]]
+    }
+  } else {
+    opt <- try(
+      nlminb(
+        start = obj$par,
+        objective = obj$fn,
+        gradient = obj$gr,
+        control = control
+      ),
+      silent = FALSE
+    )
+  }
 
   if (inherits(opt, "try-error")) {
     stop("Optimization failed")
@@ -242,12 +258,10 @@ fit_tmb_gllamm_v2 <- function(model_data, family, random_terms, start_params = N
     vcov_fixed <- matrix(NA, length(beta_hat), length(beta_hat))
   }
 
-  # Fitted values
-  fitted_vals <- as.numeric(model_data$X %*% beta_hat)
-  for (i in 1:length(fitted_vals)) {
-    g <- tmb_data$groups[i] + 1
-    fitted_vals[i] <- fitted_vals[i] + sum(model_data$Z[[1]][i, ] * random_effects[[g]])
-  }
+  # Fitted values (vectorized: rows of Z times each observation's group RE)
+  u_mat <- matrix(u_hat, nrow = tmb_data$n_groups, ncol = n_random, byrow = TRUE)
+  fitted_vals <- as.numeric(model_data$X %*% beta_hat) +
+    rowSums(model_data$Z[[1]] * u_mat[tmb_data$groups + 1, , drop = FALSE])
 
   # Apply inverse link for GLMs
   if (family$family != "gaussian") {

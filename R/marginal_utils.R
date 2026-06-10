@@ -27,14 +27,14 @@ mc_integrate_fixed_samples <- function(X, Z, beta, u_samples, inv_link_fn) {
   # Compute fixed part (same for all samples)
   eta_fixed <- as.vector(X %*% beta)
 
-  # Storage for predictions
-  predictions <- matrix(NA, n_obs, n_sim)
+  # Running mean and variance (Welford) instead of an n_obs x n_sim matrix
+  mean_pred <- numeric(n_obs)
+  m2_pred <- numeric(n_obs)
 
-  # For each MC sample
   for (s in 1:n_sim) {
     u <- u_samples[s, ]
 
-    # Compute random part for all observations
+    # Random part for all observations
     if (is.matrix(Z)) {
       eta_random <- as.vector(Z %*% u)
     } else {
@@ -42,20 +42,16 @@ mc_integrate_fixed_samples <- function(X, Z, beta, u_samples, inv_link_fn) {
       eta_random <- Z * u
     }
 
-    # Total linear predictor
-    eta <- eta_fixed + eta_random
+    pred_s <- inv_link_fn(eta_fixed + eta_random)
 
-    # Apply inverse link
-    predictions[, s] <- inv_link_fn(eta)
+    delta <- pred_s - mean_pred
+    mean_pred <- mean_pred + delta / s
+    m2_pred <- m2_pred + delta * (pred_s - mean_pred)
   }
 
-  # Average across samples
-  marginal_pred <- rowMeans(predictions)
-  marginal_se <- apply(predictions, 1, sd)
-
   list(
-    fit = marginal_pred,
-    se = marginal_se
+    fit = mean_pred,
+    se = sqrt(m2_pred / (n_sim - 1))
   )
 }
 

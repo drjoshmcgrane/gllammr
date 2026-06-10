@@ -38,7 +38,9 @@ Type gllamm_latent_class(objective_function<Type>* obj)
     }
   }
 
-  Type nll = 0.0;
+  // parallel_accumulator splits the likelihood across OpenMP threads
+  // when available (no-op on single-threaded builds)
+  parallel_accumulator<Type> nll(obj);
 
   for (int i = 0; i < n_obs; i++) {
     // Log-likelihood of observation i within each class:

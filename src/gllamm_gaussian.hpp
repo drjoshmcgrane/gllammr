@@ -32,7 +32,9 @@ Type gllamm_gaussian(objective_function<Type>* obj)
   Type sigma_u = exp(log_sigma_u);
 
   // Initialize negative log-likelihood
-  Type nll = 0.0;
+  // parallel_accumulator splits the likelihood across OpenMP threads
+  // when available (no-op on single-threaded builds)
+  parallel_accumulator<Type> nll(obj);
 
   // Prior for random effects: u ~ N(0, sigma_u^2)
   for (int j = 0; j < n_groups; j++) {
@@ -79,7 +81,7 @@ Type gllamm_gaussian(objective_function<Type>* obj)
     fitted[i] = eta;
   }
 
-  ADREPORT(fitted);
+  REPORT(fitted);
   ADREPORT(sigma);
   ADREPORT(sigma_u);
 

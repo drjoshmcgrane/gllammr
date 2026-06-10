@@ -216,16 +216,33 @@ fit_ordinal <- function(formula, data, link = c("logit", "probit", "acl",
     silent = TRUE
   )
 
-  # Optimize
+  # Optimize. Box bounds keep the model finite under separation (a
+  # deterministic predictor drives beta and threshold spacings to infinity;
+  # bounded estimates with huge SEs match clmm-style behavior).
   control_defaults <- list(eval.max = 2000, iter.max = 1000, trace = 0)
   control <- modifyList(control_defaults, control)
+
+  par_names_opt <- names(obj$par)
+  lower <- rep(-30, length(par_names_opt))
+  upper <- rep(30, length(par_names_opt))
+  lower[par_names_opt == "threshold"] <- -15
+  upper[par_names_opt == "threshold"] <- 15   # log-spacing beyond this overflows
+  lower[par_names_opt == "log_sigma_u"] <- -10
+  upper[par_names_opt == "log_sigma_u"] <- 10
 
   opt <- nlminb(
     start = obj$par,
     objective = obj$fn,
     gradient = obj$gr,
+    lower = lower,
+    upper = upper,
     control = control
   )
+
+  if (any(abs(opt$par[par_names_opt == "beta"]) >= 29.5)) {
+    warning("Some coefficients reached the optimization boundary; the data ",
+            "may exhibit complete separation.")
+  }
 
   # Get standard errors
   sdr <- try(TMB::sdreport(obj), silent = TRUE)

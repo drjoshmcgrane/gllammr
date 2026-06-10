@@ -70,7 +70,9 @@ Type gllamm_irt_multilevel(objective_function<Type>* obj)
   // INITIALIZE NEGATIVE LOG-LIKELIHOOD
   // ============================================================================
 
-  Type nll = 0.0;
+  // parallel_accumulator splits the likelihood across OpenMP threads
+  // when available (no-op on single-threaded builds)
+  parallel_accumulator<Type> nll(obj);
 
   // ============================================================================
   // PRIORS
@@ -150,7 +152,7 @@ Type gllamm_irt_multilevel(objective_function<Type>* obj)
   // REPORT ESTIMATES
   // ============================================================================
 
-  ADREPORT(theta_0);
+  REPORT(theta_0);
   ADREPORT(difficulty);
 
   if (model_type >= 2) {
@@ -165,7 +167,7 @@ Type gllamm_irt_multilevel(objective_function<Type>* obj)
 
   if (has_random == 1) {
     ADREPORT(sigma_random);
-    ADREPORT(u_random);
+    REPORT(u_random);
   }
 
   return nll;

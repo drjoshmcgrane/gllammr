@@ -32,7 +32,9 @@ Type gllamm_irt(objective_function<Type>* obj)
   Type sigma_theta = exp(log_sigma_theta);
 
   // Initialize negative log-likelihood
-  Type nll = 0.0;
+  // parallel_accumulator splits the likelihood across OpenMP threads
+  // when available (no-op on single-threaded builds)
+  parallel_accumulator<Type> nll(obj);
 
   // Prior for person abilities: theta ~ N(0, sigma_theta^2)
   for (int p = 0; p < n_persons; p++) {
@@ -77,7 +79,7 @@ Type gllamm_irt(objective_function<Type>* obj)
   }
 
   // Report estimates
-  ADREPORT(theta);
+  REPORT(theta);
   ADREPORT(difficulty);
   if (model_type >= 2) {
     ADREPORT(discrimination);

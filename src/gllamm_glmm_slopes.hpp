@@ -68,7 +68,9 @@ Type gllamm_glmm_slopes(objective_function<Type>* obj)
   matrix<Type> Sigma_u_inv = atomic::matinv(Sigma_u);
   Type log_det_Sigma_u = atomic::logdet(Sigma_u);
 
-  Type nll = 0.0;
+  // parallel_accumulator splits the likelihood across OpenMP threads
+  // when available (no-op on single-threaded builds)
+  parallel_accumulator<Type> nll(obj);
 
   // Prior for random effects: u_j ~ MVN(0, Sigma_u)
   for (int j = 0; j < n_groups; j++) {
@@ -117,7 +119,7 @@ Type gllamm_glmm_slopes(objective_function<Type>* obj)
     }
   }
 
-  ADREPORT(fitted);
+  REPORT(fitted);
   ADREPORT(sigma);
   ADREPORT(sigma_u);
   ADREPORT(Sigma_u);

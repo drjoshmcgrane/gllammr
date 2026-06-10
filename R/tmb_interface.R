@@ -153,12 +153,10 @@ fit_tmb_gllamm <- function(model_data, family, start_params = NULL, control = li
     vcov_fixed <- matrix(NA, length(beta_hat), length(beta_hat))
   }
 
-  # Fitted values
-  fitted_vals <- as.numeric(model_data$X %*% beta_hat)
-  for (i in 1:length(fitted_vals)) {
-    g <- tmb_data$groups[i] + 1  # Convert back to 1-indexed
-    fitted_vals[i] <- fitted_vals[i] + sum(model_data$Z[[1]][i, ] * random_effects[[g]])
-  }
+  # Fitted values (vectorized)
+  u_mat <- matrix(u_hat, nrow = tmb_data$n_groups, ncol = n_re_per_group, byrow = TRUE)
+  fitted_vals <- as.numeric(model_data$X %*% beta_hat) +
+    rowSums(model_data$Z[[1]] * u_mat[tmb_data$groups + 1, , drop = FALSE])
 
   # Log-likelihood
   loglik <- -opt$objective
