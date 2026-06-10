@@ -37,10 +37,17 @@ Type gllamm_eirt(objective_function<Type>* obj)
   DATA_INTEGER(is_polytomous);       // 0=dichotomous, 1=polytomous
   DATA_INTEGER(poly_model_type);     // 1=GRM, 2=PCM, 3=GPCM, 4=LPCM (polytomous only)
   DATA_INTEGER(item_residuals);      // 1=include item residuals (LLTM+error), 0=pure LLTM
+  DATA_INTEGER(uses_discrimination); // 1=model reads discrimination (2PL/GRM/GPCM), 0=otherwise
 
   // For polytomous models
   DATA_IVECTOR(n_categories_per_item);  // Number of categories per item
   DATA_INTEGER(max_categories);          // Maximum K
+
+  // Multi-level structure (group-level ability random effects)
+  DATA_INTEGER(has_random);            // 0 = standard, 1 = multi-level
+  DATA_INTEGER(n_random_effects);      // Number of RE levels
+  DATA_IMATRIX(group_ids);             // [n_persons x n_random_effects], -1 = NA
+  DATA_IVECTOR(n_groups);              // Number of groups per level
 
   // ============================================================================
   // PARAMETERS
@@ -69,6 +76,10 @@ Type gllamm_eirt(objective_function<Type>* obj)
   PARAMETER_MATRIX(e_step);
   PARAMETER(log_sigma_e_step);       // Log SD of step residuals
 
+  // Multi-level: group-level ability deviations
+  PARAMETER_MATRIX(u_random);          // [max_n_groups x n_random_effects]
+  PARAMETER_VECTOR(log_sigma_random);  // SD per RE level
+
   // ============================================================================
   // TRANSFORM PARAMETERS
   // ============================================================================
@@ -93,11 +104,15 @@ Type gllamm_eirt(objective_function<Type>* obj)
     nll -= dnorm(theta(p), Type(0.0), sigma_theta, true);
   }
 
-  // Prior for item residuals (only if item_residuals == 1)
+  // Prior for item residuals (only if item_residuals == 1). The epsilon_a
+  // prior is skipped when the model never reads discrimination: evaluating
+  // it on a fixed value would shift the log-likelihood by a constant.
   if (item_residuals == 1) {
     for (int j = 0; j < n_items; j++) {
       nll -= dnorm(epsilon_b(j), Type(0.0), sigma_epsilon_b, true);
-      nll -= dnorm(epsilon_a(j), Type(0.0), sigma_epsilon_a, true);
+      if (uses_discrimination == 1) {
+        nll -= dnorm(epsilon_a(j), Type(0.0), sigma_epsilon_a, true);
+      }
     }
   }
 
@@ -107,6 +122,30 @@ Type gllamm_eirt(objective_function<Type>* obj)
       int K = n_categories_per_item(j);
       for (int m = 0; m < K - 1; m++) {
         nll -= dnorm(e_step(j, m), Type(0.0), sigma_e_step, true);
+      }
+    }
+  }
+
+  // Prior for group-level random effects
+  if (has_random == 1) {
+    for (int re = 0; re < n_random_effects; re++) {
+      Type sigma_re = exp(log_sigma_random(re));
+      for (int g = 0; g < n_groups(re); g++) {
+        nll -= dnorm(u_random(g, re), Type(0.0), sigma_re, true);
+      }
+    }
+  }
+
+  // Effective ability: person deviation plus group-level effects
+  vector<Type> theta_eff(n_persons);
+  for (int p = 0; p < n_persons; p++) {
+    theta_eff(p) = theta(p);
+    if (has_random == 1) {
+      for (int re = 0; re < n_random_effects; re++) {
+        int g = group_ids(p, re);
+        if (g >= 0) {  // -1 indicates NA (partial nesting)
+          theta_eff(p) += u_random(g, re);
+        }
       }
     }
   }
@@ -161,12 +200,12 @@ Type gllamm_eirt(objective_function<Type>* obj)
 
       if (model_type == 1) {
         // Rasch model: P(Y=1) = logit^{-1}(theta - b)
-        Type eta = theta(person) - difficulty(item);
+        Type eta = theta_eff(person) - difficulty(item);
         prob = invlogit(eta);
 
       } else {
         // 2PL model: P(Y=1) = logit^{-1}(a*(theta - b))
-        Type eta = discrimination(item) * (theta(person) - difficulty(item));
+        Type eta = discrimination(item) * (theta_eff(person) - difficulty(item));
         prob = invlogit(eta);
       }
 
@@ -209,14 +248,14 @@ Type gllamm_eirt(objective_function<Type>* obj)
         // P(Y = k) = P(Y >= k) - P(Y >= k+1), requires ordered thresholds (tau increasing)
         if (obs_cat == 0) {
           // P(Y = 0) = 1 - P(Y >= 1) = 1 - invlogit(a*(theta - tau_0))
-          prob_cat = Type(1.0) - invlogit(a * (theta(person) - ordered_threshold(0)));
+          prob_cat = Type(1.0) - invlogit(a * (theta_eff(person) - ordered_threshold(0)));
         } else if (obs_cat == K - 1) {
           // P(Y = K-1) = P(Y >= K-1) = invlogit(a*(theta - tau_{K-2}))
-          prob_cat = invlogit(a * (theta(person) - ordered_threshold(K - 2)));
+          prob_cat = invlogit(a * (theta_eff(person) - ordered_threshold(K - 2)));
         } else {
           // P(Y = k) = invlogit(a*(theta - tau_{k-1})) - invlogit(a*(theta - tau_k))
-          Type p_ge_k = invlogit(a * (theta(person) - ordered_threshold(obs_cat - 1)));
-          Type p_ge_k_plus_1 = invlogit(a * (theta(person) - ordered_threshold(obs_cat)));
+          Type p_ge_k = invlogit(a * (theta_eff(person) - ordered_threshold(obs_cat - 1)));
+          Type p_ge_k_plus_1 = invlogit(a * (theta_eff(person) - ordered_threshold(obs_cat)));
           prob_cat = p_ge_k - p_ge_k_plus_1;
         }
       }
@@ -246,7 +285,7 @@ Type gllamm_eirt(objective_function<Type>* obj)
             s_im = -sum_s;
           }
           Type delta_im = difficulty(item) + s_im;
-          cumsum(m) = cumsum(m-1) + (theta(person) - delta_im);
+          cumsum(m) = cumsum(m-1) + (theta_eff(person) - delta_im);
         }
 
         Type denom = Type(0.0);
@@ -278,7 +317,7 @@ Type gllamm_eirt(objective_function<Type>* obj)
             s_im = -sum_s;
           }
           Type delta_im = difficulty(item) + s_im;
-          cumsum(m) = cumsum(m-1) + a * (theta(person) - delta_im);
+          cumsum(m) = cumsum(m-1) + a * (theta_eff(person) - delta_im);
         }
 
         Type denom = Type(0.0);
@@ -306,7 +345,7 @@ Type gllamm_eirt(objective_function<Type>* obj)
           }
           delta_im += e_step(item, m - 1);  // threshold residual
 
-          cumsum(m) = cumsum(m-1) + (theta(person) - delta_im);
+          cumsum(m) = cumsum(m-1) + (theta_eff(person) - delta_im);
         }
 
         Type denom = Type(0.0);
@@ -340,6 +379,11 @@ Type gllamm_eirt(objective_function<Type>* obj)
       ADREPORT(xi);
       ADREPORT(sigma_e_step);
     }
+  }
+
+  if (has_random == 1) {
+    vector<Type> sigma_random = exp(log_sigma_random.array());
+    ADREPORT(sigma_random);
   }
 
   return nll;

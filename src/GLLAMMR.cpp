@@ -15,7 +15,6 @@
 #include "gllamm_irt_poly.hpp"
 #include "gllamm_irt_poly_multilevel.hpp"
 #include "gllamm_eirt.hpp"
-#include "gllamm_eirt_multilevel.hpp"
 #include "gllamm_latent_class.hpp"
 #include "gllamm_mixed_response.hpp"
 #include "gllamm_sem.hpp"
@@ -37,7 +36,6 @@ Type objective_function<Type>::operator() ()
   else if (model_name == "irt_poly")            return gllamm_irt_poly(this);
   else if (model_name == "irt_poly_multilevel") return gllamm_irt_poly_multilevel(this);
   else if (model_name == "eirt")                return gllamm_eirt(this);
-  else if (model_name == "eirt_multilevel")     return gllamm_eirt_multilevel(this);
   else if (model_name == "latent_class")        return gllamm_latent_class(this);
   else if (model_name == "mixed_response")      return gllamm_mixed_response(this);
   else if (model_name == "sem")                 return gllamm_sem(this);

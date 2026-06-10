@@ -104,10 +104,19 @@ fit_eirt <- function(response_matrix,
 
   model <- match.arg(model)
 
-  # Multi-level support (template ready, full integration TODO)
-  if (!is.null(random) || !is.null(person_data)) {
-    stop("Multi-level EIRT is implemented at the template level but R integration is pending. ",
-         "Use fit_irt() with person_data and random for multi-level IRT without item predictors.")
+  # Multi-level: parse person-level random effects (mirrors fit_irt)
+  has_random <- !is.null(random)
+  if (has_random && is.null(person_data)) {
+    stop("person_data must be provided when random effects are specified")
+  }
+  re_info <- NULL
+  if (has_random) {
+    if (nrow(person_data) != nrow(response_matrix)) {
+      stop("person_data must have same number of rows as response_matrix (",
+           nrow(person_data), " vs ", nrow(response_matrix), ")")
+    }
+    re_terms <- parse_random_formula(random, person_data)
+    re_info <- create_grouping_matrix(re_terms, person_data)
   }
 
   # Validate item_residuals
@@ -253,9 +262,24 @@ fit_eirt <- function(response_matrix,
     is_polytomous = as.integer(is_polytomous),
     poly_model_type = as.integer(poly_model_type),
     item_residuals = as.integer(item_residuals),
+    uses_discrimination = as.integer((!is_polytomous && model == "2PL") ||
+                                       (is_polytomous && poly_model_type %in% c(1L, 3L))),
     n_categories_per_item = as.integer(n_categories_per_item),
     max_categories = as.integer(max_categories)
   )
+
+  # Multi-level structure
+  if (has_random) {
+    tmb_data$has_random <- 1L
+    tmb_data$n_random_effects <- as.integer(re_info$n_re)
+    tmb_data$group_ids <- as.matrix(re_info$group_ids)
+    tmb_data$n_groups <- as.integer(re_info$n_groups)
+  } else {
+    tmb_data$has_random <- 0L
+    tmb_data$n_random_effects <- 0L
+    tmb_data$group_ids <- matrix(0L, 0, 0)
+    tmb_data$n_groups <- integer(0)
+  }
 
   # Parameter dimensions
   n_step_cols <- max(1L, as.integer(max_categories) - 1L)
@@ -286,34 +310,72 @@ fit_eirt <- function(response_matrix,
       step_param = step_param_init,
       xi = matrix(0, p_thresh, n_step_cols),
       e_step = matrix(0, n_items, n_step_cols),
-      log_sigma_e_step = log(0.5)
+      log_sigma_e_step = log(0.5),
+      u_random = if (has_random) {
+        matrix(0, max(re_info$n_groups), re_info$n_re)
+      } else {
+        matrix(0, 1, 1)
+      },
+      log_sigma_random = if (has_random) rep(log(0.5), re_info$n_re) else 0
     )
   } else {
     tmb_params <- start
   }
 
-  # Build map to fix inactive parameters
+  # Build map to fix parameters the chosen model never reads; leaving them
+  # free creates flat likelihood directions and singular Hessians
   map_list <- list()
 
-  if (!is_polytomous) {
-    map_list$step_param <- factor(rep(NA, n_items * n_step_cols))
-    map_list$xi <- factor(rep(NA, p_thresh * n_step_cols))
-    map_list$e_step <- factor(rep(NA, n_items * n_step_cols))
-    map_list$log_sigma_e_step <- factor(NA)
-  } else if (model %in% c("GRM", "PCM", "GPCM")) {
-    map_list$xi <- factor(rep(NA, p_thresh * n_step_cols))
-    map_list$e_step <- factor(rep(NA, n_items * n_step_cols))
-    map_list$log_sigma_e_step <- factor(NA)
-  } else {
+  if (poly_model_type == 4L) {
     # LPCM: fix step_param (unused), but keep difficulty_formula active
     map_list$step_param <- factor(rep(NA, n_items * n_step_cols))
+  } else {
+    # All non-LPCM models: threshold-regression machinery unused
+    map_list$xi <- factor(rep(NA, p_thresh * n_step_cols))
+    map_list$e_step <- factor(rep(NA, n_items * n_step_cols))
+    map_list$log_sigma_e_step <- factor(NA)
+    if (!is_polytomous) {
+      map_list$step_param <- factor(rep(NA, n_items * n_step_cols))
+    }
   }
 
-  # Random effects
-  if (model == "LPCM") {
-    random_effects <- c("theta", "epsilon_b", "epsilon_a", "e_step")
-  } else {
-    random_effects <- c("theta", "epsilon_b", "epsilon_a")
+  # Discrimination machinery is only read by 2PL, GRM, and GPCM
+  uses_discrimination <- tmb_data$uses_discrimination == 1L
+  if (!uses_discrimination) {
+    map_list$delta <- factor(rep(NA, p_disc))
+    map_list$epsilon_a <- factor(rep(NA, n_items))
+    map_list$log_sigma_epsilon_a <- factor(NA)
+  }
+
+  # Item residuals off: epsilon parameters unused
+  if (!item_residuals) {
+    map_list$epsilon_b <- factor(rep(NA, n_items))
+    map_list$log_sigma_epsilon_b <- factor(NA)
+    if (uses_discrimination) {
+      map_list$epsilon_a <- factor(rep(NA, n_items))
+      map_list$log_sigma_epsilon_a <- factor(NA)
+    }
+  }
+
+  # Multi-level parameters are dead unless random effects are present
+  if (!has_random) {
+    map_list$u_random <- factor(rep(NA, length(tmb_params$u_random)))
+    map_list$log_sigma_random <- factor(rep(NA, length(tmb_params$log_sigma_random)))
+  }
+
+  # Latent variables to integrate out (only those actually in the model)
+  random_effects <- "theta"
+  if (item_residuals) {
+    random_effects <- c(random_effects, "epsilon_b")
+    if (uses_discrimination) {
+      random_effects <- c(random_effects, "epsilon_a")
+    }
+  }
+  if (poly_model_type == 4L) {
+    random_effects <- c(random_effects, "e_step")
+  }
+  if (has_random) {
+    random_effects <- c(random_effects, "u_random")
   }
 
   # Create TMB object
@@ -347,7 +409,11 @@ fit_eirt <- function(response_matrix,
   gamma_hat <- par_full[names(par_full) == "gamma"]
   names(gamma_hat) <- colnames(W_diff)
 
+  # delta is mapped off for models that never read discrimination
   delta_hat <- par_full[names(par_full) == "delta"]
+  if (length(delta_hat) == 0) {
+    delta_hat <- rep(NA_real_, p_disc)
+  }
   names(delta_hat) <- colnames(W_disc)
 
   # Extract ADREPORT quantities
@@ -370,7 +436,7 @@ fit_eirt <- function(response_matrix,
     sigma_epsilon_a_hat <- sdr_summary[rownames(sdr_summary) == "sigma_epsilon_a", "Estimate"]
     sigma_theta_hat <- sdr_summary[rownames(sdr_summary) == "sigma_theta", "Estimate"]
 
-    if (model == "LPCM") {
+    if (poly_model_type == 4L) {
       xi_rows <- rownames(sdr_summary) == "xi"
       if (any(xi_rows)) {
         xi_hat <- matrix(sdr_summary[xi_rows, "Estimate"],
@@ -437,6 +503,44 @@ fit_eirt <- function(response_matrix,
   )
 
   class(result) <- c("gllamm_eirt", "gllamm")
+
+  # Multi-level: group-level random effects, composite abilities, ICCs
+  if (has_random) {
+    max_n_groups <- max(re_info$n_groups)
+    u_random_hat <- matrix(par_full[names(par_full) == "u_random"],
+                           max_n_groups, re_info$n_re)
+    sigma_random_hat <- exp(par_full[names(par_full) == "log_sigma_random"])
+    names(sigma_random_hat) <- re_info$group_names
+
+    # Composite ability: person deviation + group effects
+    composite_theta <- theta_hat
+    for (p in seq_len(n_persons)) {
+      for (re in seq_len(re_info$n_re)) {
+        group <- re_info$group_ids[p, re]
+        if (group >= 0) {  # -1 indicates NA (partial nesting)
+          composite_theta[p] <- composite_theta[p] + u_random_hat[group + 1, re]
+        }
+      }
+    }
+
+    # ICCs on the latent logistic scale (same convention as fit_irt)
+    var_random <- sigma_random_hat^2
+    var_person <- sigma_theta_hat^2
+    var_total <- sum(var_random) + var_person + pi^2 / 3
+    icc_values <- c(var_random, var_person) / var_total
+    names(icc_values) <- c(re_info$group_names, "Person")
+
+    result$random_effects <- list(
+      u_random = u_random_hat,
+      sigma_random = sigma_random_hat,
+      group_names = re_info$group_names,
+      n_groups = re_info$n_groups,
+      icc = icc_values,
+      composite_theta = composite_theta
+    )
+    class(result) <- c("gllamm_eirt_multilevel", "gllamm_eirt", "gllamm")
+  }
+
   return(result)
 }
 
@@ -478,6 +582,18 @@ print.gllamm_eirt <- function(x, ...) {
   cat("  Mean:", round(mean(x$person_abilities), 3), "\n")
   cat("  SD:", round(sd(x$person_abilities), 3), "\n")
   cat("  Estimated SD:", round(x$ability_sd, 3), "\n\n")
+
+  if (!is.null(x$random_effects)) {
+    cat("Group-level variance components:\n")
+    for (g in seq_along(x$random_effects$sigma_random)) {
+      cat("  ", x$random_effects$group_names[g],
+          ": SD = ", round(x$random_effects$sigma_random[g], 3),
+          " (", x$random_effects$n_groups[g], " groups)\n", sep = "")
+    }
+    cat("  ICC:", paste(names(x$random_effects$icc),
+                        round(x$random_effects$icc, 3),
+                        sep = " = ", collapse = ", "), "\n\n")
+  }
 
   cat("Log-likelihood:", round(x$logLik, 2), "\n")
   cat("AIC:", round(x$AIC, 2), "\n")
