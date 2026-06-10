@@ -2,23 +2,23 @@ Package: GLLAMMR
 Type: Package
 Title: Generalized Linear Latent and Mixed Models
 Version: 1.1.0
-Date: 2026-02-09
-Authors@R: c(
-    person("Josh", "", email = "your.email@example.com", role = c("aut", "cre")),
-    person("Claude", "Sonnet 4.5", role = "ctb", comment = "Implementation assistant"))
+Authors@R:
+    person("Josh", "McGrane", email = "drjoshmcgrane@gmail.com",
+           role = c("aut", "cre"))
 Description: Comprehensive implementation of Generalized Linear Latent and Mixed
-    Models (GLLAMM) following the Stata GLLAMM framework by Rabe-Hesketh, Skrondal,
-    and Pickles. Supports multilevel generalized linear models (GLMMs) with Gaussian,
-    binomial, Poisson, ordinal, and multinomial responses; factor models; item response
-    theory (IRT) models including dichotomous (Rasch, 2PL, 3PL) and polytomous (GRM,
-    PCM, GPCM, NRM) models; differential item functioning (DIF) analysis; explanatory
-    IRT (EIRT) with item covariates for both dichotomous and polytomous models; latent
-    class analysis; structural equation models; mixed response models; and survival
-    models. All models support frequency and probability weights for survey data and
-    aggregated observations. Provides marginal (population-averaged) predictions via
-    Monte Carlo integration. Uses Template Model Builder (TMB) for efficient computation
-    via automatic differentiation. Provides comprehensive diagnostics, visualization,
-    and model comparison tools.
+    Models following the 'Stata' 'GLLAMM' framework by Rabe-Hesketh, Skrondal,
+    and Pickles (2004) <doi:10.1007/BF02295939>. Supports multilevel generalized
+    linear models with Gaussian, binomial, Poisson, ordinal, and multinomial
+    responses; item response theory models including dichotomous (Rasch, 2PL,
+    3PL) and polytomous (GRM, PCM, GPCM, NRM) models; differential item
+    functioning analysis; explanatory item response models with item covariates;
+    latent class analysis; structural equation models; mixed response models;
+    and survival models. All models support frequency and probability weights
+    for survey data and aggregated observations. Provides marginal
+    (population-averaged) predictions via Monte Carlo integration. Uses
+    'TMB' (Template Model Builder) for efficient computation via automatic
+    differentiation and Laplace approximation. Provides comprehensive
+    diagnostics, visualization, and model comparison tools.
 License: GPL-3
 Depends:
     R (>= 4.0.0)
@@ -26,7 +26,10 @@ Imports:
     TMB (>= 1.9.0),
     Matrix (>= 1.5.0),
     stats,
-    methods
+    methods,
+    graphics,
+    grDevices,
+    utils
 LinkingTo:
     TMB,
     RcppEigen
@@ -42,5 +45,3 @@ Suggests:
 Encoding: UTF-8
 RoxygenNote: 7.3.3
 VignetteBuilder: knitr
-URL: https://github.com/yourusername/GLLAMMR
-BugReports: https://github.com/yourusername/GLLAMMR/issues

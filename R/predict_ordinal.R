@@ -146,7 +146,7 @@ predict_marginal_ordinal <- function(object, X, Z, n_sim = 1000) {
     sigma_u <- sqrt(Sigma_u[1, 1])
     u_samples <- matrix(rnorm(n_sim, 0, sigma_u), n_sim, 1)
   } else {
-    u_samples <- MASS::mvrnorm(n_sim, mu = rep(0, n_random), Sigma = Sigma_u)
+    u_samples <- rmvnorm_chol(n_sim, Sigma_u)
   }
 
   # Storage for marginal probabilities

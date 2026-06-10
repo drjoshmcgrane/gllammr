@@ -6,23 +6,10 @@
 \alias{GLLAMMR-package}
 \title{GLLAMMR: Generalized Linear Latent and Mixed Models}
 \description{
-Comprehensive implementation of Generalized Linear Latent and Mixed Models (GLLAMM) following the Stata GLLAMM framework by Rabe-Hesketh, Skrondal, and Pickles. Supports multilevel generalized linear models (GLMMs) with Gaussian, binomial, Poisson, ordinal, and multinomial responses; factor models; item response theory (IRT) models including dichotomous (Rasch, 2PL, 3PL) and polytomous (GRM, PCM, GPCM, NRM) models; differential item functioning (DIF) analysis; explanatory IRT (EIRT) with item covariates for both dichotomous and polytomous models; latent class analysis; structural equation models; mixed response models; and survival models. All models support frequency and probability weights for survey data and aggregated observations. Provides marginal (population-averaged) predictions via Monte Carlo integration. Uses Template Model Builder (TMB) for efficient computation via automatic differentiation. Provides comprehensive diagnostics, visualization, and model comparison tools.
-}
-\seealso{
-Useful links:
-\itemize{
-  \item \url{https://github.com/yourusername/GLLAMMR}
-  \item Report bugs at \url{https://github.com/yourusername/GLLAMMR/issues}
-}
-
+Comprehensive implementation of Generalized Linear Latent and Mixed Models following the 'Stata' 'GLLAMM' framework by Rabe-Hesketh, Skrondal, and Pickles (2004) \doi{10.1007/BF02295939}. Supports multilevel generalized linear models with Gaussian, binomial, Poisson, ordinal, and multinomial responses; item response theory models including dichotomous (Rasch, 2PL, 3PL) and polytomous (GRM, PCM, GPCM, NRM) models; differential item functioning analysis; explanatory item response models with item covariates; latent class analysis; structural equation models; mixed response models; and survival models. All models support frequency and probability weights for survey data and aggregated observations. Provides marginal (population-averaged) predictions via Monte Carlo integration. Uses 'TMB' (Template Model Builder) for efficient computation via automatic differentiation and Laplace approximation. Provides comprehensive diagnostics, visualization, and model comparison tools.
 }
 \author{
-\strong{Maintainer}: Josh \email{your.email@example.com}
-
-Other contributors:
-\itemize{
-  \item Claude Sonnet 4.5 (Implementation assistant) [contributor]
-}
+\strong{Maintainer}: Josh McGrane \email{drjoshmcgrane@gmail.com}
 
 }
 \keyword{internal}

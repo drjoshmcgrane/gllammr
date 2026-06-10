@@ -60,6 +60,24 @@ mc_integrate_fixed_samples <- function(X, Z, beta, u_samples, inv_link_fn) {
 }
 
 
+#' Draw samples from a zero-mean multivariate normal
+#'
+#' Cholesky-based sampler so MASS can remain in Suggests.
+#'
+#' @param n Number of samples
+#' @param Sigma Variance-covariance matrix
+#' @return n x ncol(Sigma) matrix of draws
+#' @keywords internal
+rmvnorm_chol <- function(n, Sigma) {
+  q <- ncol(Sigma)
+  if (q == 1) {
+    return(matrix(rnorm(n, 0, sqrt(Sigma[1, 1])), n, 1))
+  }
+  L <- chol(Sigma)  # upper triangular: Sigma = t(L) %*% L
+  matrix(rnorm(n * q), n, q) %*% L
+}
+
+
 #' Monte Carlo integration for marginal predictions (one sample at a time)
 #'
 #' More memory-efficient version that processes samples sequentially
@@ -79,14 +97,7 @@ mc_integrate_marginal <- function(X, Z, beta, Sigma_u,
   n_random <- ncol(Sigma_u)
 
   # Draw samples from random effects distribution
-  if (n_random == 1) {
-    # Univariate case (faster)
-    sigma_u <- sqrt(Sigma_u[1, 1])
-    u_samples <- matrix(rnorm(n_sim, 0, sigma_u), n_sim, 1)
-  } else {
-    # Multivariate case
-    u_samples <- MASS::mvrnorm(n_sim, mu = rep(0, n_random), Sigma = Sigma_u)
-  }
+  u_samples <- rmvnorm_chol(n_sim, Sigma_u)
 
   # Use fixed samples version
   mc_integrate_fixed_samples(X, Z, beta, u_samples, inv_link_fn)
