@@ -247,12 +247,14 @@ fit_irt_dichotomous <- function(response_matrix, model, weights, mc_items, re_in
     tmb_data$group_ids <- as.matrix(re_info$group_ids)
     tmb_data$n_groups <- as.integer(re_info$n_groups)
     tmb_data$max_n_groups <- as.integer(max(re_info$n_groups))
+    tmb_data$re_design <- as.matrix(re_info$re_design)
   } else {
     tmb_data$has_random <- 0L
     tmb_data$n_random_effects <- 0L
     tmb_data$group_ids <- matrix(0L, 0, 0)
     tmb_data$n_groups <- integer(0)
     tmb_data$max_n_groups <- 0L
+    tmb_data$re_design <- matrix(0, 0, 0)
   }
 
   # Initialize parameters
@@ -683,12 +685,14 @@ fit_irt_polytomous <- function(response_matrix, model, weights, re_info, start, 
     tmb_data$group_ids <- as.matrix(re_info$group_ids)
     tmb_data$n_groups <- as.integer(re_info$n_groups)
     tmb_data$max_n_groups <- as.integer(max(re_info$n_groups))
+    tmb_data$re_design <- as.matrix(re_info$re_design)
   } else {
     tmb_data$has_random <- 0L
     tmb_data$n_random_effects <- 0L
     tmb_data$group_ids <- matrix(0L, 0, 0)
     tmb_data$n_groups <- integer(0)
     tmb_data$max_n_groups <- 0L
+    tmb_data$re_design <- matrix(0, 0, 0)
   }
 
   # Initialize parameters

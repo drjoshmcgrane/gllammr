@@ -35,6 +35,7 @@ Type gllamm_irt_poly_multilevel(objective_function<Type>* obj)
   DATA_INTEGER(n_random_effects);         // Number of RE levels
   DATA_IMATRIX(group_ids);                // [n_persons × n_random_effects], -1 = NA
   DATA_IVECTOR(n_groups);                 // Number of groups per level
+  DATA_MATRIX(re_design);          // Design per person x RE (1 = intercept)
   DATA_INTEGER(max_n_groups);             // Maximum groups across levels
 
   // ============================================================================
@@ -111,7 +112,7 @@ Type gllamm_irt_poly_multilevel(objective_function<Type>* obj)
       for (int re = 0; re < n_random_effects; re++) {
         int group = group_ids(person, re);
         if (group >= 0) {  // -1 indicates NA (partial nesting)
-          theta += u_random(group, re);
+          theta += re_design(person, re) * u_random(group, re);
         }
       }
     }

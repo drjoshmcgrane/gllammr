@@ -29,13 +29,29 @@ parse_random_formula <- function(formula, data) {
     parse_single_random_term(term, data)
   })
 
+  # Expand (x | g) into independent intercept + slope terms
+  expanded <- list()
+  for (t in result) {
+    if (isTRUE(t$expand_both)) {
+      t_int <- t; t_int$type <- "intercept"; t_int$re_covariate <- NULL
+      t_int$expand_both <- FALSE
+      t_slp <- t; t_slp$expand_both <- FALSE
+      expanded <- c(expanded, list(t_int, t_slp))
+    } else {
+      expanded <- c(expanded, list(t))
+    }
+  }
+  result <- expanded
+
   # Expand nested notation (e.g., school/class)
   result <- expand_nested_terms(result, data)
 
-  # Check for duplicates
-  group_vars <- sapply(result, function(x) x$group_var)
-  if (any(duplicated(group_vars))) {
-    stop("Duplicate grouping variables in random effects formula")
+  # Check for duplicates (same grouping AND same design column)
+  keys <- sapply(result, function(x) {
+    paste(x$group_var, x$re_covariate %||% "(Intercept)")
+  })
+  if (any(duplicated(keys))) {
+    stop("Duplicate random-effects terms in formula")
   }
 
   return(result)
@@ -95,13 +111,27 @@ parse_single_random_term <- function(term, data) {
   # Right side (after |)
   rhs <- term[[3]]
 
-  # Person-level random effects in IRT models are intercept-only; the
-  # multilevel IRT templates have no slope design. Random slopes ARE
-  # supported in gllamm() GLMMs via (x | group).
-  if (!identical(lhs, 1)) {
-    stop("Person-level random effects in IRT/EIRT models support random ",
-         "intercepts only, e.g. (1 | group). Random slopes are available ",
-         "for GLMMs fitted with gllamm().")
+  # Left side determines the random-effect design:
+  #   1        -> random intercept
+  #   0 + x    -> random slope only (person covariate x)
+  #   x        -> intercept + independent slope (expanded by the caller)
+  re_covariate <- NULL
+  expand_both <- FALSE
+  if (identical(lhs, 1)) {
+    # intercept
+  } else if (is.call(lhs) && identical(as.character(lhs[[1]]), "+") &&
+             identical(lhs[[2]], 0)) {
+    re_covariate <- as.character(lhs[[3]])
+  } else if (is.name(lhs)) {
+    re_covariate <- as.character(lhs)
+    expand_both <- TRUE
+  } else {
+    stop("Person-level random effects support (1 | g), (0 + x | g), and ",
+         "(x | g) [intercept + independent slope]; got: ", deparse(lhs))
+  }
+  if (!is.null(re_covariate) && !re_covariate %in% names(data)) {
+    stop("Random-slope covariate '", re_covariate,
+         "' not found in person_data")
   }
 
   # Parse grouping variable
@@ -115,7 +145,9 @@ parse_single_random_term <- function(term, data) {
     inner_var <- as.character(group_expr[[3]])
 
     return(list(
-      type = "intercept",
+      type = if (is.null(re_covariate)) "intercept" else "slope",
+      re_covariate = re_covariate,
+      expand_both = expand_both,
       group_var = outer_var,
       nested_in = inner_var,
       is_nested = TRUE
@@ -130,7 +162,9 @@ parse_single_random_term <- function(term, data) {
     }
 
     return(list(
-      type = "intercept",
+      type = if (is.null(re_covariate)) "intercept" else "slope",
+      re_covariate = re_covariate,
+      expand_both = expand_both,
       group_var = group_var,
       nested_in = NULL,
       is_nested = FALSE
@@ -157,9 +191,10 @@ expand_nested_terms <- function(terms, data) {
         stop("Inner grouping variable '", inner_var, "' not found in person_data")
       }
 
-      # Add outer effect
+      # Add outer effect (carries the term's design)
       result[[length(result) + 1]] <- list(
-        type = "intercept",
+        type = term$type,
+        re_covariate = term$re_covariate,
         group_var = outer_var,
         nested_in = NULL,
         is_nested = FALSE
@@ -170,7 +205,8 @@ expand_nested_terms <- function(terms, data) {
 
       # Add nested effect
       result[[length(result) + 1]] <- list(
-        type = "intercept",
+        type = term$type,
+        re_covariate = term$re_covariate,
         group_var = interaction_var,
         nested_in = outer_var,
         is_nested = FALSE,
@@ -195,8 +231,9 @@ create_grouping_matrix <- function(terms, data) {
   n_persons <- nrow(data)
   n_re <- length(terms)
 
-  # Initialize matrix (-1 indicates NA)
+  # Initialize matrices (-1 indicates NA in group_ids)
   group_ids <- matrix(-1L, n_persons, n_re)
+  re_design <- matrix(1, n_persons, n_re)
   n_groups <- integer(n_re)
   group_names <- character(n_re)
 
@@ -228,13 +265,21 @@ create_grouping_matrix <- function(terms, data) {
 
     group_ids[, i] <- group_int
     n_groups[i] <- nlevels(group_factor)
-    group_names[i] <- group_var
+    cov_i <- term$re_covariate
+    group_names[i] <- if (is.null(cov_i)) group_var
+                      else paste0(group_var, ":", cov_i)
+
+    # Design column: 1 for intercepts, the person covariate for slopes
+    if (!is.null(cov_i)) {
+      re_design[, i] <- as.numeric(data[[cov_i]])
+    }
   }
 
   return(list(
     group_ids = group_ids,
     n_groups = n_groups,
     group_names = group_names,
+    re_design = re_design,
     n_re = n_re
   ))
 }

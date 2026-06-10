@@ -48,6 +48,7 @@ Type gllamm_eirt(objective_function<Type>* obj)
   DATA_INTEGER(n_random_effects);      // Number of RE levels
   DATA_IMATRIX(group_ids);             // [n_persons x n_random_effects], -1 = NA
   DATA_IVECTOR(n_groups);              // Number of groups per level
+  DATA_MATRIX(re_design);              // Design per person x RE (1 = intercept)
 
   // ============================================================================
   // PARAMETERS
@@ -146,7 +147,7 @@ Type gllamm_eirt(objective_function<Type>* obj)
       for (int re = 0; re < n_random_effects; re++) {
         int g = group_ids(p, re);
         if (g >= 0) {  // -1 indicates NA (partial nesting)
-          theta_eff(p) += u_random(g, re);
+          theta_eff(p) += re_design(p, re) * u_random(g, re);
         }
       }
     }

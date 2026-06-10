@@ -274,11 +274,13 @@ fit_eirt <- function(response_matrix,
     tmb_data$n_random_effects <- as.integer(re_info$n_re)
     tmb_data$group_ids <- as.matrix(re_info$group_ids)
     tmb_data$n_groups <- as.integer(re_info$n_groups)
+    tmb_data$re_design <- as.matrix(re_info$re_design)
   } else {
     tmb_data$has_random <- 0L
     tmb_data$n_random_effects <- 0L
     tmb_data$group_ids <- matrix(0L, 0, 0)
     tmb_data$n_groups <- integer(0)
+    tmb_data$re_design <- matrix(0, 0, 0)
   }
 
   # Parameter dimensions
