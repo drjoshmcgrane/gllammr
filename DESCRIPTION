@@ -41,7 +41,8 @@ Suggests:
     lme4,
     mirt,
     TAM,
-    MASS
+    MASS,
+    lavaan
 Encoding: UTF-8
 RoxygenNote: 7.3.3
 VignetteBuilder: knitr

@@ -13,7 +13,7 @@
 #'   Available: "gaussian_sleepstudy", "binomial_toenail",
 #'   "poisson_grouseticks", "ordinal_wine", "rasch_lsat", "twopl_simulated",
 #'   "lca_carcinoma", "grm_science", "gamma_simulated",
-#'   "survival_exponential".
+#'   "survival_exponential", "sem_lavaan".
 #' @param verbose Print progress messages (default TRUE)
 #'
 #' @return Data frame with one row per compared statistic: case, statistic,
@@ -32,7 +32,7 @@ gllammr_validate <- function(cases = "all", verbose = TRUE) {
   all_cases <- c("gaussian_sleepstudy", "binomial_toenail",
                  "poisson_grouseticks", "ordinal_wine", "rasch_lsat",
                  "twopl_simulated", "lca_carcinoma", "grm_science",
-                 "gamma_simulated", "survival_exponential")
+                 "gamma_simulated", "survival_exponential", "sem_lavaan")
   if (identical(cases, "all")) cases <- all_cases
   unknown <- setdiff(cases, all_cases)
   if (length(unknown) > 0) {
@@ -390,5 +390,41 @@ gllammr_validate <- function(cases = "all", verbose = TRUE) {
              fit$logLik,
              as.numeric(logLik(ref)) - sum(d$status * log(d$time)),
              0.01, relative = FALSE)
+  )
+}
+
+
+#' @keywords internal
+.validate_sem_lavaan <- function() {
+  if (!requireNamespace("lavaan", quietly = TRUE)) {
+    return(NULL)
+  }
+  set.seed(71)
+  n <- 800
+  f1 <- rnorm(n)
+  f2 <- 0.6 * f1 + rnorm(n, 0, 0.8)
+  d <- data.frame(
+    x1 = 1.0 + 1.0 * f1 + rnorm(n, 0, 0.6),
+    x2 = 0.5 + 0.8 * f1 + rnorm(n, 0, 0.6),
+    x3 = -0.3 + 1.2 * f1 + rnorm(n, 0, 0.6),
+    y1 = 0.2 + 1.0 * f2 + rnorm(n, 0, 0.5),
+    y2 = 0.0 + 0.9 * f2 + rnorm(n, 0, 0.5),
+    y3 = 0.8 + 1.1 * f2 + rnorm(n, 0, 0.5)
+  )
+  fit <- fit_sem(measurement = list(f1 = ~ x1 + x2 + x3, f2 = ~ y1 + y2 + y3),
+                 structural = list(f2 ~ f1), data = d)
+  lav <- lavaan::sem("f1 =~ x1 + x2 + x3\nf2 =~ y1 + y2 + y3\nf2 ~ f1",
+                     data = d)
+  pe <- lavaan::parameterEstimates(lav)
+
+  rbind(
+    .val_row("sem_lavaan", "loading_x2",
+             fit$loadings["x2", "f1"],
+             pe$est[pe$lhs == "f1" & pe$op == "=~" & pe$rhs == "x2"], 5e-3),
+    .val_row("sem_lavaan", "loading_y3",
+             fit$loadings["y3", "f2"],
+             pe$est[pe$lhs == "f2" & pe$op == "=~" & pe$rhs == "y3"], 5e-3),
+    .val_row("sem_lavaan", "structural_f2_f1",
+             fit$structural["f2", "f1"], pe$est[pe$op == "~"], 5e-3)
   )
 }
