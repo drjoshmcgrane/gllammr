@@ -4,7 +4,7 @@
 \alias{print.eirt_comparison}
 \title{Print EIRT comparison}
 \usage{
-print.eirt_comparison(x, ...)
+\method{print}{eirt_comparison}(x, ...)
 }
 \description{
 Print EIRT comparison

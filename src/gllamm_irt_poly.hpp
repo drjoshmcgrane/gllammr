@@ -1,10 +1,14 @@
 // Polytomous IRT Models: GRM, PCM, GPCM, NRM
 // Template for ordered and unordered categorical item responses
 
-#include <TMB.hpp>
+#ifndef GLLAMM_IRT_POLY_HPP
+#define GLLAMM_IRT_POLY_HPP
+
+#undef TMB_OBJECTIVE_PTR
+#define TMB_OBJECTIVE_PTR obj
 
 template<class Type>
-Type objective_function<Type>::operator() ()
+Type gllamm_irt_poly(objective_function<Type>* obj)
 {
   // ============================================================================
   // DATA INPUTS
@@ -196,3 +200,8 @@ Type objective_function<Type>::operator() ()
 
   return nll;
 }
+
+#undef TMB_OBJECTIVE_PTR
+#define TMB_OBJECTIVE_PTR this
+
+#endif // GLLAMM_IRT_POLY_HPP

@@ -1,10 +1,14 @@
 // Gaussian GLMM with random intercepts and slopes
 // Supports multiple random effects per group with variance-covariance structure
 
-#include <TMB.hpp>
+#ifndef GLLAMM_GAUSSIAN_SLOPES_HPP
+#define GLLAMM_GAUSSIAN_SLOPES_HPP
+
+#undef TMB_OBJECTIVE_PTR
+#define TMB_OBJECTIVE_PTR obj
 
 template<class Type>
-Type objective_function<Type>::operator() ()
+Type gllamm_gaussian_slopes(objective_function<Type>* obj)
 {
   // Data inputs
   DATA_VECTOR(y);              // Response vector
@@ -134,3 +138,8 @@ Type objective_function<Type>::operator() ()
 
   return nll;
 }
+
+#undef TMB_OBJECTIVE_PTR
+#define TMB_OBJECTIVE_PTR this
+
+#endif // GLLAMM_GAUSSIAN_SLOPES_HPP

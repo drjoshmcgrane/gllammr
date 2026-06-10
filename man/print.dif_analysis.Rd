@@ -4,7 +4,7 @@
 \alias{print.dif_analysis}
 \title{Print DIF analysis results}
 \usage{
-print.dif_analysis(x, ...)
+\method{print}{dif_analysis}(x, ...)
 }
 \arguments{
 \item{x}{Object of class dif_analysis}

@@ -185,11 +185,12 @@ fit_ordinal <- function(formula, data, link = c("logit", "probit", "acl",
   }
 
   # Create TMB object
+  tmb_data$model_name <- "ordinal"
   obj <- TMB::MakeADFun(
     data = tmb_data,
     parameters = tmb_params,
     random = "u",
-    DLL = "gllamm_ordinal",
+    DLL = "GLLAMMR",
     silent = TRUE
   )
 
@@ -427,11 +428,12 @@ fit_multinomial <- function(formula, data, reference = NULL,
   }
 
   # Create TMB object
+  tmb_data$model_name <- "multinomial"
   obj <- TMB::MakeADFun(
     data = tmb_data,
     parameters = tmb_params,
     random = "u",
-    DLL = "gllamm_multinomial",
+    DLL = "GLLAMMR",
     silent = TRUE
   )
 

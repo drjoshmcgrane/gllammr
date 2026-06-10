@@ -1,10 +1,14 @@
 // Latent Class Analysis
 // Finite mixture model with discrete latent classes
 
-#include <TMB.hpp>
+#ifndef GLLAMM_LATENT_CLASS_HPP
+#define GLLAMM_LATENT_CLASS_HPP
+
+#undef TMB_OBJECTIVE_PTR
+#define TMB_OBJECTIVE_PTR obj
 
 template<class Type>
-Type objective_function<Type>::operator() ()
+Type gllamm_latent_class(objective_function<Type>* obj)
 {
   // Data inputs
   DATA_MATRIX(Y);              // Response matrix (n x p) - items in columns
@@ -74,3 +78,8 @@ Type objective_function<Type>::operator() ()
 
   return nll;
 }
+
+#undef TMB_OBJECTIVE_PTR
+#define TMB_OBJECTIVE_PTR this
+
+#endif // GLLAMM_LATENT_CLASS_HPP

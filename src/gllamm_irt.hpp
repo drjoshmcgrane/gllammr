@@ -1,10 +1,14 @@
 // IRT Models: Rasch, 2PL, 3PL
 // Item Response Theory with latent ability as random effect
 
-#include <TMB.hpp>
+#ifndef GLLAMM_IRT_HPP
+#define GLLAMM_IRT_HPP
+
+#undef TMB_OBJECTIVE_PTR
+#define TMB_OBJECTIVE_PTR obj
 
 template<class Type>
-Type objective_function<Type>::operator() ()
+Type gllamm_irt(objective_function<Type>* obj)
 {
   // Data inputs
   DATA_VECTOR(y);              // Item responses (0/1)
@@ -85,3 +89,8 @@ Type objective_function<Type>::operator() ()
 
   return nll;
 }
+
+#undef TMB_OBJECTIVE_PTR
+#define TMB_OBJECTIVE_PTR this
+
+#endif // GLLAMM_IRT_HPP

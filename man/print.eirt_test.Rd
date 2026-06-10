@@ -4,7 +4,7 @@
 \alias{print.eirt_test}
 \title{Print EIRT test results}
 \usage{
-print.eirt_test(x, ...)
+\method{print}{eirt_test}(x, ...)
 }
 \description{
 Print EIRT test results

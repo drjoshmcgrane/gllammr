@@ -120,10 +120,11 @@ fit_lca <- function(formula, data = NULL, nclass = 2,
   }
 
   # Create TMB object
+  tmb_data$model_name <- "latent_class"
   obj <- TMB::MakeADFun(
     data = tmb_data,
     parameters = tmb_params,
-    DLL = "gllamm_latent_class",
+    DLL = "GLLAMMR",
     silent = TRUE
   )
 
@@ -141,7 +142,7 @@ fit_lca <- function(formula, data = NULL, nclass = 2,
       obj <- TMB::MakeADFun(
         data = tmb_data,
         parameters = tmb_params,
-        DLL = "gllamm_latent_class",
+        DLL = "GLLAMMR",
         silent = TRUE
       )
     }

@@ -9,10 +9,14 @@
 //   PCM with threshold_formula (poly_model_type=4): Step-difficulty regression (LPCM+UISE)
 //                              delta_im = b_i + sum_k xi_km * x_ik + e_im
 
-#include <TMB.hpp>
+#ifndef GLLAMM_EIRT_HPP
+#define GLLAMM_EIRT_HPP
+
+#undef TMB_OBJECTIVE_PTR
+#define TMB_OBJECTIVE_PTR obj
 
 template<class Type>
-Type objective_function<Type>::operator() ()
+Type gllamm_eirt(objective_function<Type>* obj)
 {
   // ============================================================================
   // DATA INPUTS
@@ -340,3 +344,8 @@ Type objective_function<Type>::operator() ()
 
   return nll;
 }
+
+#undef TMB_OBJECTIVE_PTR
+#define TMB_OBJECTIVE_PTR this
+
+#endif // GLLAMM_EIRT_HPP

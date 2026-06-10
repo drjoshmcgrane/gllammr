@@ -1,10 +1,14 @@
 // Structural Equation Model (SEM) with latent variables
 // Basic implementation with measurement model and structural model
 
-#include <TMB.hpp>
+#ifndef GLLAMM_SEM_HPP
+#define GLLAMM_SEM_HPP
+
+#undef TMB_OBJECTIVE_PTR
+#define TMB_OBJECTIVE_PTR obj
 
 template<class Type>
-Type objective_function<Type>::operator() ()
+Type gllamm_sem(objective_function<Type>* obj)
 {
   // Data inputs
   DATA_MATRIX(Y);              // Observed indicators matrix (n x p)
@@ -100,3 +104,8 @@ Type objective_function<Type>::operator() ()
 
   return nll;
 }
+
+#undef TMB_OBJECTIVE_PTR
+#define TMB_OBJECTIVE_PTR this
+
+#endif // GLLAMM_SEM_HPP

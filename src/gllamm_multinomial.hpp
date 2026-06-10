@@ -1,10 +1,14 @@
 // Multinomial GLMM with baseline category logit
 // Supports unordered categorical responses
 
-#include <TMB.hpp>
+#ifndef GLLAMM_MULTINOMIAL_HPP
+#define GLLAMM_MULTINOMIAL_HPP
+
+#undef TMB_OBJECTIVE_PTR
+#define TMB_OBJECTIVE_PTR obj
 
 template<class Type>
-Type objective_function<Type>::operator() ()
+Type gllamm_multinomial(objective_function<Type>* obj)
 {
   // Data inputs
   DATA_IVECTOR(y);             // Nominal response (0, 1, ..., K-1)
@@ -122,3 +126,8 @@ Type objective_function<Type>::operator() ()
 
   return nll;
 }
+
+#undef TMB_OBJECTIVE_PTR
+#define TMB_OBJECTIVE_PTR this
+
+#endif // GLLAMM_MULTINOMIAL_HPP

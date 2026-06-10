@@ -158,7 +158,8 @@ fit_binomial <- function(formula, data, link = c("logit", "probit", "cloglog"),
     n_random = as.integer(n_random),
     link = as.integer(link_code),
     correlated = as.integer(correlated),
-    weights = weights_vec
+    weights = weights_vec,
+    model_name = "binomial"
   )
 
   # Initialize parameters
@@ -185,7 +186,7 @@ fit_binomial <- function(formula, data, link = c("logit", "probit", "cloglog"),
     data = tmb_data,
     parameters = tmb_params,
     random = "u",
-    DLL = "gllamm_binomial",
+    DLL = "GLLAMMR",
     silent = TRUE
   )
 

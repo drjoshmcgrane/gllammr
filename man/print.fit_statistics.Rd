@@ -4,7 +4,7 @@
 \alias{print.fit_statistics}
 \title{Print Method for Fit Statistics}
 \usage{
-print.fit_statistics(x, ...)
+\method{print}{fit_statistics}(x, ...)
 }
 \arguments{
 \item{x}{A fit_statistics object}

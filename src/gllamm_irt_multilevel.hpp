@@ -5,10 +5,14 @@
 //        theta_0i ~ N(0, sigma_theta²)
 //        u_g ~ N(0, sigma_g²)
 
-#include <TMB.hpp>
+#ifndef GLLAMM_IRT_MULTILEVEL_HPP
+#define GLLAMM_IRT_MULTILEVEL_HPP
+
+#undef TMB_OBJECTIVE_PTR
+#define TMB_OBJECTIVE_PTR obj
 
 template<class Type>
-Type objective_function<Type>::operator() ()
+Type gllamm_irt_multilevel(objective_function<Type>* obj)
 {
   // ============================================================================
   // DATA INPUTS
@@ -166,3 +170,8 @@ Type objective_function<Type>::operator() ()
 
   return nll;
 }
+
+#undef TMB_OBJECTIVE_PTR
+#define TMB_OBJECTIVE_PTR this
+
+#endif // GLLAMM_IRT_MULTILEVEL_HPP

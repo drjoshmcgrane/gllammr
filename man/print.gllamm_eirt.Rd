@@ -4,7 +4,7 @@
 \alias{print.gllamm_eirt}
 \title{Print EIRT model results}
 \usage{
-print.gllamm_eirt(x, ...)
+\method{print}{gllamm_eirt}(x, ...)
 }
 \arguments{
 \item{x}{Object of class gllamm_eirt}

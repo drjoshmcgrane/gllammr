@@ -31,18 +31,39 @@ fit_tmb_gllamm_v2 <- function(model_data, family, random_terms, start_params = N
     weights_vec <- as.numeric(weights)
   }
 
-  # Prepare TMB data
+  # Select model template: family + random-effects structure
+  use_slopes <- (n_random > 1)
+  if (use_slopes && family$family != "gaussian") {
+    stop("Random slopes are currently only supported for the gaussian family; ",
+         "support for binomial/poisson random slopes is in progress.")
+  }
+  if (use_slopes && !is.null(weights)) {
+    stop("Weights are not yet supported for random-slope models.")
+  }
+  model_name <- if (use_slopes) {
+    "glmm_slopes"
+  } else if (family$family == "binomial") {
+    "binomial"
+  } else if (family$family == "poisson") {
+    "poisson"
+  } else {
+    "gaussian"
+  }
+
+  # Prepare TMB data. The plain gaussian template expects a dense Z;
+  # the others declare DATA_SPARSE_MATRIX(Z).
   tmb_data <- list(
     y = as.numeric(model_data$y),
     X = as.matrix(model_data$X),
-    Z = Z_sparse,
+    Z = if (model_name == "gaussian") as.matrix(model_data$Z[[1]]) else Z_sparse,
     groups = as.integer(model_data$groups[[1]]),
     n_groups = as.integer(model_data$n_groups[1]),
     n_obs = as.integer(model_data$n_obs),
     n_fixed = as.integer(model_data$n_fixed),
     n_random = as.integer(n_random),
     correlated = as.integer(correlated),
-    weights = weights_vec
+    weights = weights_vec,
+    model_name = model_name
   )
 
   # Add family-specific data
@@ -79,26 +100,32 @@ fit_tmb_gllamm_v2 <- function(model_data, family, random_terms, start_params = N
     n_theta <- n_random * (n_random - 1) / 2
     theta_init <- rep(0, max(n_theta, 1))
 
-    tmb_params <- list(
-      beta = beta_init,
-      u = u_init,
-      log_sigma = log(max(sigma_init, 0.1)),
-      log_sigma_u = log_sigma_u_init,
-      theta = theta_init
+    # Each template reads an exact parameter set; passing extras would add
+    # dead entries to the optimization vector.
+    tmb_params <- switch(model_name,
+      gaussian = list(
+        beta = beta_init,
+        u = u_init,
+        log_sigma = log(max(sigma_init, 0.1)),
+        log_sigma_u = log_sigma_u_init[1]
+      ),
+      glmm_slopes = list(
+        beta = beta_init,
+        u = u_init,
+        log_sigma = log(max(sigma_init, 0.1)),
+        log_sigma_u = log_sigma_u_init,
+        theta = theta_init
+      ),
+      # binomial and poisson: no residual SD parameter
+      list(
+        beta = beta_init,
+        u = u_init,
+        log_sigma_u = log_sigma_u_init,
+        theta = theta_init
+      )
     )
   } else {
     tmb_params <- start_params
-  }
-
-  # Select appropriate DLL/template
-  dll_name <- if (n_random > 1) {
-    "gllamm_gaussian_slopes"
-  } else if (family$family == "binomial") {
-    "gllamm_binomial"
-  } else if (family$family == "poisson") {
-    "gllamm_poisson"
-  } else {
-    "gllamm_gaussian"
   }
 
   # Create TMB object
@@ -107,13 +134,11 @@ fit_tmb_gllamm_v2 <- function(model_data, family, random_terms, start_params = N
       data = tmb_data,
       parameters = tmb_params,
       random = "u",
-      DLL = dll_name,
+      DLL = "GLLAMMR",
       silent = TRUE
     )
   }, error = function(e) {
-    stop("Failed to create TMB object. Ensure TMB template is compiled.\n",
-         "Run: TMB::compile('src/", dll_name, ".cpp')\n",
-         "Error: ", e$message)
+    stop("Failed to create TMB object: ", e$message)
   })
 
   # Optimize
@@ -182,8 +207,9 @@ fit_tmb_gllamm_v2 <- function(model_data, family, random_terms, start_params = N
     D <- diag(sigma_u_hat)
     Sigma_u <- D %*% R %*% D
   } else {
-    # Diagonal covariance
-    Sigma_u <- diag(sigma_u_hat^2)
+    # Diagonal covariance (nrow guards the scalar case: diag(x) with a
+    # length-1 numeric would otherwise build a floor(x)-dimensional identity)
+    Sigma_u <- diag(sigma_u_hat^2, nrow = n_random)
   }
 
   # Random effects

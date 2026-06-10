@@ -6,10 +6,14 @@
 //        b_j = W_j * gamma + epsilon_j (if item_residuals = 1)
 //        tau_jk = V_jk * delta + eta_jk (if threshold predictors used)
 
-#include <TMB.hpp>
+#ifndef GLLAMM_EIRT_MULTILEVEL_HPP
+#define GLLAMM_EIRT_MULTILEVEL_HPP
+
+#undef TMB_OBJECTIVE_PTR
+#define TMB_OBJECTIVE_PTR obj
 
 template<class Type>
-Type objective_function<Type>::operator() ()
+Type gllamm_eirt_multilevel(objective_function<Type>* obj)
 {
   // ============================================================================
   // DATA INPUTS
@@ -223,3 +227,8 @@ Type objective_function<Type>::operator() ()
 
   return nll;
 }
+
+#undef TMB_OBJECTIVE_PTR
+#define TMB_OBJECTIVE_PTR this
+
+#endif // GLLAMM_EIRT_MULTILEVEL_HPP

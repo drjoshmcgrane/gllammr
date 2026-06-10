@@ -303,23 +303,25 @@ fit_irt_dichotomous <- function(response_matrix, model, weights, mc_items, re_in
     tmb_params <- start
   }
 
-  # Create TMB object with appropriate DLL and random effects
+  # Create TMB object with appropriate model and random effects
   if (has_random) {
     # Multi-level model: integrate out theta_0 and u_random
+    tmb_data$model_name <- "irt_multilevel"
     obj <- TMB::MakeADFun(
       data = tmb_data,
       parameters = tmb_params,
       random = c("theta_0", "u_random"),
-      DLL = "gllamm_irt_multilevel",
+      DLL = "GLLAMMR",
       silent = TRUE
     )
   } else {
     # Standard IRT: integrate out theta only
+    tmb_data$model_name <- "irt"
     obj <- TMB::MakeADFun(
       data = tmb_data,
       parameters = tmb_params,
       random = "theta",
-      DLL = "gllamm_irt",
+      DLL = "GLLAMMR",
       silent = TRUE
     )
   }
@@ -721,23 +723,25 @@ fit_irt_polytomous <- function(response_matrix, model, weights, re_info, start, 
     tmb_params <- start
   }
 
-  # Create TMB object with appropriate DLL and random effects
+  # Create TMB object with appropriate model and random effects
   if (has_random) {
     # Multi-level polytomous model
+    tmb_data$model_name <- "irt_poly_multilevel"
     obj <- TMB::MakeADFun(
       data = tmb_data,
       parameters = tmb_params,
       random = c("theta_0", "u_random"),
-      DLL = "gllamm_irt_poly_multilevel",
+      DLL = "GLLAMMR",
       silent = TRUE
     )
   } else {
     # Standard polytomous IRT
+    tmb_data$model_name <- "irt_poly"
     obj <- TMB::MakeADFun(
       data = tmb_data,
       parameters = tmb_params,
       random = "theta",
-      DLL = "gllamm_irt_poly",
+      DLL = "GLLAMMR",
       silent = TRUE
     )
   }

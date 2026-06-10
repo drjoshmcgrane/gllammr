@@ -1,10 +1,14 @@
 // Survival/Time-to-Event Models with Random Effects
 // Supports right censoring, Weibull and exponential distributions
 
-#include <TMB.hpp>
+#ifndef GLLAMM_SURVIVAL_HPP
+#define GLLAMM_SURVIVAL_HPP
+
+#undef TMB_OBJECTIVE_PTR
+#define TMB_OBJECTIVE_PTR obj
 
 template<class Type>
-Type objective_function<Type>::operator() ()
+Type gllamm_survival(objective_function<Type>* obj)
 {
   // Data inputs
   DATA_VECTOR(time);           // Observed times
@@ -129,3 +133,8 @@ Type objective_function<Type>::operator() ()
 
   return nll;
 }
+
+#undef TMB_OBJECTIVE_PTR
+#define TMB_OBJECTIVE_PTR this
+
+#endif // GLLAMM_SURVIVAL_HPP

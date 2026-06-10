@@ -1,10 +1,14 @@
 // Mixed Response GLMM
 // Multiple outcomes of different types sharing random effects
 
-#include <TMB.hpp>
+#ifndef GLLAMM_MIXED_RESPONSE_HPP
+#define GLLAMM_MIXED_RESPONSE_HPP
+
+#undef TMB_OBJECTIVE_PTR
+#define TMB_OBJECTIVE_PTR obj
 
 template<class Type>
-Type objective_function<Type>::operator() ()
+Type gllamm_mixed_response(objective_function<Type>* obj)
 {
   // Data inputs
   DATA_VECTOR(y1);             // Continuous outcome
@@ -137,3 +141,8 @@ Type objective_function<Type>::operator() ()
 
   return nll;
 }
+
+#undef TMB_OBJECTIVE_PTR
+#define TMB_OBJECTIVE_PTR this
+
+#endif // GLLAMM_MIXED_RESPONSE_HPP

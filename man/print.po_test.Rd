@@ -4,7 +4,7 @@
 \alias{print.po_test}
 \title{Print method for proportional odds test}
 \usage{
-print.po_test(x, ...)
+\method{print}{po_test}(x, ...)
 }
 \description{
 Print method for proportional odds test

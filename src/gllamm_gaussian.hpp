@@ -1,10 +1,14 @@
 // Gaussian GLMM with random intercepts
 // TMB template for basic 2-level model
 
-#include <TMB.hpp>
+#ifndef GLLAMM_GAUSSIAN_HPP
+#define GLLAMM_GAUSSIAN_HPP
+
+#undef TMB_OBJECTIVE_PTR
+#define TMB_OBJECTIVE_PTR obj
 
 template<class Type>
-Type objective_function<Type>::operator() ()
+Type gllamm_gaussian(objective_function<Type>* obj)
 {
   // Data inputs
   DATA_VECTOR(y);              // Response vector
@@ -81,3 +85,8 @@ Type objective_function<Type>::operator() ()
 
   return nll;
 }
+
+#undef TMB_OBJECTIVE_PTR
+#define TMB_OBJECTIVE_PTR this
+
+#endif // GLLAMM_GAUSSIAN_HPP

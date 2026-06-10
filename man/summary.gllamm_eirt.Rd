@@ -4,7 +4,7 @@
 \alias{summary.gllamm_eirt}
 \title{Summary of EIRT model}
 \usage{
-summary.gllamm_eirt(object, ...)
+\method{summary}{gllamm_eirt}(object, ...)
 }
 \arguments{
 \item{object}{Object of class gllamm_eirt}

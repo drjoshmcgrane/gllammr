@@ -1,10 +1,14 @@
 // Ordinal GLMM with proportional odds and cumulative probit
 // Supports ordered categorical responses
 
-#include <TMB.hpp>
+#ifndef GLLAMM_ORDINAL_HPP
+#define GLLAMM_ORDINAL_HPP
+
+#undef TMB_OBJECTIVE_PTR
+#define TMB_OBJECTIVE_PTR obj
 
 template<class Type>
-Type objective_function<Type>::operator() ()
+Type gllamm_ordinal(objective_function<Type>* obj)
 {
   // Data inputs
   DATA_IVECTOR(y);             // Ordinal response (1, 2, ..., K)
@@ -261,3 +265,8 @@ Type objective_function<Type>::operator() ()
 
   return nll;
 }
+
+#undef TMB_OBJECTIVE_PTR
+#define TMB_OBJECTIVE_PTR this
+
+#endif // GLLAMM_ORDINAL_HPP

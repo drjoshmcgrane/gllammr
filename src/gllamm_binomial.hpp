@@ -1,10 +1,14 @@
 // Binomial GLMM with random effects
 // Supports logit, probit, and complementary log-log links
 
-#include <TMB.hpp>
+#ifndef GLLAMM_BINOMIAL_HPP
+#define GLLAMM_BINOMIAL_HPP
+
+#undef TMB_OBJECTIVE_PTR
+#define TMB_OBJECTIVE_PTR obj
 
 template<class Type>
-Type objective_function<Type>::operator() ()
+Type gllamm_binomial(objective_function<Type>* obj)
 {
   // Data inputs
   DATA_VECTOR(y);              // Response vector (0/1 or counts)
@@ -136,3 +140,8 @@ Type objective_function<Type>::operator() ()
 
   return nll;
 }
+
+#undef TMB_OBJECTIVE_PTR
+#define TMB_OBJECTIVE_PTR this
+
+#endif // GLLAMM_BINOMIAL_HPP

@@ -42,7 +42,8 @@ fit_tmb_gllamm <- function(model_data, family, start_params = NULL, control = li
     n_obs = as.integer(model_data$n_obs),
     n_fixed = as.integer(model_data$n_fixed),
     n_random = as.integer(model_data$n_random_coefs[1]),
-    weights = weights_vec
+    weights = weights_vec,
+    model_name = "gaussian"
   )
 
   # Initialize parameters
@@ -71,8 +72,6 @@ fit_tmb_gllamm <- function(model_data, family, start_params = NULL, control = li
   }
 
   # Create TMB object
-  # Note: In practice, would need to compile the C++ template first
-  # For now, assume it's compiled
   tryCatch({
     obj <- TMB::MakeADFun(
       data = tmb_data,
@@ -82,9 +81,7 @@ fit_tmb_gllamm <- function(model_data, family, start_params = NULL, control = li
       silent = TRUE
     )
   }, error = function(e) {
-    stop("Failed to create TMB object. Ensure TMB template is compiled.\n",
-         "Run: TMB::compile('src/gllamm_gaussian.cpp') first.\n",
-         "Error: ", e$message)
+    stop("Failed to create TMB object: ", e$message)
   })
 
   # Optimize
@@ -191,31 +188,4 @@ fit_tmb_gllamm <- function(model_data, family, start_params = NULL, control = li
     tmb_opt = opt,
     tmb_sdr = sdr
   )
-}
-
-
-#' Compile TMB template
-#'
-#' Helper function to compile the C++ TMB template
-#'
-#' @param template Name of template file (without .hpp extension)
-#' @param dir Source directory (default: "src")
-#'
-#' @return TRUE if successful
-#' @export
-compile_gllamm_tmb <- function(template = "gllamm_gaussian", dir = "src") {
-  template_file <- file.path(dir, paste0(template, ".cpp"))
-
-  if (!file.exists(template_file)) {
-    stop("Template file not found: ", template_file)
-  }
-
-  message("Compiling TMB template: ", template_file)
-  TMB::compile(template_file)
-
-  message("Loading compiled TMB DLL")
-  dyn.load(TMB::dynlib(file.path(dir, template)))
-
-  message("TMB template compiled successfully")
-  invisible(TRUE)
 }

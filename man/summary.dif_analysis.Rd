@@ -4,7 +4,7 @@
 \alias{summary.dif_analysis}
 \title{Summary of DIF analysis}
 \usage{
-summary.dif_analysis(object, ...)
+\method{summary}{dif_analysis}(object, ...)
 }
 \arguments{
 \item{object}{Object of class dif_analysis}

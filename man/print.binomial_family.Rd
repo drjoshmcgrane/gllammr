@@ -4,7 +4,7 @@
 \alias{print.binomial_family}
 \title{Print method for binomial family}
 \usage{
-print.binomial_family(x, ...)
+\method{print}{binomial_family}(x, ...)
 }
 \description{
 Print method for binomial family

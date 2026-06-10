@@ -1,10 +1,14 @@
 // Poisson GLMM with random effects
 // Uses log link
 
-#include <TMB.hpp>
+#ifndef GLLAMM_POISSON_HPP
+#define GLLAMM_POISSON_HPP
+
+#undef TMB_OBJECTIVE_PTR
+#define TMB_OBJECTIVE_PTR obj
 
 template<class Type>
-Type objective_function<Type>::operator() ()
+Type gllamm_poisson(objective_function<Type>* obj)
 {
   // Data inputs
   DATA_VECTOR(y);              // Response vector (counts)
@@ -117,3 +121,8 @@ Type objective_function<Type>::operator() ()
 
   return nll;
 }
+
+#undef TMB_OBJECTIVE_PTR
+#define TMB_OBJECTIVE_PTR this
+
+#endif // GLLAMM_POISSON_HPP

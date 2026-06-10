@@ -4,7 +4,7 @@
 \alias{print.ordinal_family}
 \title{Print method for ordinal family}
 \usage{
-print.ordinal_family(x, ...)
+\method{print}{ordinal_family}(x, ...)
 }
 \description{
 Print method for ordinal family

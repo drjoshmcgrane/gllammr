@@ -317,12 +317,13 @@ fit_eirt <- function(response_matrix,
   }
 
   # Create TMB object
+  tmb_data$model_name <- "eirt"
   obj <- TMB::MakeADFun(
     data = tmb_data,
     parameters = tmb_params,
     random = random_effects,
     map = map_list,
-    DLL = "gllamm_eirt",
+    DLL = "GLLAMMR",
     silent = TRUE
   )
 

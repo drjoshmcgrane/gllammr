@@ -11,9 +11,9 @@
 \alias{residuals.gllamm}
 \title{GLLAMM model object class}
 \usage{
-print.gllamm(x, ...)
+\method{print}{gllamm}(x, ...)
 
-summary.gllamm(object, ...)
+\method{summary}{gllamm}(object, ...)
 
 \method{coef}{gllamm}(object, ...)
 
