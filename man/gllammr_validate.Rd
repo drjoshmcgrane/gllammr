@@ -11,7 +11,7 @@ gllammr_validate(cases = "all", verbose = TRUE)
 Available: "gaussian_sleepstudy", "binomial_toenail",
 "poisson_grouseticks", "ordinal_wine", "rasch_lsat", "twopl_simulated",
 "lca_carcinoma", "grm_science", "gamma_simulated",
-"survival_exponential", "sem_lavaan".}
+"survival_exponential", "sem_lavaan", "lca_polytomous".}
 
 \item{verbose}{Print progress messages (default TRUE)}
 }

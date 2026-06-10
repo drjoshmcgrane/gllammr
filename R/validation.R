@@ -13,7 +13,7 @@
 #'   Available: "gaussian_sleepstudy", "binomial_toenail",
 #'   "poisson_grouseticks", "ordinal_wine", "rasch_lsat", "twopl_simulated",
 #'   "lca_carcinoma", "grm_science", "gamma_simulated",
-#'   "survival_exponential", "sem_lavaan".
+#'   "survival_exponential", "sem_lavaan", "lca_polytomous".
 #' @param verbose Print progress messages (default TRUE)
 #'
 #' @return Data frame with one row per compared statistic: case, statistic,
@@ -32,7 +32,8 @@ gllammr_validate <- function(cases = "all", verbose = TRUE) {
   all_cases <- c("gaussian_sleepstudy", "binomial_toenail",
                  "poisson_grouseticks", "ordinal_wine", "rasch_lsat",
                  "twopl_simulated", "lca_carcinoma", "grm_science",
-                 "gamma_simulated", "survival_exponential", "sem_lavaan")
+                 "gamma_simulated", "survival_exponential", "sem_lavaan",
+                 "lca_polytomous")
   if (identical(cases, "all")) cases <- all_cases
   unknown <- setdiff(cases, all_cases)
   if (length(unknown) > 0) {
@@ -426,5 +427,35 @@ gllammr_validate <- function(cases = "all", verbose = TRUE) {
              pe$est[pe$lhs == "f2" & pe$op == "=~" & pe$rhs == "y3"], 5e-3),
     .val_row("sem_lavaan", "structural_f2_f1",
              fit$structural["f2", "f1"], pe$est[pe$op == "~"], 5e-3)
+  )
+}
+
+
+#' @keywords internal
+.validate_lca_polytomous <- function() {
+  if (!requireNamespace("poLCA", quietly = TRUE)) {
+    return(NULL)
+  }
+  set.seed(101)
+  n <- 800
+  cls <- sample(1:2, n, TRUE, prob = c(0.6, 0.4))
+  P1 <- list(c(.7, .2, .1), c(.1, .3, .6))
+  Y <- sapply(1:4, function(j) {
+    sapply(cls, function(k) sample(1:3, 1, prob = P1[[k]]))
+  })
+  colnames(Y) <- paste0("V", 1:4)
+
+  fit <- fit_lca(Y, nclass = 2, control = list(n_starts = 5))
+  dl <- as.data.frame(Y)
+  f <- stats::as.formula(paste0("cbind(", paste(names(dl), collapse = ","),
+                                ") ~ 1"))
+  set.seed(1)
+  ref <- poLCA::poLCA(f, data = dl, nclass = 2, nrep = 5, verbose = FALSE)
+
+  rbind(
+    .val_row("lca_polytomous", "logLik",
+             fit$logLik, ref$llik, 0.1, relative = FALSE),
+    .val_row("lca_polytomous", "max_class_proportion",
+             max(fit$class_probs), max(ref$P), 1e-2)
   )
 }

@@ -65,10 +65,23 @@ fit_lca <- function(formula, data = NULL, nclass = 2,
     }
   }
 
-  # Check binary responses
-  if (!all(Y %in% c(0, 1, NA))) {
-    stop("All manifest variables must be binary (0/1)")
+  # Detect indicator types: binary (0/1), categorical (integers 1..K, K > 2),
+  # continuous (anything else numeric)
+  item_type <- integer(n_items)
+  n_cats <- integer(n_items)
+  for (j in seq_len(n_items)) {
+    v <- Y[!is.na(Y[, j]), j]
+    if (all(v %in% c(0, 1))) {
+      item_type[j] <- 0L
+    } else if (all(v == round(v)) && min(v) == 1 && length(unique(v)) > 2 &&
+               max(v) == length(unique(v))) {
+      item_type[j] <- 1L
+      n_cats[j] <- as.integer(max(v))
+    } else {
+      item_type[j] <- 2L
+    }
   }
+  max_cats <- max(c(n_cats, 2L))
 
   # Remove missing (for now - could implement EM with missing data)
   complete_rows <- complete.cases(Y)
@@ -94,36 +107,67 @@ fit_lca <- function(formula, data = NULL, nclass = 2,
     n_obs = as.integer(n_obs),
     n_items = as.integer(n_items),
     n_classes = as.integer(nclass),
+    item_type = item_type,
+    n_cats = n_cats,
+    max_cats = as.integer(max_cats),
     weights = weights_vec
   )
 
-  # Initialize parameters
-  if (is.null(start)) {
-    # Initialize item probabilities with jitter around marginal proportions
-    item_means <- colMeans(Y)
+  # Initialize parameters for every block (unused blocks are mapped off)
+  init_params <- function() {
+    marg <- colMeans(Y)
+    item_logits_init <- matrix(0, n_items, nclass)
+    cat_logits_init <- array(0, dim = c(n_items, nclass, max_cats - 1))
+    means_init <- matrix(0, n_items, nclass)
+    log_sds_init <- matrix(0, n_items, nclass)
 
-    item_probs_init <- matrix(NA, n_items, nclass)
-    for (k in 1:nclass) {
-      jitter_factor <- runif(n_items, 0.7, 1.3)
-      item_probs_init[, k] <- pmin(pmax(item_means * jitter_factor, 0.05), 0.95)
+    for (j in seq_len(n_items)) {
+      if (item_type[j] == 0L) {
+        p0 <- pmin(pmax(marg[j], 0.05), 0.95)
+        item_logits_init[j, ] <- qlogis(pmin(pmax(
+          p0 * runif(nclass, 0.7, 1.3), 0.05), 0.95))
+      } else if (item_type[j] == 1L) {
+        cat_logits_init[j, , ] <- rnorm(nclass * (max_cats - 1), 0, 0.3)
+      } else {
+        v <- Y[, j]
+        means_init[j, ] <- mean(v) + stats::sd(v) * rnorm(nclass, 0, 0.7)
+        log_sds_init[j, ] <- log(max(stats::sd(v), 0.1))
+      }
     }
+    list(item_logits = item_logits_init,
+         cat_logits = cat_logits_init,
+         item_means = means_init,
+         item_log_sds = log_sds_init,
+         class_logits = rnorm(nclass - 1, 0, 0.2))
+  }
 
-    # Initialize class probabilities (equal)
-    class_logits_init <- rep(0, nclass - 1)
-
-    tmb_params <- list(
-      item_logits = qlogis(item_probs_init),
-      class_logits = class_logits_init
-    )
+  if (is.null(start)) {
+    tmb_params <- init_params()
   } else {
     tmb_params <- start
   }
+
+  # Map off parameter blocks for absent indicator types (per item row)
+  block_map <- function(active_rows, dims) {
+    m <- array(seq_len(prod(dims)), dim = dims)
+    flat <- as.vector(m)
+    keep <- as.vector(slice.index(m, 1) %in% which(active_rows))
+    flat[!keep] <- NA
+    factor(flat)
+  }
+  tmb_map <- list(
+    item_logits = block_map(item_type == 0L, c(n_items, nclass)),
+    cat_logits = block_map(item_type == 1L, c(n_items, nclass, max_cats - 1)),
+    item_means = block_map(item_type == 2L, c(n_items, nclass)),
+    item_log_sds = block_map(item_type == 2L, c(n_items, nclass))
+  )
 
   # Create TMB object
   tmb_data$model_name <- "latent_class"
   obj <- TMB::MakeADFun(
     data = tmb_data,
     parameters = tmb_params,
+    map = tmb_map,
     DLL = "GLLAMMR",
     silent = TRUE
   )
@@ -137,13 +181,12 @@ fit_lca <- function(formula, data = NULL, nclass = 2,
 
   for (restart in 1:n_starts) {
     if (restart > 1) {
-      # Random restart
-      tmb_params$item_logits <- matrix(qlogis(runif(n_items * nclass, 0.2, 0.8)),
-                                       n_items, nclass)
-      tmb_params$class_logits <- rnorm(nclass - 1, 0, 0.5)
+      # Random restart across all parameter blocks
+      tmb_params <- init_params()
       obj <- TMB::MakeADFun(
         data = tmb_data,
         parameters = tmb_params,
+        map = tmb_map,
         DLL = "GLLAMMR",
         silent = TRUE
       )
@@ -173,37 +216,70 @@ fit_lca <- function(formula, data = NULL, nclass = 2,
   # Get standard errors
   sdr <- try(TMB::sdreport(obj), silent = TRUE)
 
-  # Extract parameters
-  par_full <- obj$env$last.par.best
+  # Extract parameters: parList() reassembles full-shaped blocks (maps respected)
+  pl <- obj$env$parList()
+  item_names <- colnames(Y) %||% paste0("Item", 1:n_items)
 
-  # Item probabilities (logit-parameterized in the template)
-  item_probs_matrix <- matrix(
-    plogis(par_full[names(par_full) == "item_logits"]),
-    nrow = n_items,
-    ncol = nclass
-  )
-  rownames(item_probs_matrix) <- colnames(Y) %||% paste0("Item", 1:n_items)
-  colnames(item_probs_matrix) <- paste0("Class", 1:nclass)
+  # Binary item probabilities (rows for non-binary items are reported as NA)
+  item_probs_matrix <- plogis(pl$item_logits)
+  item_probs_matrix[item_type != 0L, ] <- NA
+  dimnames(item_probs_matrix) <- list(item_names, paste0("Class", 1:nclass))
+
+  # Categorical item probabilities: per-item list of K x nclass matrices
+  cat_probs <- NULL
+  if (any(item_type == 1L)) {
+    cat_probs <- list()
+    for (j in which(item_type == 1L)) {
+      K <- n_cats[j]
+      eta <- rbind(0, matrix(pl$cat_logits[j, , seq_len(K - 1)],
+                             ncol = nclass, byrow = TRUE))
+      pj <- apply(eta, 2, function(e) exp(e - max(e)) / sum(exp(e - max(e))))
+      dimnames(pj) <- list(paste0("Cat", 1:K), paste0("Class", 1:nclass))
+      cat_probs[[item_names[j]]] <- pj
+    }
+  }
+
+  # Gaussian indicator parameters
+  gaussian_params <- NULL
+  if (any(item_type == 2L)) {
+    idx <- which(item_type == 2L)
+    gaussian_params <- list(
+      means = matrix(pl$item_means[idx, ], nrow = length(idx),
+                     dimnames = list(item_names[idx], paste0("Class", 1:nclass))),
+      sds = matrix(exp(pl$item_log_sds[idx, ]), nrow = length(idx),
+                   dimnames = list(item_names[idx], paste0("Class", 1:nclass)))
+    )
+  }
 
   # Class probabilities
-  class_logits <- par_full[names(par_full) == "class_logits"]
+  class_logits <- pl$class_logits
   sum_exp <- 1 + sum(exp(class_logits))
   class_probs <- c(exp(class_logits) / sum_exp, 1 / sum_exp)
   names(class_probs) <- paste0("Class", 1:nclass)
 
-  # Posterior class membership
-  posterior <- matrix(NA, n_obs, nclass)
-  for (i in 1:n_obs) {
-    for (k in 1:nclass) {
-      likelihood <- 1
-      for (j in 1:n_items) {
-        p <- item_probs_matrix[j, k]
-        likelihood <- likelihood * (p^Y[i,j]) * ((1-p)^(1-Y[i,j]))
+  # Posterior class membership (log-space, mixed indicator types)
+  log_lik_class <- matrix(0, n_obs, nclass)
+  for (k in 1:nclass) {
+    ll <- rep(log(class_probs[k]), n_obs)
+    for (j in 1:n_items) {
+      if (item_type[j] == 0L) {
+        x <- pl$item_logits[j, k]
+        ll <- ll + Y[, j] * x - log1p(exp(x))
+      } else if (item_type[j] == 1L) {
+        K <- n_cats[j]
+        eta <- c(0, pl$cat_logits[j, k, seq_len(K - 1)])
+        logp <- eta - log(sum(exp(eta - max(eta)))) - max(eta)
+        ll <- ll + logp[Y[, j]]
+      } else {
+        ll <- ll + dnorm(Y[, j], pl$item_means[j, k],
+                         exp(pl$item_log_sds[j, k]), log = TRUE)
       }
-      posterior[i, k] <- class_probs[k] * likelihood
     }
-    posterior[i, ] <- posterior[i, ] / sum(posterior[i, ])
+    log_lik_class[, k] <- ll
   }
+  m_row <- apply(log_lik_class, 1, max)
+  posterior <- exp(log_lik_class - m_row)
+  posterior <- posterior / rowSums(posterior)
 
   # Modal class assignment
   modal_class <- apply(posterior, 1, which.max)
@@ -213,6 +289,9 @@ fit_lca <- function(formula, data = NULL, nclass = 2,
     nclass = nclass,
     class_probs = class_probs,
     item_probs = item_probs_matrix,
+    cat_probs = cat_probs,
+    gaussian_params = gaussian_params,
+    item_type = item_type,
     posterior = posterior,
     modal_class = modal_class,
     logLik = -opt$objective,
