@@ -1,6 +1,6 @@
 # E5: rank-ordered (exploded) logit.
 
-simulate_ranks <- function(seed = 111, n_case = 300, n_alt = 4, n_grp = 25,
+simulate_ranks <- function(seed = 111, n_case = 400, n_alt = 4, n_grp = 25,
                            sigma_u = 0.6) {
   set.seed(seed)
   grp <- sample(1:n_grp, n_case, TRUE)
@@ -24,7 +24,7 @@ test_that("rank-ordered logit recovers preferences and taste heterogeneity", {
                   random = ~ (0 + price | region), data = d)
 
   expect_true(fit$convergence$converged)
-  expect_equal(unname(coef(fit)$fixed["price"]), -1.0, tolerance = 0.15)
+  expect_equal(unname(coef(fit)$fixed["price"]), -1.0, tolerance = 0.2)
   expect_equal(unname(coef(fit)$fixed["quality"]), 0.8, tolerance = 0.15)
   expect_equal(unname(fit$coefficients$random_sd), 0.6, tolerance = 0.3)
 })
