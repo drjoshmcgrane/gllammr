@@ -34,9 +34,11 @@ fit_tmb_gllamm_v2 <- function(model_data, family, random_terms, start_params = N
     weights_vec <- as.numeric(weights)
   }
 
-  # Select model template: family + random-effects structure
+  # Select model template: family + random-effects structure. Gamma always
+  # routes through the general template (no gamma branch in the dedicated
+  # single-term templates).
   use_slopes <- (n_random > 1)
-  model_name <- if (use_slopes) {
+  model_name <- if (use_slopes || family$family == "Gamma") {
     "glmm_slopes"
   } else if (family$family == "binomial") {
     "binomial"
@@ -65,9 +67,12 @@ fit_tmb_gllamm_v2 <- function(model_data, family, random_terms, start_params = N
   # Family and link codes (read by the binomial and glmm_slopes templates;
   # unused data entries are ignored by the others)
   tmb_data$family <- switch(family$family,
-                            gaussian = 0L, binomial = 1L, poisson = 2L, 0L)
+                            gaussian = 0L, binomial = 1L, poisson = 2L,
+                            Gamma = 3L, 0L)
   tmb_data$link <- if (family$family == "binomial") {
     switch(family$link, logit = 1L, probit = 2L, cloglog = 3L, 1L)
+  } else if (family$family == "Gamma") {
+    switch(family$link, log = 1L, inverse = 2L, identity = 3L, 1L)
   } else {
     1L  # canonical link (identity / log)
   }
@@ -82,7 +87,9 @@ fit_tmb_gllamm_v2 <- function(model_data, family, random_terms, start_params = N
     } else {
       glm_fit <- glm(model_data$y ~ model_data$X - 1, family = family)
       beta_init <- coef(glm_fit)
-      sigma_init <- 1.0  # Not used for non-Gaussian
+      sigma_init <- if (family$family == "Gamma") {
+        max(summary(glm_fit)$dispersion, 0.05)
+      } else 1.0
     }
 
     # Initialize random effects to zero
@@ -132,7 +139,8 @@ fit_tmb_gllamm_v2 <- function(model_data, family, random_terms, start_params = N
   if (has_theta && !theta_used) {
     tmb_map$theta <- factor(rep(NA, length(tmb_params$theta)))
   }
-  if (model_name == "glmm_slopes" && family$family != "gaussian") {
+  if (model_name == "glmm_slopes" &&
+      !(family$family %in% c("gaussian", "Gamma"))) {
     tmb_map$log_sigma <- factor(NA)
   }
 
@@ -275,7 +283,8 @@ fit_tmb_gllamm_v2 <- function(model_data, family, random_terms, start_params = N
   loglik <- -opt$objective
 
   # Number of parameters
-  n_params <- length(beta_hat) + n_random + ifelse(family$family == "gaussian", 1, 0)
+  n_params <- length(beta_hat) + n_random +
+    ifelse(family$family %in% c("gaussian", "Gamma"), 1, 0)
   if (n_random > 1 && correlated) {
     n_params <- n_params + n_random * (n_random - 1) / 2
   }
@@ -360,11 +369,13 @@ fit_tmb_gllamm_multi <- function(model_data, family, random_terms,
     term_n_groups = term_n_groups,
     term_correlated = term_correlated,
     family = switch(family$family,
-                    gaussian = 0L, binomial = 1L, poisson = 2L,
+                    gaussian = 0L, binomial = 1L, poisson = 2L, Gamma = 3L,
                     stop("Unsupported family for multi-term GLMM: ",
                          family$family)),
     link = if (family$family == "binomial") {
       switch(family$link, logit = 1L, probit = 2L, cloglog = 3L, 1L)
+    } else if (family$family == "Gamma") {
+      switch(family$link, log = 1L, inverse = 2L, identity = 3L, 1L)
     } else 1L,
     weights = weights_vec,
     model_name = "glmm_multi"
@@ -383,7 +394,9 @@ fit_tmb_gllamm_multi <- function(model_data, family, random_terms,
     } else {
       glm_fit <- glm(model_data$y ~ model_data$X - 1, family = family)
       beta_init <- coef(glm_fit)
-      sigma_init <- 1.0
+      sigma_init <- if (family$family == "Gamma") {
+        max(summary(glm_fit)$dispersion, 0.05)
+      } else 1.0
     }
     tmb_params <- list(
       beta = beta_init,
@@ -401,7 +414,7 @@ fit_tmb_gllamm_multi <- function(model_data, family, random_terms,
   if (n_theta == 0) {
     tmb_map$theta <- factor(rep(NA, length(tmb_params$theta)))
   }
-  if (family$family != "gaussian") {
+  if (!(family$family %in% c("gaussian", "Gamma"))) {
     tmb_map$log_sigma <- factor(NA)
   }
 
@@ -501,7 +514,7 @@ fit_tmb_gllamm_multi <- function(model_data, family, random_terms,
 
   loglik <- -opt$objective
   n_params <- length(beta_hat) + sum(term_n_random) + n_theta +
-    ifelse(family$family == "gaussian", 1, 0)
+    ifelse(family$family %in% c("gaussian", "Gamma"), 1, 0)
 
   list(
     coefficients = list(

@@ -12,7 +12,7 @@
 #' @param cases Character vector of case names to run, or "all" (default).
 #'   Available: "gaussian_sleepstudy", "binomial_toenail",
 #'   "poisson_grouseticks", "ordinal_wine", "rasch_lsat", "twopl_simulated",
-#'   "lca_carcinoma", "grm_science".
+#'   "lca_carcinoma", "grm_science", "gamma_simulated".
 #' @param verbose Print progress messages (default TRUE)
 #'
 #' @return Data frame with one row per compared statistic: case, statistic,
@@ -30,7 +30,8 @@
 gllammr_validate <- function(cases = "all", verbose = TRUE) {
   all_cases <- c("gaussian_sleepstudy", "binomial_toenail",
                  "poisson_grouseticks", "ordinal_wine", "rasch_lsat",
-                 "twopl_simulated", "lca_carcinoma", "grm_science")
+                 "twopl_simulated", "lca_carcinoma", "grm_science",
+                 "gamma_simulated")
   if (identical(cases, "all")) cases <- all_cases
   unknown <- setdiff(cases, all_cases)
   if (length(unknown) > 0) {
@@ -319,5 +320,37 @@ gllammr_validate <- function(cases = "all", verbose = TRUE) {
              b_fit_item1, b_ref_item1, 0.10),
     .val_row("grm_science", "discrimination_item1_std",
              a_fit_item1, a_ref_item1, 0.15)
+  )
+}
+
+
+#' @keywords internal
+.validate_gamma_simulated <- function() {
+  if (!requireNamespace("glmmTMB", quietly = TRUE)) {
+    return(NULL)
+  }
+  set.seed(41)
+  n <- 2000; g <- 50
+  grp <- factor(rep(1:g, each = n %/% g))
+  x <- rnorm(n)
+  u <- rnorm(g, 0, 0.5)
+  mu <- exp(0.5 + 0.3 * x + u[as.integer(grp)])
+  d <- data.frame(y = rgamma(n, shape = 2.5, scale = mu * 0.4),
+                  x = x, grp = grp)
+
+  fit <- gllamm(y ~ x + (1 | grp), data = d,
+                family = stats::Gamma(link = "log"))
+  ref <- glmmTMB::glmmTMB(y ~ x + (1 | grp), data = d,
+                          family = stats::Gamma(link = "log"))
+
+  rbind(
+    .val_row("gamma_simulated", "beta_x",
+             unname(coef(fit)$fixed[2]),
+             unname(glmmTMB::fixef(ref)$cond[2]), 1e-3),
+    .val_row("gamma_simulated", "logLik",
+             fit$logLik, as.numeric(logLik(ref)), 0.1, relative = FALSE),
+    .val_row("gamma_simulated", "sigma_u",
+             sqrt(fit$coefficients$random_var[[1]][1, 1]),
+             unname(attr(glmmTMB::VarCorr(ref)$cond$grp, "stddev")), 1e-2)
   )
 }

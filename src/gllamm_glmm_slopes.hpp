@@ -19,7 +19,7 @@ Type gllamm_glmm_slopes(objective_function<Type>* obj)
   DATA_INTEGER(n_obs);         // Number of observations
   DATA_INTEGER(n_random);      // Number of random effects per group
   DATA_INTEGER(correlated);    // 1 if correlated, 0 if uncorrelated
-  DATA_INTEGER(family);        // 0 = gaussian, 1 = binomial, 2 = poisson
+  DATA_INTEGER(family);        // 0=gaussian, 1=binomial, 2=poisson, 3=gamma
   DATA_INTEGER(link);          // 1 = canonical (identity/logit/log),
                                // 2 = probit, 3 = cloglog (binomial only)
   DATA_VECTOR(weights);        // Case weights (fweights or pweights)
@@ -111,11 +111,26 @@ Type gllamm_glmm_slopes(objective_function<Type>* obj)
                   (Type(1.0) - y(i)) * log(Type(1.0) - p + Type(1e-10));
       nll -= w_i * ll_i;
       fitted(i) = p;
-    } else {
+    } else if (family == 2) {
       // Poisson (log link)
       Type lambda = exp(eta(i));
       nll -= w_i * dpois(y(i), lambda, true);
       fitted(i) = lambda;
+    } else {
+      // Gamma: mean mu, dispersion phi = exp(log_sigma);
+      // shape = 1/phi, scale = mu*phi (variance = phi * mu^2)
+      Type mu;
+      if (link == 2) {
+        mu = Type(1.0) / eta(i);      // inverse link
+      } else if (link == 3) {
+        mu = eta(i);                  // identity link
+      } else {
+        mu = exp(eta(i));             // log link (default)
+      }
+      Type phi = exp(log_sigma);
+      Type shape = Type(1.0) / phi;
+      nll -= w_i * dgamma(y(i), shape, mu * phi, true);
+      fitted(i) = mu;
     }
   }
 
