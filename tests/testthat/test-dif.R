@@ -1,6 +1,5 @@
 test_that("DIF test accepts valid input", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(123)
   n_persons <- 200
@@ -31,7 +30,6 @@ test_that("DIF test accepts valid input", {
 
 test_that("DIF detects uniform DIF in simulated data", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(456)
   n_persons <- 300
@@ -71,7 +69,6 @@ test_that("DIF detects uniform DIF in simulated data", {
 
 test_that("DIF test with 2PL model", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(789)
   n_persons <- 200
@@ -124,7 +121,6 @@ test_that("DIF test validates group variable", {
 
 test_that("DIF test with polytomous model (GRM)", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(222)
   n_persons <- 200
@@ -145,7 +141,6 @@ test_that("DIF test with polytomous model (GRM)", {
 
 test_that("DIF print method works", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(333)
   n_persons <- 150
@@ -165,7 +160,6 @@ test_that("DIF print method works", {
 
 test_that("DIF summary method works", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(444)
   n_persons <- 100
@@ -182,7 +176,6 @@ test_that("DIF summary method works", {
 
 test_that("DIF plot for dichotomous items", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(555)
   n_persons <- 200
@@ -216,7 +209,6 @@ test_that("DIF plot for dichotomous items", {
 
 test_that("DIF effect size computation", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(666)
   n_persons <- 200
@@ -250,7 +242,6 @@ test_that("DIF effect size computation", {
 
 test_that("DIF test with no flagged items", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(777)
   n_persons <- 150
@@ -279,7 +270,6 @@ test_that("DIF test with no flagged items", {
 
 test_that("DIF test with custom alpha level", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(888)
   n_persons <- 100

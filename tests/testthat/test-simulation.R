@@ -1,6 +1,5 @@
 test_that("Simulation from known parameters can be recovered", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(42)
 
@@ -34,13 +33,12 @@ test_that("Simulation from known parameters can be recovered", {
   # Check recovery (with generous tolerances for finite sample)
   expect_equal(fixef(fit)[["(Intercept)"]], beta_0, tolerance = 0.15)
   expect_equal(fixef(fit)[["x"]], beta_1, tolerance = 0.15)
-  expect_equal(sqrt(VarCorr(fit)[[1]]), sigma_u, tolerance = 0.20)
+  expect_equal(sqrt(VarCorr(fit)[[1]][1, 1]), sigma_u, tolerance = 0.20)
 })
 
 
 test_that("Small sample simulation recovery", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(99)
 
@@ -69,7 +67,6 @@ test_that("Small sample simulation recovery", {
 
 test_that("simulate.gllamm produces correct dimensions", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(123)
   data <- data.frame(
@@ -95,7 +92,6 @@ test_that("simulate.gllamm produces correct dimensions", {
 
 test_that("Simulated data has correct properties", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(789)
 
@@ -114,7 +110,7 @@ test_that("Simulated data has correct properties", {
 
   # Check mean is approximately correct (should be near intercept)
   sim_means <- apply(sims, 2, mean)
-  expect_equal(mean(sim_means), fixef(fit)[1], tolerance = 0.5)
+  expect_equal(mean(sim_means), unname(fixef(fit)[1]), tolerance = 0.5)
 
   # Check variance structure is reasonable
   sim_vars <- apply(sims, 2, var)

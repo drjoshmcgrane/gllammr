@@ -1,6 +1,5 @@
 test_that("Diagnostic plots work for GLMM", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(123)
   data <- data.frame(
@@ -19,7 +18,6 @@ test_that("Diagnostic plots work for GLMM", {
 
 test_that("Influence diagnostics return data frame", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(456)
   data <- data.frame(
@@ -40,7 +38,6 @@ test_that("Influence diagnostics return data frame", {
 
 test_that("Outlier detection finds extreme values", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(789)
   data <- data.frame(
@@ -63,7 +60,6 @@ test_that("Outlier detection finds extreme values", {
 
 test_that("Goodness of fit produces output", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(111)
   data <- data.frame(
@@ -81,7 +77,6 @@ test_that("Goodness of fit produces output", {
 
 test_that("ICC calculation for Gaussian model", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(222)
   data <- data.frame(
@@ -101,7 +96,6 @@ test_that("ICC calculation for Gaussian model", {
 
 test_that("ICC for binomial model uses approximation", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(333)
   data <- data.frame(
@@ -118,7 +112,6 @@ test_that("ICC for binomial model uses approximation", {
 
 test_that("Enhanced prediction on new data", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(444)
   train_data <- data.frame(

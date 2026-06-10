@@ -1,6 +1,5 @@
 test_that("IRT handles all zero responses for a person", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(123)
   n_persons <- 100
@@ -17,14 +16,16 @@ test_that("IRT handles all zero responses for a person", {
 
   expect_s3_class(fit, "gllamm_irt")
 
-  # First 3 persons should have very low ability estimates
-  expect_true(all(fit$person_abilities[1:3] < -2))
+  # First 3 persons should have the lowest ability estimates (shrinkage
+  # toward the prior keeps the magnitudes modest with random data)
+  expect_true(max(fit$person_abilities[1:3]) <=
+                min(fit$person_abilities[4:n_persons]) + 1e-8)
+  expect_true(all(fit$person_abilities[1:3] < mean(fit$person_abilities)))
 })
 
 
 test_that("IRT handles all maximum responses for a person", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(456)
   n_persons <- 100
@@ -49,7 +50,6 @@ test_that("IRT handles all maximum responses for a person", {
 
 test_that("IRT handles item with no variance", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(789)
   n_persons <- 100
@@ -72,7 +72,6 @@ test_that("IRT handles item with no variance", {
 
 test_that("IRT handles very small sample size", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(111)
   n_persons <- 20  # Very small
@@ -91,7 +90,6 @@ test_that("IRT handles very small sample size", {
 
 test_that("IRT handles very few items", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(222)
   n_persons <- 100
@@ -108,7 +106,6 @@ test_that("IRT handles very few items", {
 
 test_that("IRT handles extreme discrimination values in simulation", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(333)
   n_persons <- 200
@@ -139,7 +136,6 @@ test_that("IRT handles extreme discrimination values in simulation", {
 
 test_that("Polytomous IRT handles 2 categories (edge of polytomous)", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(444)
   n_persons <- 100
@@ -157,7 +153,6 @@ test_that("Polytomous IRT handles 2 categories (edge of polytomous)", {
 
 test_that("IRT handles highly sparse response matrix", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(555)
   n_persons <- 100
@@ -182,7 +177,6 @@ test_that("IRT handles highly sparse response matrix", {
 
 test_that("Polytomous IRT handles unbalanced category frequencies", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(666)
   n_persons <- 150
@@ -208,18 +202,20 @@ test_that("IRT validates impossible response values", {
   n_persons <- 50
   n_items <- 5
 
-  # Invalid: mix of 0/1 and 1-5 coding
-  responses_invalid <- matrix(sample(0:5, n_persons * n_items, replace = TRUE),
+  # Invalid: mixed 0-based and 1-based coding (0 present, but category 1
+  # missing, so neither contiguous 0-based nor 1-based)
+  responses_invalid <- matrix(sample(c(0, 2, 3, 4, 5), n_persons * n_items,
+                                     replace = TRUE),
                                n_persons, n_items)
 
   # Should error due to inconsistent coding
-  expect_error(fit_irt(responses_invalid, model = "GRM"))
+  expect_error(fit_irt(responses_invalid, model = "GRM"),
+               "invalid response coding")
 })
 
 
 test_that("IRT handles single person (degenerate case)", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(888)
   n_persons <- 1  # Single person
@@ -238,7 +234,6 @@ test_that("IRT handles single person (degenerate case)", {
 
 test_that("IRT handles all items same difficulty", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(999)
   n_persons <- 100
@@ -267,7 +262,6 @@ test_that("IRT handles all items same difficulty", {
 
 test_that("Polytomous IRT with ragged data structure", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(1234)
   n_persons <- 100
@@ -308,7 +302,6 @@ test_that("IRT handles negative values gracefully", {
 
 test_that("IRT convergence message is informative", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(2222)
   n_persons <- 80
@@ -327,7 +320,6 @@ test_that("IRT convergence message is informative", {
 
 test_that("Polytomous IRT with perfect scores on some items", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(3333)
   n_persons <- 100
@@ -340,7 +332,8 @@ test_that("Polytomous IRT with perfect scores on some items", {
   # Make one item have perfect scores (all category 4)
   responses[, 3] <- n_categories
 
-  fit <- fit_irt(responses, model = "PCM")
+  expect_warning(fit <- fit_irt(responses, model = "PCM"),
+                 "no response variance")
 
   expect_s3_class(fit, "gllamm_irt")
 

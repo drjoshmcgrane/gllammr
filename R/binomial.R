@@ -263,6 +263,7 @@ fit_binomial <- function(formula, data, link = c("logit", "probit", "cloglog"),
       iterations = opt$iterations
     ),
     link = link,
+    family = stats::binomial(link = link),
     n_obs = model_data$n_obs,
     n_groups = model_data$n_groups[1],
     fitted_values = fitted_vals,

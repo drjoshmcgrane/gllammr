@@ -22,7 +22,6 @@ test_that("LCA data simulation works", {
 
 test_that("fit_lca accepts valid input", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(456)
   n <- 100
@@ -39,7 +38,6 @@ test_that("fit_lca accepts valid input", {
 
 test_that("LCA class probabilities sum to 1", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(789)
   data <- matrix(rbinom(150 * 6, 1, 0.5), 150, 6)
@@ -52,7 +50,6 @@ test_that("LCA class probabilities sum to 1", {
 
 test_that("LCA recovers known classes", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(111)
   n <- 300
@@ -83,7 +80,6 @@ test_that("LCA recovers known classes", {
 
 test_that("LCA posterior probabilities are valid", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(222)
   data <- matrix(rbinom(100 * 4, 1, 0.5), 100, 4)
@@ -102,7 +98,6 @@ test_that("LCA posterior probabilities are valid", {
 
 test_that("LCA print and summary methods work", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(333)
   data <- matrix(rbinom(80 * 5, 1, 0.5), 80, 5)
@@ -117,7 +112,6 @@ test_that("LCA print and summary methods work", {
 
 test_that("LCA handles different numbers of classes", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(444)
   data <- matrix(rbinom(100 * 4, 1, 0.5), 100, 4)
@@ -138,7 +132,6 @@ test_that("LCA handles different numbers of classes", {
 
 test_that("LCA item probabilities are in valid range", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(555)
   data <- matrix(rbinom(120 * 5, 1, 0.5), 120, 5)

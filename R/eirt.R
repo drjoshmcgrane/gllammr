@@ -495,6 +495,7 @@ fit_eirt <- function(response_matrix,
     max_categories = max_categories,
     is_polytomous = is_polytomous,
     poly_model_type = poly_model_type,
+    item_residuals = item_residuals,
     formulas = list(
       difficulty = difficulty_formula,
       discrimination = discrimination_formula,

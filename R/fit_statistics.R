@@ -117,9 +117,13 @@ fit.gllamm <- function(object, quiet = FALSE, ...) {
     # Variance of fixed effects
     var_fixed <- var(fitted_vals)
 
-    # Variance of random effects
+    # Variance of random effects (random_var holds per-term covariance
+    # matrices; sum the diagonal variances)
     if (length(object$coefficients$random_var) > 0) {
-      var_random <- sum(unlist(object$coefficients$random_var))
+      var_random <- sum(unlist(lapply(object$coefficients$random_var,
+                                      function(m) {
+                                        if (is.matrix(m)) diag(m) else as.numeric(m)
+                                      })))
     } else {
       var_random <- 0
     }
@@ -285,7 +289,7 @@ fit.gllamm_ordinal <- function(object, test_po = TRUE, ...) {
   # Test proportional odds assumption if applicable
   if (test_po && object$link %in% c("logit", "probit")) {
     fit_stats$proportional_odds_test <- tryCatch({
-      test_proportional_odds(object)
+      test_proportional_odds(object, data = object$data)
     }, error = function(e) {
       warning("Could not perform proportional odds test: ", e$message)
       NULL

@@ -185,6 +185,10 @@ fixef <- function(object, ...) {
 #' @return List of random effects by group
 #' @export
 ranef.gllamm <- function(object, ...) {
+  if (is.null(object$random_effects)) {
+    stop("ranef is only available for multi-level models. ",
+         "Model does not contain random effects.")
+  }
   object$random_effects
 }
 
@@ -207,7 +211,14 @@ ranef <- function(object, ...) {
 #' @export
 VarCorr.gllamm <- function(object, ...) {
   vc <- object$coefficients$random_var
-  names(vc) <- sapply(object$random_terms, function(rt) paste(rt$grouping, collapse = "/"))
+  if (is.null(vc) || length(vc) == 0) {
+    stop("VarCorr is only available for multi-level models. ",
+         "Model does not contain random effects.")
+  }
+  if (!is.null(object$random_terms)) {
+    names(vc) <- sapply(object$random_terms,
+                        function(rt) paste(rt$grouping, collapse = "/"))
+  }
   class(vc) <- "VarCorr.gllamm"
   vc
 }
@@ -222,17 +233,6 @@ VarCorr <- function(object, ...) {
 }
 
 
-#' @export
-print.VarCorr.gllamm <- function(x, ...) {
-  cat("Random effects variance components:\n")
-  for (i in seq_along(x)) {
-    cat("\n Group:", names(x)[i], "\n")
-    if (is.matrix(x[[i]])) {
-      print(x[[i]])
-    } else {
-      cat("  Variance:", x[[i]], "\n")
-      cat("  Std.Dev.:", sqrt(x[[i]]), "\n")
-    }
-  }
-  invisible(x)
-}
+# (print.VarCorr.gllamm lives in multilevel_methods.R and handles both the
+# list form returned by VarCorr.gllamm and the data-frame form returned by
+# VarCorr.gllamm_irt_multilevel)

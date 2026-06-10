@@ -65,12 +65,27 @@ VarCorr.gllamm_irt_multilevel <- function(x, ...) {
 
 #' @export
 print.VarCorr.gllamm <- function(x, digits = 4, ...) {
-  cat("Variance Components:\n")
-  # Round only numeric columns
-  x$Variance <- round(x$Variance, digits)
-  x$Std.Dev <- round(x$Std.Dev, digits)
-  # Use print.data.frame explicitly to avoid recursion
-  print.data.frame(x, row.names = FALSE)
+  if (is.data.frame(x)) {
+    # Data-frame form (multi-level IRT models)
+    cat("Variance Components:\n")
+    # Round only numeric columns
+    x$Variance <- round(x$Variance, digits)
+    x$Std.Dev <- round(x$Std.Dev, digits)
+    # Use print.data.frame explicitly to avoid recursion
+    print.data.frame(x, row.names = FALSE)
+  } else {
+    # List form (GLMM fits): one covariance matrix per random-effect term
+    cat("Random effects variance components:\n")
+    for (i in seq_along(x)) {
+      cat("\n Group:", names(x)[i], "\n")
+      if (is.matrix(x[[i]])) {
+        print(round(x[[i]], digits))
+      } else {
+        cat("  Variance:", round(x[[i]], digits), "\n")
+        cat("  Std.Dev.:", round(sqrt(x[[i]]), digits), "\n")
+      }
+    }
+  }
   invisible(x)
 }
 

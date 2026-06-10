@@ -22,7 +22,6 @@ test_that("IRT data simulation works", {
 
 test_that("fit_irt accepts valid input", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(456)
   n_persons <- 50
@@ -52,7 +51,6 @@ test_that("fit_irt accepts valid input", {
 
 test_that("Rasch model recovers known parameters", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(789)
   n_persons <- 200
@@ -83,7 +81,6 @@ test_that("Rasch model recovers known parameters", {
 
 test_that("2PL model includes discrimination parameters", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(321)
   n_persons <- 100
@@ -111,7 +108,6 @@ test_that("2PL model includes discrimination parameters", {
 
 test_that("IRT print and summary methods work", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(111)
   responses <- matrix(rbinom(50 * 5, 1, 0.5), 50, 5)

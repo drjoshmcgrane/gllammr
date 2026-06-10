@@ -1,6 +1,5 @@
 test_that("Ordinal model accepts valid input", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(123)
   n <- 100
@@ -19,7 +18,6 @@ test_that("Ordinal model accepts valid input", {
 
 test_that("Ordinal threshold parameters are ordered", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(456)
   n <- 200
@@ -39,7 +37,6 @@ test_that("Ordinal threshold parameters are ordered", {
 
 test_that("Proportional odds vs probit link", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(789)
   n <- 150
@@ -59,7 +56,6 @@ test_that("Proportional odds vs probit link", {
 
 test_that("Multinomial model with 3 categories", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(111)
   n <- 120
@@ -79,7 +75,6 @@ test_that("Multinomial model with 3 categories", {
 
 test_that("Multinomial reference category", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(222)
   data <- data.frame(
@@ -97,7 +92,6 @@ test_that("Multinomial reference category", {
 
 test_that("Ordinal print and summary methods", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(333)
   data <- data.frame(
@@ -115,7 +109,6 @@ test_that("Ordinal print and summary methods", {
 
 test_that("Multinomial print method", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(444)
   data <- data.frame(

@@ -1,6 +1,5 @@
 test_that("Basic gllamm structure is correct", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(123)
   n_groups <- 10
@@ -29,7 +28,6 @@ test_that("gllamm validates inputs", {
 
 test_that("print.gllamm doesn't error", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(123)
   data <- data.frame(
@@ -48,7 +46,6 @@ test_that("print.gllamm doesn't error", {
 
 test_that("summary.gllamm provides detailed output", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(123)
   data <- data.frame(
@@ -67,7 +64,6 @@ test_that("summary.gllamm provides detailed output", {
 
 test_that("Extractor functions work", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(123)
   data <- data.frame(
@@ -117,7 +113,6 @@ test_that("Extractor functions work", {
 
 test_that("AIC and BIC are calculated", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(123)
   data <- data.frame(

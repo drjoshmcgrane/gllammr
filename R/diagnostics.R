@@ -87,12 +87,18 @@ plot.gllamm <- function(x, which = c(1, 2, 3, 5), ...) {
 
     } else if (w == 5) {
       # Residuals vs Leverage (not standard for mixed models)
-      # Instead: Residuals by group
-      if (length(x$random_effects) > 0) {
-        group_ids <- rep(seq_along(x$random_effects),
-                        sapply(x$random_effects, length))
+      # Instead: Residuals by group (first grouping factor)
+      if (length(x$random_terms) > 0 && !is.null(x$data)) {
+        rt <- x$random_terms[[1]]
+        gvars <- rt$grouping_vars
+        if (is.null(gvars)) gvars <- rt$grouping
+        if (length(gvars) > 1) {
+          group_factor <- interaction(x$data[, gvars], drop = TRUE)
+        } else {
+          group_factor <- factor(x$data[[gvars]])
+        }
 
-        boxplot(resids ~ group_ids,
+        boxplot(resids ~ group_factor,
                 xlab = "Group",
                 ylab = "Residuals",
                 main = "Residuals by Group",
@@ -238,22 +244,40 @@ gof.gllamm <- function(object, ...) {
 #' Variance decomposition (ICC)
 #'
 #' @param object A gllamm object
+#' @param quiet Suppress printed output and messages (default: FALSE)
 #' @param ... Additional arguments
 #'
 #' @export
-icc <- function(object, ...) {
+icc.gllamm <- function(object, quiet = FALSE, ...) {
+  cat <- if (quiet) function(...) invisible(NULL) else base::cat
+  message <- if (quiet) function(...) invisible(NULL) else base::message
+  print <- if (quiet) function(...) invisible(NULL) else base::print
 
   if (length(object$coefficients$random_var) == 0) {
-    stop("No random effects in model")
+    stop("icc is only available for multi-level models. ",
+         "Model does not contain random effects.")
+  }
+
+  # Random-effect variances: random_var is a list of per-term covariance
+  # matrices; take the diagonal (variances) of each
+  .re_variances <- function(rv) {
+    unlist(lapply(rv, function(m) {
+      if (is.matrix(m)) diag(m) else as.numeric(m)
+    }))
+  }
+
+  fam <- object$family$family
+  if (is.null(fam)) {
+    fam <- if (inherits(object, "gllamm_binomial")) "binomial" else "gaussian"
   }
 
   # For Gaussian models
-  if (object$family$family == "gaussian") {
+  if (fam == "gaussian") {
     # Residual variance
     resid_var <- var(residuals(object))
 
     # Random effects variance
-    re_vars <- unlist(object$coefficients$random_var)
+    re_vars <- .re_variances(object$coefficients$random_var)
 
     # Total variance
     total_var <- sum(re_vars) + resid_var
@@ -279,12 +303,12 @@ icc <- function(object, ...) {
 
     # Approximate ICC for GLMMs
     # Use latent variable formulation
-    re_vars <- unlist(object$coefficients$random_var)
+    re_vars <- .re_variances(object$coefficients$random_var)
 
-    if (object$family$family == "binomial") {
+    if (fam == "binomial") {
       # Logistic: residual variance = pi^2/3
       resid_var <- pi^2/3
-    } else if (object$family$family == "poisson") {
+    } else if (fam == "poisson") {
       # Use overdispersion approximation
       resid_var <- 1  # Approximate
     }
@@ -294,7 +318,7 @@ icc <- function(object, ...) {
 
     names(iccs) <- paste0("Level", seq_along(iccs))
 
-    cat("Approximate ICC (", object$family$family, "):\n", sep = "")
+    cat("Approximate ICC (", fam, "):\n", sep = "")
     print(round(iccs, 4))
 
     return(invisible(iccs))

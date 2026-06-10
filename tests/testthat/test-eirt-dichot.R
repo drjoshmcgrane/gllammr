@@ -1,6 +1,5 @@
 test_that("EIRT accepts valid input for Rasch model", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(123)
   n_persons <- 100
@@ -43,7 +42,6 @@ test_that("EIRT accepts valid input for Rasch model", {
 
 test_that("EIRT recovers known item covariate effects", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(456)
   n_persons <- 200
@@ -95,7 +93,6 @@ test_that("EIRT recovers known item covariate effects", {
 
 test_that("EIRT with 2PL model and discrimination covariates", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(789)
   n_persons <- 150
@@ -147,7 +144,6 @@ test_that("EIRT with 2PL model and discrimination covariates", {
 
 test_that("EIRT with multiple covariates", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(111)
   n_persons <- 120
@@ -197,7 +193,6 @@ test_that("EIRT with multiple covariates", {
 
 test_that("EIRT print method works", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(222)
   n_persons <- 100
@@ -227,7 +222,6 @@ test_that("EIRT print method works", {
 
 test_that("EIRT summary method works", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(333)
   n_persons <- 80
@@ -280,7 +274,6 @@ test_that("EIRT validates item_data dimensions", {
 
 test_that("EIRT with intercept-only formulas", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(555)
   n_persons <- 100
@@ -316,7 +309,6 @@ test_that("EIRT with intercept-only formulas", {
 
 test_that("EIRT handles missing data", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(666)
   n_persons <- 100
@@ -348,7 +340,6 @@ test_that("EIRT handles missing data", {
 
 test_that("EIRT residual standard deviations are positive", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(777)
   n_persons <- 100
@@ -377,7 +368,6 @@ test_that("EIRT residual standard deviations are positive", {
 
 test_that("EIRT comparison with two-stage approach", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(888)
   n_persons <- 150
@@ -428,7 +418,6 @@ test_that("EIRT comparison with two-stage approach", {
 
 test_that("EIRT with categorical item covariates", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(999)
   n_persons <- 120
@@ -473,7 +462,6 @@ test_that("EIRT with categorical item covariates", {
 
 test_that("EIRT convergence information is returned", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(1111)
   n_persons <- 80
@@ -501,7 +489,6 @@ test_that("EIRT convergence information is returned", {
 
 test_that("EIRT AIC and BIC are computed", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(1212)
   n_persons <- 100

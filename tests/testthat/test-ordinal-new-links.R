@@ -135,10 +135,11 @@ test_that("test_proportional_odds returns correct structure", {
 
   fit <- fit_ordinal(y ~ x + (1 | group), data = data, link = "logit")
 
-  # Test PO test (note: currently a placeholder)
-  expect_warning({
-    po_test <- test_proportional_odds(fit)
-  }, "PPO model fitting not yet fully implemented")
+  # PO test refits the model as PPO and runs a likelihood ratio test
+  # (requires the data and prints a progress message)
+  expect_output({
+    po_test <- test_proportional_odds(fit, data = data)
+  }, "partial proportional odds")
 
   expect_s3_class(po_test, "po_test")
   expect_true("statistic" %in% names(po_test))

@@ -145,8 +145,9 @@ test_that("composite abilities differ from person deviations", {
   # They should be different (group effects added to composite)
   expect_false(all(theta_0 == theta_comp))
 
-  # But should be correlated
-  expect_true(cor(theta_0, theta_comp) > 0.9)
+  # But should be correlated (theoretical cor with sigma_theta = 1 and
+  # sigma_u = 0.5 is 1/sqrt(1.25) ~ 0.89, lower still with estimation noise)
+  expect_true(cor(theta_0, theta_comp) > 0.7)
 })
 
 test_that("coef.gllamm_irt_multilevel works for item type", {

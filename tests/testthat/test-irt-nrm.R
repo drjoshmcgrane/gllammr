@@ -1,6 +1,5 @@
 test_that("NRM accepts unordered categorical data", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(123)
   n_persons <- 100
@@ -45,7 +44,6 @@ test_that("NRM accepts unordered categorical data", {
 
 test_that("NRM vs GRM on ordered data", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(456)
   n_persons <- 150
@@ -60,13 +58,9 @@ test_that("NRM vs GRM on ordered data", {
   responses <- matrix(NA, n_persons, n_items)
   for (i in 1:n_persons) {
     for (j in 1:n_items) {
-      probs <- numeric(n_categories)
-      probs[1] <- plogis(discrimination[j] * (theta[i] - thresholds[j, 1]))
-      for (k in 2:(n_categories-1)) {
-        probs[k] <- plogis(discrimination[j] * (theta[i] - thresholds[j, k])) -
-                    plogis(discrimination[j] * (theta[i] - thresholds[j, k-1]))
-      }
-      probs[n_categories] <- 1 - plogis(discrimination[j] * (theta[i] - thresholds[j, n_categories-1]))
+      # GRM: P(Y >= k+1) = plogis(a * (theta - b_k))
+      p_exceed <- c(1, plogis(discrimination[j] * (theta[i] - thresholds[j, ])), 0)
+      probs <- p_exceed[-length(p_exceed)] - p_exceed[-1]
       responses[i, j] <- sample(1:n_categories, 1, prob = probs)
     }
   }
@@ -86,7 +80,6 @@ test_that("NRM vs GRM on ordered data", {
 
 test_that("NRM handles truly unordered categories", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(789)
   n_persons <- 200
@@ -123,7 +116,6 @@ test_that("NRM handles truly unordered categories", {
 
 test_that("NRM with 5 unordered categories", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(111)
   n_persons <- 100
@@ -153,7 +145,6 @@ test_that("NRM with 5 unordered categories", {
 
 test_that("NRM print method", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(222)
   n_persons <- 60
@@ -172,7 +163,6 @@ test_that("NRM print method", {
 
 test_that("NRM with missing data", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(333)
   n_persons <- 100
@@ -195,7 +185,6 @@ test_that("NRM with missing data", {
 
 test_that("NRM parameter structure", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(444)
   n_persons <- 80
@@ -221,7 +210,6 @@ test_that("NRM parameter structure", {
 
 test_that("NRM convergence on difficult data", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(555)
   n_persons <- 50

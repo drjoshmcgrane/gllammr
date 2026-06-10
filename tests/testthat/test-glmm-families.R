@@ -1,6 +1,5 @@
 test_that("Binomial GLMM with logit link", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(123)
   n_groups <- 20
@@ -29,10 +28,9 @@ test_that("Binomial GLMM with logit link", {
 
 test_that("Binomial GLMM recovers parameters", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(456)
-  n_groups <- 30
+  n_groups <- 60
   n_per_group <- 15
 
   # Known parameters
@@ -55,15 +53,14 @@ test_that("Binomial GLMM recovers parameters", {
                 family = binomial())
 
   # Check parameter recovery (generous tolerance)
-  expect_equal(fixef(fit)["(Intercept)"], beta0, tolerance = 0.3)
-  expect_equal(fixef(fit)["x"], beta1, tolerance = 0.3)
-  expect_equal(sqrt(VarCorr(fit)[[1]]), sigma_u, tolerance = 0.4)
+  expect_equal(unname(fixef(fit)["(Intercept)"]), beta0, tolerance = 0.3)
+  expect_equal(unname(fixef(fit)["x"]), beta1, tolerance = 0.3)
+  expect_equal(sqrt(VarCorr(fit)[[1]][1, 1]), sigma_u, tolerance = 0.4)
 })
 
 
 test_that("Binomial GLMM with probit link", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(789)
   n_groups <- 15
@@ -90,7 +87,6 @@ test_that("Binomial GLMM with probit link", {
 
 test_that("Poisson GLMM with log link", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(111)
   n_groups <- 20
@@ -119,7 +115,6 @@ test_that("Poisson GLMM with log link", {
 
 test_that("Poisson GLMM recovers parameters", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(222)
   n_groups <- 25
@@ -145,15 +140,14 @@ test_that("Poisson GLMM recovers parameters", {
                 family = poisson())
 
   # Check parameter recovery
-  expect_equal(fixef(fit)["(Intercept)"], beta0, tolerance = 0.2)
-  expect_equal(fixef(fit)["x"], beta1, tolerance = 0.2)
-  expect_equal(sqrt(VarCorr(fit)[[1]]), sigma_u, tolerance = 0.3)
+  expect_equal(unname(fixef(fit)["(Intercept)"]), beta0, tolerance = 0.2)
+  expect_equal(unname(fixef(fit)["x"]), beta1, tolerance = 0.2)
+  expect_equal(sqrt(VarCorr(fit)[[1]][1, 1]), sigma_u, tolerance = 0.3)
 })
 
 
 test_that("GLMMs handle overdispersion", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(333)
   n_groups <- 30
@@ -175,13 +169,12 @@ test_that("GLMMs handle overdispersion", {
                 family = poisson())
 
   # Random effect variance should be positive
-  expect_true(VarCorr(fit)[[1]] > 0)
+  expect_true(VarCorr(fit)[[1]][1, 1] > 0)
 })
 
 
 test_that("Binomial fitted values are probabilities", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(444)
   n_groups <- 10
@@ -211,7 +204,6 @@ test_that("Binomial fitted values are probabilities", {
 
 test_that("Poisson fitted values are positive", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(555)
   n_groups <- 10

@@ -163,11 +163,24 @@ expand_nested_random_term <- function(parsed_term) {
 #' @keywords internal
 make_model_matrices <- function(parsed_formula, data) {
 
-  # Fixed effects design matrix
-  X <- model.matrix(parsed_formula$fixed_formula, data = data)
+  # Determine whether the response is available in `data` (it may be
+  # absent when building matrices for prediction on new data)
+  ff <- parsed_formula$fixed_formula
+  resp_vars <- all.vars(ff[[2L]])
+  has_response <- length(resp_vars) == 0 || all(resp_vars %in% names(data))
 
-  # Response
-  y <- model.response(model.frame(parsed_formula$fixed_formula, data = data))
+  if (has_response) {
+    # Fixed effects design matrix
+    X <- model.matrix(ff, data = data)
+
+    # Response
+    y <- model.response(model.frame(ff, data = data))
+  } else {
+    tt <- stats::delete.response(stats::terms(ff, data = data))
+    mf <- model.frame(tt, data = data)
+    X <- model.matrix(tt, mf)
+    y <- NULL
+  }
 
   # Random effects design matrices
   Z_list <- list()
@@ -203,7 +216,7 @@ make_model_matrices <- function(parsed_formula, data) {
     y = y,
     Z = Z_list,
     groups = groups_list,
-    n_obs = length(y),
+    n_obs = nrow(X),
     n_fixed = ncol(X),
     n_random_terms = length(Z_list),
     n_random_coefs = n_random_coefs,

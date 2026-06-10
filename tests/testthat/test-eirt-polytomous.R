@@ -155,7 +155,7 @@ test_that("EIRT with GPCM model (adjacent-categories + discrimination)", {
 })
 
 
-test_that("EIRT with LPCM model (threshold-difficulty regression)", {
+test_that("EIRT PCM with threshold_formula (threshold-difficulty regression)", {
   skip_if_not_installed("TMB")
 
   set.seed(202)
@@ -177,13 +177,13 @@ test_that("EIRT with LPCM model (threshold-difficulty regression)", {
     item_data = item_data,
     difficulty_formula = ~ abstractness,
     threshold_formula = ~ cognitive_level,
-    model = "LPCM"
+    model = "PCM"
   )
 
   expect_s3_class(fit, "gllamm_eirt")
-  expect_equal(fit$model, "LPCM")
+  expect_equal(fit$model, "PCM")
 
-  # LPCM should have threshold regression coefficients
+  # PCM with threshold predictors should have threshold regression coefficients
   xi_hat <- fit$regression_coefficients$threshold
   expect_false(is.null(xi_hat))
   expect_equal(nrow(xi_hat), 2)  # 2 predictors (intercept + cognitive_level)

@@ -22,7 +22,7 @@ test_that("fit() generic dispatches correctly", {
 
   # Test that fit() works
   expect_silent(fit_stats_glmm <- fit(fit_glmm, quiet = TRUE))
-  expect_silent(fit_stats_ord <- fit(fit_ord))
+  expect_silent(fit_stats_ord <- fit(fit_ord, test_po = FALSE))
 
   # Check classes
   expect_s3_class(fit_stats_glmm, "fit_statistics")
@@ -108,13 +108,15 @@ test_that("fit() for ordinal models includes PO test when requested", {
 
   fit_model <- fit_ordinal(y ~ x + (1 | group), data = data, link = "logit")
 
-  # With PO test (default for logit/probit)
-  expect_warning({
+  # With PO test (default for logit/probit): refits the model as PPO and
+  # reports a likelihood ratio test (prints a progress message)
+  expect_output({
     fit_stats <- fit(fit_model, test_po = TRUE)
-  }, "PPO model fitting not yet fully implemented")
+  }, "partial proportional odds")
 
   expect_true("proportional_odds_test" %in% names(fit_stats))
   expect_s3_class(fit_stats$proportional_odds_test, "po_test")
+  expect_true(is.finite(fit_stats$proportional_odds_test$p_value))
 
   # Without PO test
   fit_stats_no_po <- fit(fit_model, test_po = FALSE)

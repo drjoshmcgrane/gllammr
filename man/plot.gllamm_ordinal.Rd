@@ -24,7 +24,7 @@ category probabilities, threshold parameters, and covariate effects
 \details{
 Plot types:
 \itemize{
-  \item \code{which = 1}: Cumulative Probabilities P(Y ≤ k) vs covariate
+  \item \code{which = 1}: Cumulative Probabilities P(Y <= k) vs covariate
   \item \code{which = 2}: Category Probabilities P(Y = k) vs covariate
   \item \code{which = 3}: Threshold Parameters on latent scale
   \item \code{which = 4}: Covariate Effects (shows non-proportional effects for PPO)

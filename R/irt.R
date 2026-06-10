@@ -606,6 +606,8 @@ fit_irt_polytomous <- function(response_matrix, model, weights, re_info, start, 
   # Validate and auto-recode response coding (should be 1, 2, ..., K)
   needs_recoding <- FALSE
   recode_items <- integer(0)
+  unobserved_cat_items <- integer(0)
+  constant_items <- integer(0)
 
   for (j in 1:n_items) {
     item_vals <- unique(response_matrix[!is.na(response_matrix[, j]), j])
@@ -618,8 +620,20 @@ fit_irt_polytomous <- function(response_matrix, model, weights, re_info, start, 
       needs_recoding <- TRUE
       recode_items <- c(recode_items, j)
     }
-    # Check if properly coded 1-based
-    else if (min_val != 1 || max_val != n_cats) {
+    # Properly coded 1-based with all categories observed
+    else if (min_val == 1 && max_val == n_cats) {
+      # OK
+    }
+    # 1-based coding but some intermediate categories never observed:
+    # treat the item as having max_val categories
+    else if (min_val == 1 && max_val > n_cats) {
+      unobserved_cat_items <- c(unobserved_cat_items, j)
+    }
+    # Constant item (every respondent chose the same category)
+    else if (n_cats == 1 && min_val >= 1) {
+      constant_items <- c(constant_items, j)
+    }
+    else {
       stop("Item ", j, " has invalid response coding. ",
            "Found range [", min_val, ", ", max_val, "] but expected [1, ", n_cats, "] ",
            "for ", n_cats, "-category item. ",
@@ -640,6 +654,24 @@ fit_irt_polytomous <- function(response_matrix, model, weights, re_info, start, 
       length(unique(x[!is.na(x)]))
     })
   }
+
+  # Items with unobserved categories or no variance: use the maximum
+  # observed value as the number of categories
+  if (length(unobserved_cat_items) > 0) {
+    warning("Item(s) ", paste(unobserved_cat_items, collapse = ", "),
+            " have response categories that were never observed. ",
+            "Treating the maximum observed value as the number of categories; ",
+            "thresholds for unobserved categories are weakly identified.")
+  }
+  if (length(constant_items) > 0) {
+    warning("Item(s) ", paste(constant_items, collapse = ", "),
+            " have no response variance (all respondents chose the same ",
+            "category); their item parameters are not identified.")
+  }
+  for (j in c(unobserved_cat_items, constant_items)) {
+    n_categories_per_item[j] <- as.integer(max(response_matrix[, j], na.rm = TRUE))
+  }
+  max_categories <- max(n_categories_per_item)
 
   # Convert to long format
   y_long <- as.vector(t(response_matrix))
@@ -710,15 +742,19 @@ fit_irt_polytomous <- function(response_matrix, model, weights, re_info, start, 
     for (j in 1:n_items) {
       K <- n_categories_per_item[j]
       if (K > 1) {
-        # Get category proportions
+        # Get smoothed category proportions over the full 1..K range
+        # (unobserved categories get a small positive mass so that the
+        # initial thresholds stay finite)
         item_responses <- response_matrix[, j]
-        cat_props <- table(item_responses) / sum(!is.na(item_responses))
+        cat_counts <- table(factor(item_responses, levels = 1:K))
+        n_j <- sum(!is.na(item_responses))
+        cat_props <- (as.numeric(cat_counts) + 0.5) / (n_j + 0.5 * K)
 
         # Compute cumulative proportions
         cum_props <- cumsum(cat_props)
 
-        # Inverse logit to get thresholds
-        thresholds <- qlogis(cum_props[-K])
+        # Inverse logit to get thresholds (clamped away from 0/1)
+        thresholds <- qlogis(pmin(pmax(cum_props[-K], 1e-3), 1 - 1e-3))
 
         if (model %in% c("PCM", "GPCM")) {
           # PCM/GPCM: threshold_raw stores free step difficulties directly

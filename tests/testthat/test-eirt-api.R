@@ -121,9 +121,16 @@ test_that("2PL with discrimination predictors works", {
   expect_s3_class(fit_2pl, "gllamm_eirt")
   expect_equal(fit_2pl$model, "2PL")
 
-  # Should have both gamma (difficulty) and delta (discrimination) coefficients
-  expect_true("gamma" %in% names(fit_2pl$coefficients))
-  expect_true("delta" %in% names(fit_2pl$coefficients))
+  # Should have both difficulty (gamma) and discrimination (delta)
+  # regression coefficients
+  gamma_hat <- fit_2pl$regression_coefficients$difficulty
+  delta_hat <- fit_2pl$regression_coefficients$discrimination
+  expect_false(is.null(gamma_hat))
+  expect_false(is.null(delta_hat))
+  expect_true(all(is.finite(gamma_hat)))
+  expect_true(all(is.finite(delta_hat)))
+  expect_true("difficulty_covar" %in% names(gamma_hat))
+  expect_true("discrimination_covar" %in% names(delta_hat))
 })
 
 test_that("LPCM model name is rejected", {

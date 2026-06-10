@@ -231,12 +231,13 @@ test_that("Marginal predictions: input validation", {
     }
   )
 
-  # Invalid n_sim
+  # Invalid n_sim must give an informative error
   expect_error(
     predict(fit, type = "marginal", n_sim = -1),
-    NA  # May or may not error depending on validation
+    "n_sim"
   )
-
-  # n_sim = 0 should work but give warning or error
-  # (implementation choice - skip this test for now)
+  expect_error(
+    predict(fit, type = "marginal", n_sim = 0),
+    "n_sim"
+  )
 })

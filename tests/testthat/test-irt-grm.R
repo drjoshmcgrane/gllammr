@@ -1,6 +1,5 @@
 test_that("GRM accepts valid polytomous input", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(123)
   n_persons <- 100
@@ -22,19 +21,9 @@ test_that("GRM accepts valid polytomous input", {
   for (i in 1:n_persons) {
     for (j in 1:n_items) {
       # Compute probabilities for each category
-      probs <- numeric(n_categories)
-
-      # P(Y = 1)
-      probs[1] <- plogis(discrimination[j] * (theta[i] - thresholds[j, 1]))
-
-      # P(Y = k) for k = 2, ..., K-1
-      for (k in 2:(n_categories-1)) {
-        probs[k] <- plogis(discrimination[j] * (theta[i] - thresholds[j, k])) -
-                    plogis(discrimination[j] * (theta[i] - thresholds[j, k-1]))
-      }
-
-      # P(Y = K)
-      probs[n_categories] <- 1 - plogis(discrimination[j] * (theta[i] - thresholds[j, n_categories-1]))
+      # GRM: P(Y >= k+1) = plogis(a * (theta - b_k)) for k = 1, ..., K-1
+      p_exceed <- c(1, plogis(discrimination[j] * (theta[i] - thresholds[j, ])), 0)
+      probs <- p_exceed[-length(p_exceed)] - p_exceed[-1]
 
       # Sample response
       responses[i, j] <- sample(1:n_categories, 1, prob = probs)
@@ -55,7 +44,6 @@ test_that("GRM accepts valid polytomous input", {
 
 test_that("GRM parameter recovery with known parameters", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(456)
   n_persons <- 500
@@ -71,13 +59,10 @@ test_that("GRM parameter recovery with known parameters", {
   responses <- matrix(NA, n_persons, n_items)
   for (i in 1:n_persons) {
     for (j in 1:n_items) {
-      probs <- numeric(n_categories)
-      probs[1] <- plogis(true_discrimination[j] * (true_theta[i] - true_thresholds[j, 1]))
-      for (k in 2:(n_categories-1)) {
-        probs[k] <- plogis(true_discrimination[j] * (true_theta[i] - true_thresholds[j, k])) -
-                    plogis(true_discrimination[j] * (true_theta[i] - true_thresholds[j, k-1]))
-      }
-      probs[n_categories] <- 1 - plogis(true_discrimination[j] * (true_theta[i] - true_thresholds[j, n_categories-1]))
+      # GRM: P(Y >= k+1) = plogis(a * (theta - b_k))
+      p_exceed <- c(1, plogis(true_discrimination[j] *
+                                (true_theta[i] - true_thresholds[j, ])), 0)
+      probs <- p_exceed[-length(p_exceed)] - p_exceed[-1]
       responses[i, j] <- sample(1:n_categories, 1, prob = probs)
     }
   }
@@ -105,7 +90,6 @@ test_that("GRM parameter recovery with known parameters", {
 
 test_that("GRM handles different numbers of categories", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(789)
   n_persons <- 80
@@ -140,7 +124,6 @@ test_that("GRM handles different numbers of categories", {
 
 test_that("GRM handles missing data", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(111)
   n_persons <- 100
@@ -166,7 +149,6 @@ test_that("GRM handles missing data", {
 
 test_that("GRM print method works for polytomous models", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(222)
   n_persons <- 50
@@ -208,7 +190,6 @@ test_that("GRM validates response coding", {
 
 test_that("GRM model type dispatch works correctly", {
   skip_if_not_installed("TMB")
-  skip("TMB compilation required")
 
   set.seed(444)
   n_persons <- 50

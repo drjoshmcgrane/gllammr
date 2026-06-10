@@ -93,6 +93,12 @@ Type gllamm_irt_poly_multilevel(objective_function<Type>* obj)
       for (int g = 0; g < n_groups_re; g++) {
         nll -= dnorm(u_random(g, re), Type(0.0), sigma_re, true);
       }
+      // Unused padding cells (levels with fewer groups than max_n_groups):
+      // standard-normal prior keeps the Laplace Hessian positive definite
+      // without changing the marginal likelihood.
+      for (int g = n_groups_re; g < u_random.rows(); g++) {
+        nll -= dnorm(u_random(g, re), Type(0.0), Type(1.0), true);
+      }
     }
   }
 

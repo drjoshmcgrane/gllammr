@@ -247,6 +247,11 @@ simulate.gllamm <- function(object,
 #' @keywords internal
 predict_marginal_gllamm <- function(object, newdata = NULL, n_sim = 1000, se.fit = FALSE) {
 
+  if (!is.numeric(n_sim) || length(n_sim) != 1 || !is.finite(n_sim) || n_sim < 1) {
+    stop("'n_sim' must be a positive integer")
+  }
+  n_sim <- as.integer(n_sim)
+
   # Special case: Gaussian with identity link
   # Marginal = conditional for linear models
   if (object$family$family == "gaussian" && object$family$link == "identity") {
@@ -271,10 +276,11 @@ predict_marginal_gllamm <- function(object, newdata = NULL, n_sim = 1000, se.fit
 
   # Get model matrices
   if (is.null(newdata)) {
-    X <- object$X
-    # Construct Z for original data
+    # Construct X/Z for original data (some fit objects, e.g. fit_binomial
+    # results, do not store the design matrix)
     parsed <- parse_formula(object$formula, object$data)
     model_data <- make_model_matrices(parsed, object$data)
+    X <- if (!is.null(object$X)) object$X else model_data$X
     Z <- model_data$Z[[1]]
   } else {
     parsed <- parse_formula(object$formula, newdata)

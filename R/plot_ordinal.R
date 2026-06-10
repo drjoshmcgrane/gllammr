@@ -20,7 +20,7 @@ NULL
 #' @details
 #' Plot types:
 #' \itemize{
-#'   \item \code{which = 1}: Cumulative Probabilities P(Y ≤ k) vs covariate
+#'   \item \code{which = 1}: Cumulative Probabilities P(Y <= k) vs covariate
 #'   \item \code{which = 2}: Category Probabilities P(Y = k) vs covariate
 #'   \item \code{which = 3}: Threshold Parameters on latent scale
 #'   \item \code{which = 4}: Covariate Effects (shows non-proportional effects for PPO)
@@ -53,7 +53,7 @@ plot.gllamm_ordinal <- function(x, which = 1:3, covariate = NULL,
     }
 
     covariate <- covar_names[covar_names != "(Intercept)"][1]
-    if (is.na(covariate)) {
+    if (length(covariate) == 0 || is.na(covariate)) {
       stop("No covariates found in model. Specify covariate argument.")
     }
   }
@@ -147,7 +147,7 @@ plot_cumulative_probs_ordinal <- function(x, covariate, covariate_values, ...) {
   plot(covariate_values, rep(0, length(covariate_values)), type = "n",
        xlab = covariate,
        ylab = "Cumulative Probability",
-       main = paste("P(Y ≤ k) vs", covariate),
+       main = paste("P(Y <= k) vs", covariate),
        ylim = c(0, 1),
        las = 1)
 
@@ -164,7 +164,7 @@ plot_cumulative_probs_ordinal <- function(x, covariate, covariate_values, ...) {
 
   # Add legend
   legend("right",
-         legend = paste("P(Y ≤", 1:(n_categories - 1), ")"),
+         legend = paste("P(Y <=", 1:(n_categories - 1), ")"),
          col = colors,
          lwd = 2,
          bty = "n")
