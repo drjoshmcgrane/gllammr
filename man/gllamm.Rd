@@ -10,6 +10,7 @@ gllamm(
   family = gaussian(),
   weights = NULL,
   random = NULL,
+  integration = NULL,
   start = NULL,
   control = list(),
   ...

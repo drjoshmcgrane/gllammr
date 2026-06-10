@@ -114,6 +114,7 @@ gllamm <- function(formula,
                    family = gaussian(),
                    weights = NULL,
                    random = NULL,
+                   integration = NULL,
                    start = NULL,
                    control = list(),
                    ...) {
@@ -225,8 +226,19 @@ gllamm <- function(formula,
   # Create model matrices
   model_data <- make_model_matrices(parsed, data)
 
-  # Fit model using TMB (use v2 interface if available)
-  if (exists("fit_tmb_gllamm_v2")) {
+  # Adaptive quadrature integration (Laplace is the default)
+  if (inherits(integration, "gllamm_integration") &&
+      identical(integration$method, "aghq")) {
+    fit_result <- fit_tmb_gllamm_aghq(
+      model_data = model_data,
+      family = family,
+      random_terms = parsed$random_terms,
+      k = integration$k,
+      start_params = start,
+      control = control,
+      weights = weights
+    )
+  } else if (exists("fit_tmb_gllamm_v2")) {
     fit_result <- fit_tmb_gllamm_v2(
       model_data = model_data,
       family = family,

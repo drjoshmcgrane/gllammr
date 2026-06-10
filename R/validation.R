@@ -14,7 +14,7 @@
 #'   "poisson_grouseticks", "ordinal_wine", "rasch_lsat", "twopl_simulated",
 #'   "lca_carcinoma", "grm_science", "gamma_simulated",
 #'   "survival_exponential", "sem_lavaan", "lca_polytomous",
-#'   "npml_binomial".
+#'   "npml_binomial", "aghq_binomial".
 #' @param verbose Print progress messages (default TRUE)
 #'
 #' @return Data frame with one row per compared statistic: case, statistic,
@@ -34,7 +34,7 @@ gllammr_validate <- function(cases = "all", verbose = TRUE) {
                  "poisson_grouseticks", "ordinal_wine", "rasch_lsat",
                  "twopl_simulated", "lca_carcinoma", "grm_science",
                  "gamma_simulated", "survival_exponential", "sem_lavaan",
-                 "lca_polytomous", "npml_binomial")
+                 "lca_polytomous", "npml_binomial", "aghq_binomial")
   if (identical(cases, "all")) cases <- all_cases
   unknown <- setdiff(cases, all_cases)
   if (length(unknown) > 0) {
@@ -496,5 +496,37 @@ gllammr_validate <- function(cases = "all", verbose = TRUE) {
              fit$masses[1], unname(ref_masses[1]), 1e-2),
     .val_row("npml_binomial", "logLik",
              fit$logLik, -ref$disparity / 2, 0.1, relative = FALSE)
+  )
+}
+
+
+#' @keywords internal
+.validate_aghq_binomial <- function() {
+  if (!requireNamespace("lme4", quietly = TRUE)) {
+    return(NULL)
+  }
+  # Small clusters + large sigma_u: where Laplace is weakest and adaptive
+  # quadrature matters. glmer with the same nAGQ is the reference.
+  set.seed(131)
+  g <- 100; n_per <- 6; n <- g * n_per
+  grp <- factor(rep(1:g, each = n_per))
+  x <- rnorm(n)
+  u <- rnorm(g, 0, 2)
+  d <- data.frame(x = x, grp = grp,
+                  yb = rbinom(n, 1, plogis(-0.5 + 0.8 * x + u[as.integer(grp)])))
+
+  fit <- gllamm(yb ~ x + (1 | grp), data = d, family = stats::binomial(),
+                integration = aghq(15))
+  ref <- lme4::glmer(yb ~ x + (1 | grp), data = d,
+                     family = stats::binomial(), nAGQ = 15)
+
+  rbind(
+    .val_row("aghq_binomial", "beta_x",
+             unname(coef(fit)$fixed[2]), unname(lme4::fixef(ref)[2]), 2e-3),
+    .val_row("aghq_binomial", "sigma_u",
+             sqrt(fit$coefficients$random_var[[1]][1, 1]),
+             unname(attr(lme4::VarCorr(ref)$grp, "stddev")), 5e-3),
+    .val_row("aghq_binomial", "logLik",
+             fit$logLik, as.numeric(logLik(ref)), 0.05, relative = FALSE)
   )
 }
