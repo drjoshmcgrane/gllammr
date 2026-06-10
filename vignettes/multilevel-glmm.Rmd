@@ -19,6 +19,8 @@ knitr::opts_chunk$set(
 
 ## Introduction
 
+Note: the code in this vignette is illustrative and is not evaluated when the vignette is built.
+
 This vignette covers multilevel generalized linear mixed models (GLMMs) for hierarchical data.
 
 ## Two-Level Models

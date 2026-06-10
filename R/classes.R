@@ -133,7 +133,8 @@ logLik.gllamm <- function(object, ...) {
 #' @export
 #' @rdname gllamm-class
 fitted.gllamm <- function(object, ...) {
-  object$fitted.values
+  # Some fitters (e.g. fit_binomial) store fitted_values instead
+  if (is.null(object$fitted.values)) object$fitted_values else object$fitted.values
 }
 
 
@@ -143,7 +144,7 @@ residuals.gllamm <- function(object, type = c("response", "pearson", "deviance")
   type <- match.arg(type)
 
   y <- object$y
-  mu <- object$fitted.values
+  mu <- fitted(object)
 
   switch(type,
     response = y - mu,

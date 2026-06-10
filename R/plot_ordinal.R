@@ -71,8 +71,8 @@ plot.gllamm_ordinal <- function(x, which = 1:3, covariate = NULL,
 
   # Set up plotting area if multiple plots
   if (length(which) > 1) {
-    old_par <- par(no.readonly = TRUE)
-    on.exit(par(old_par))
+    oldpar <- par(no.readonly = TRUE)
+    on.exit(par(oldpar), add = TRUE)
 
     if (length(which) == 2) {
       par(mfrow = c(1, 2))

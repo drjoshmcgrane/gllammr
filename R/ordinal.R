@@ -531,6 +531,8 @@ fit_multinomial <- function(formula, data, reference = NULL,
     ),
     n_obs = model_data$n_obs,
     formula = formula,
+    data = data,
+    X = as.matrix(model_data$X),
     tmb_obj = obj,
     tmb_opt = opt,
     tmb_sdr = sdr

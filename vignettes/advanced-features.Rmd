@@ -19,6 +19,8 @@ knitr::opts_chunk$set(
 
 ## Mixed Response Models
 
+Note: the code in this vignette is illustrative and is not evaluated when the vignette is built.
+
 Multiple outcomes of different types:
 
 ```{r}

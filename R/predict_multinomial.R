@@ -20,6 +20,18 @@
 #'     \item{marginal: Matrix of marginal probabilities (n_obs × n_categories)}
 #'   }
 #'
+#' @rdname predict_multinomial
+#' @export
+predict.gllamm_multinomial <- function(object,
+                                       newdata = NULL,
+                                       type = c("class", "probs", "marginal"),
+                                       n_sim = 1000,
+                                       ...) {
+  predict_multinomial(object, newdata = newdata, type = type,
+                      n_sim = n_sim, ...)
+}
+
+
 #' @keywords internal
 predict_multinomial <- function(object,
                                newdata = NULL,
@@ -30,7 +42,7 @@ predict_multinomial <- function(object,
 
   # Extract model components
   n_categories <- object$n_categories
-  beta <- object$coefficients$beta_matrix  # (n_categories-1) × n_fixed matrix
+  beta <- object$coefficients$beta  # (n_categories-1) × n_fixed matrix
   n_fixed <- ncol(beta)
 
   # Get model matrices

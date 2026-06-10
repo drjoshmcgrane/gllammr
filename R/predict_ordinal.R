@@ -54,7 +54,7 @@ predict.gllamm_ordinal <- function(object,
 
   # Get model matrices
   if (is.null(newdata)) {
-    X <- object$X
+    X <- drop_intercept_column(object$X)  # thresholds carry the location
     # Need to reconstruct Z for original data
     parsed <- parse_formula(object$formula, object$data)
     model_data <- make_model_matrices(parsed, object$data)

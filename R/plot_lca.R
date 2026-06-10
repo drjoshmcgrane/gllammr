@@ -40,8 +40,8 @@ plot.gllamm_lca <- function(x, which = 1:3, ...) {
 
   # Set up plotting area if multiple plots
   if (length(which) > 1) {
-    old_par <- par(no.readonly = TRUE)
-    on.exit(par(old_par))
+    oldpar <- par(no.readonly = TRUE)
+    on.exit(par(oldpar), add = TRUE)
 
     if (length(which) == 2) {
       par(mfrow = c(1, 2))
@@ -65,11 +65,13 @@ plot.gllamm_lca <- function(x, which = 1:3, ...) {
 #' @keywords internal
 plot_class_profiles_lca <- function(x, ...) {
 
-  # Item probabilities: matrix of n_classes x n_items
-  item_probs <- x$item_probs
+  # Item probabilities: stored as n_items x n_classes; transpose to
+  # n_classes x n_items for plotting
+  item_probs <- t(x$item_probs)
+  n_classes <- x$nclass
 
   # Colors for each class
-  colors <- rainbow(x$n_classes)
+  colors <- rainbow(n_classes)
 
   # Plot setup
   n_items <- ncol(item_probs)
@@ -91,14 +93,14 @@ plot_class_profiles_lca <- function(x, ...) {
   abline(h = c(0.25, 0.5, 0.75), lty = 2, col = "gray70")
 
   # Plot each class as a line
-  for (k in 1:x$n_classes) {
+  for (k in 1:n_classes) {
     lines(1:n_items, item_probs[k, ],
           type = "b", pch = 19, col = colors[k], lwd = 2)
   }
 
   # Add legend
   legend("topright",
-         legend = paste("Class", 1:x$n_classes),
+         legend = paste("Class", 1:n_classes),
          col = colors,
          lwd = 2,
          pch = 19,
@@ -110,8 +112,9 @@ plot_class_profiles_lca <- function(x, ...) {
 #' @keywords internal
 plot_item_probabilities_lca <- function(x, ...) {
 
-  # Item probabilities: n_classes x n_items
-  item_probs <- x$item_probs
+  # Item probabilities: stored as n_items x n_classes; transpose to
+  # n_classes x n_items so downstream code sees the expected orientation
+  item_probs <- t(x$item_probs)
 
   # Transpose for better visualization (items on x-axis)
   item_probs_t <- t(item_probs)
@@ -174,16 +177,17 @@ plot_item_probabilities_lca <- function(x, ...) {
 plot_classification_lca <- function(x, ...) {
 
   # Get posterior probabilities
-  posterior <- x$posterior_probs
+  posterior <- x$posterior
+  n_classes <- x$nclass
 
   # Assign each person to most likely class
   modal_class <- apply(posterior, 1, which.max)
 
   # Count assignments
-  class_counts <- table(factor(modal_class, levels = 1:x$n_classes))
+  class_counts <- table(factor(modal_class, levels = 1:n_classes))
 
   # Create barplot
-  colors <- rainbow(x$n_classes)
+  colors <- rainbow(n_classes)
 
   bp <- barplot(class_counts,
                 main = "Class Assignments (Modal)",
@@ -192,7 +196,7 @@ plot_classification_lca <- function(x, ...) {
                 col = colors,
                 border = "white",
                 las = 1,
-                names.arg = paste("Class", 1:x$n_classes))
+                names.arg = paste("Class", 1:n_classes))
 
   # Add counts on top of bars
   text(bp, class_counts, labels = class_counts,
@@ -205,10 +209,10 @@ plot_classification_lca <- function(x, ...) {
        cex = 0.9, col = "white", font = 2)
 
   # Add classification quality info
-  if (!is.null(x$posterior_probs)) {
+  if (!is.null(posterior)) {
     # Compute entropy
     entropy_raw <- -sum(posterior * log(posterior + 1e-10), na.rm = TRUE)
-    max_entropy <- nrow(posterior) * log(x$n_classes)
+    max_entropy <- nrow(posterior) * log(n_classes)
     entropy <- 1 - entropy_raw / max_entropy
 
     # Add text box with entropy
@@ -242,11 +246,11 @@ plot_classification_lca <- function(x, ...) {
 #' }
 #'
 #' @export
-plot_classification_uncertainty <- function(x, cases = 1:min(20, nrow(x$posterior_probs)),
+plot_classification_uncertainty <- function(x, cases = 1:min(20, nrow(x$posterior)),
                                            sort_by = c("entropy", "modal", "index"), ...) {
 
   sort_by <- match.arg(sort_by)
-  posterior <- x$posterior_probs
+  posterior <- x$posterior
 
   # Ensure cases are valid
   cases <- cases[cases <= nrow(posterior)]
@@ -266,7 +270,7 @@ plot_classification_uncertainty <- function(x, cases = 1:min(20, nrow(x$posterio
   post_subset <- posterior[cases, , drop = FALSE]
 
   # Create stacked barplot
-  colors <- rainbow(x$n_classes)
+  colors <- rainbow(x$nclass)
 
   barplot(t(post_subset),
           main = "Classification Probabilities",
@@ -280,7 +284,7 @@ plot_classification_uncertainty <- function(x, cases = 1:min(20, nrow(x$posterio
 
   # Add legend
   legend("topright",
-         legend = paste("Class", 1:x$n_classes),
+         legend = paste("Class", 1:x$nclass),
          fill = colors,
          bty = "n")
 

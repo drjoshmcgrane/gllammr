@@ -6,7 +6,7 @@
 \usage{
 plot_classification_uncertainty(
   x,
-  cases = 1:min(20, nrow(x$posterior_probs)),
+  cases = 1:min(20, nrow(x$posterior)),
   sort_by = c("entropy", "modal", "index"),
   ...
 )

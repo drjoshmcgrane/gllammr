@@ -36,6 +36,9 @@ plot.gllamm <- function(x, which = c(1, 2, 3, 5), ...) {
 
   # Set up plotting area
   if (length(which) > 1) {
+    oldpar <- par(no.readonly = TRUE)
+    on.exit(par(oldpar), add = TRUE)
+
     n_plots <- length(which)
     n_rows <- ceiling(sqrt(n_plots))
     n_cols <- ceiling(n_plots / n_rows)
@@ -121,9 +124,6 @@ plot.gllamm <- function(x, which = c(1, 2, 3, 5), ...) {
       }
     }
   }
-
-  # Reset par
-  par(mfrow = c(1, 1))
 
   invisible(x)
 }

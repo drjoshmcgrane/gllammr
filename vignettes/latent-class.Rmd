@@ -19,6 +19,8 @@ knitr::opts_chunk$set(
 
 ## Introduction to Latent Class Analysis
 
+Note: the code in this vignette is illustrative and is not evaluated when the vignette is built.
+
 Latent Class Analysis (LCA) is a statistical method for identifying unobserved subgroups (latent classes) within a population based on responses to categorical variables.
 
 ### Key Concepts

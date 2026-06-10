@@ -65,8 +65,8 @@ predict.gllamm <- function(object,
       return(object$random_effects)
     } else if (type == "response" || type == "link") {
       if (is.null(re.form) || (!is.na(re.form) && !identical(re.form, ~0))) {
-        # Include random effects
-        return(object$fitted.values)
+        # Include random effects (some fitters store fitted_values)
+        return(fitted(object))
       } else {
         # Exclude random effects - fixed effects only
         fixed_pred <- as.numeric(object$X %*% object$coefficients$fixed)

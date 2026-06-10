@@ -12,11 +12,14 @@ vignette: >
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
-  comment = "#>"
+  comment = "#>",
+  eval = FALSE
 )
 ```
 
 ## Introduction
+
+Note: the code in this vignette is illustrative and is not evaluated when the vignette is built.
 
 GLLAMMR supports two types of weights for all model families:
 

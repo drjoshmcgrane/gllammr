@@ -50,8 +50,8 @@ plot.gllamm_irt <- function(x, which = 1:4, items = NULL, ...) {
 
   # Set up plotting area if multiple plots
   if (length(which) > 1) {
-    old_par <- par(no.readonly = TRUE)
-    on.exit(par(old_par))
+    oldpar <- par(no.readonly = TRUE)
+    on.exit(par(oldpar), add = TRUE)
 
     n_plots <- length(which)
     if (n_plots <= 4) {
@@ -179,32 +179,20 @@ plot_iif_irt <- function(x, items, ...) {
   theta_seq <- seq(-4, 4, length.out = 200)
   colors <- rainbow(length(items))
 
-  # Initialize plot
-  plot(theta_seq, rep(0, length(theta_seq)), type = "n",
-       xlab = expression(theta ~ "(Ability)"),
-       ylab = "Information",
-       main = "Item Information Functions",
-       ylim = c(0, NA),
-       las = 1)
-
-  grid(col = "gray90")
-
-  # Compute and plot information for each item
-  for (idx in seq_along(items)) {
-    item <- items[idx]
-
+  # Compute information for each item first (so ylim can be set)
+  info_list <- lapply(items, function(item) {
     if (x$model == "Rasch") {
       # I(theta) = P(theta)(1 - P(theta))
       b <- x$item_parameters$difficulty[item]
       p <- plogis(theta_seq - b)
-      info <- p * (1 - p)
+      p * (1 - p)
 
     } else if (x$model == "2PL") {
       # I(theta) = a² P(theta)(1 - P(theta))
       a <- x$item_parameters$discrimination[item]
       b <- x$item_parameters$difficulty[item]
       p <- plogis(a * (theta_seq - b))
-      info <- a^2 * p * (1 - p)
+      a^2 * p * (1 - p)
 
     } else if (x$model == "3PL") {
       # I(theta) = a²(1-c)² P*(1-P*) / [(1-c+cP*)²P]
@@ -213,14 +201,26 @@ plot_iif_irt <- function(x, items, ...) {
       c <- x$item_parameters$guessing[item]
       p <- plogis(a * (theta_seq - b))
       p_star <- c + (1 - c) * p
-      info <- a^2 * (1 - c)^2 * p * (1 - p) / p_star^2
+      a^2 * (1 - c)^2 * p * (1 - p) / p_star^2
 
     } else {
       # Polytomous: use numerical approximation
-      info <- rep(0.5, length(theta_seq))  # Placeholder
+      rep(0.5, length(theta_seq))  # Placeholder
     }
+  })
 
-    lines(theta_seq, info, col = colors[idx], lwd = 2)
+  # Initialize plot
+  plot(theta_seq, rep(0, length(theta_seq)), type = "n",
+       xlab = expression(theta ~ "(Ability)"),
+       ylab = "Information",
+       main = "Item Information Functions",
+       ylim = c(0, max(unlist(info_list), na.rm = TRUE)),
+       las = 1)
+
+  grid(col = "gray90")
+
+  for (idx in seq_along(items)) {
+    lines(theta_seq, info_list[[idx]], col = colors[idx], lwd = 2)
   }
 
   # Add legend
@@ -270,7 +270,8 @@ plot_tif_irt <- function(x, ...) {
   }
 
   # Two-panel plot: Information and SE
-  old_par <- par(no.readonly = TRUE)
+  oldpar <- par(no.readonly = TRUE)
+  on.exit(par(oldpar), add = TRUE)
   par(mfrow = c(1, 2))
 
   # Panel 1: Test Information
@@ -296,9 +297,6 @@ plot_tif_irt <- function(x, ...) {
        main = "Measurement Error",
        las = 1)
   grid(col = "gray90")
-
-  # Restore par
-  par(old_par)
 }
 
 

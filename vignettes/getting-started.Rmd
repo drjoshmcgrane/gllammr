@@ -13,7 +13,7 @@ vignette: >
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
-  eval = FALSE  # Set to TRUE when examples can run
+  eval = TRUE
 )
 ```
 
@@ -211,7 +211,7 @@ head(sim10)
 - See `vignette("multilevel-glmm")` for advanced GLMM features
 - See `vignette("irt-models")` for item response theory models
 - See `vignette("latent-class")` for latent class models
-- See `vignette("mixed-response")` for models with multiple outcomes
+- See `vignette("marginal-predictions")` for population-averaged predictions
 
 ## References
 

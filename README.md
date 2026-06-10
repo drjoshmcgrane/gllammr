@@ -1,68 +1,33 @@
 # GLLAMMR: Generalized Linear Latent and Mixed Models in R
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![R build status](https://github.com/yourusername/GLLAMMR/workflows/R-CMD-check/badge.svg)](https://github.com/yourusername/GLLAMMR/actions)
 
-Comprehensive R implementation of **Generalized Linear Latent and Mixed Models (GLLAMM)** following the Stata GLLAMM framework developed by Rabe-Hesketh, Skrondal, and Pickles.
+An R implementation of **Generalized Linear Latent and Mixed Models (GLLAMM)** following the Stata GLLAMM framework of Rabe-Hesketh, Skrondal, and Pickles, with a fast TMB (Template Model Builder) backend.
 
 ## Overview
 
-GLLAMMR provides a unified framework for fitting a wide class of multilevel latent variable models, including:
+GLLAMMR fits a wide class of multilevel latent variable models through one interface:
 
-- **Multilevel generalized linear models (GLMMs)**
-- **Factor models and confirmatory factor analysis (CFA)**
-- **Item response theory (IRT) models** (Rasch, 2PL, 3PL, GRM, PCM)
-- **Latent class models**
-- **Structural equation models (SEM)**
-- **Mixed response models** (multiple outcomes of different types)
-- **Joint models** (longitudinal + survival)
+- **Multilevel GLMMs** (Gaussian, binomial, Poisson, gamma; logit/probit/cloglog links)
+- **Ordinal and multinomial models** (cumulative, adjacent-category, continuation-ratio, partial proportional odds)
+- **Item response theory** (Rasch, 2PL, 3PL, GRM, PCM, GPCM, NRM), DIF analysis, explanatory IRT with item/person covariates, multilevel IRT
+- **Latent class analysis**, including mixed binary/categorical/continuous indicators
+- **Structural equation models** and **joint mixed-response models**
+- **Parametric survival/frailty models** (exponential, Weibull)
+- **Rank-ordered (exploded) logit** and **NPML mass-point** random effects
 
-### Key Features
-
-- **Fast computation** via Template Model Builder (TMB) with automatic differentiation
-- **lme4-style formula interface** for intuitive model specification
-- **Comprehensive model classes** supporting all major GLM families and link functions
-- **Flexible random effects** including nested, crossed, and factor structures
-- **Advanced integration** with adaptive Gaussian-Hermite quadrature
-- **Extensive validation** against Stata GLLAMM, lme4, mirt, poLCA, and lavaan
-- **Minimal dependencies** - standalone implementation without requiring lme4
+All models are estimated by maximum likelihood via TMB automatic differentiation with the Laplace approximation (optionally adaptive Gauss-Hermite quadrature). The C++ templates compile once at install time into a single shared library — no compilation happens at run time.
 
 ## Installation
 
-### Development Version
-
 ```r
-# Install from GitHub
 # install.packages("remotes")
 remotes::install_github("yourusername/GLLAMMR")
 ```
 
-### System Requirements
-
-GLLAMMR requires:
-- R >= 4.0.0
-- TMB >= 1.9.0
-- A C++ compiler (for TMB template compilation)
-
-#### Installing TMB
-
-```r
-install.packages("TMB")
-```
-
-#### Compiling TMB Templates
-
-After installing GLLAMMR, compile the TMB templates:
-
-```r
-library(GLLAMMR)
-# This will be done automatically on first use, or you can run:
-# TMB::compile(system.file("src/gllamm_gaussian.cpp", package = "GLLAMMR"))
-```
+Requires R >= 4.0.0, TMB >= 1.9.0, and a C++ compiler at install time (standard for source packages; Rtools on Windows, Xcode CLT on macOS).
 
 ## Quick Start
-
-### Basic GLMM
 
 ```r
 library(GLLAMMR)
@@ -70,341 +35,149 @@ library(GLLAMMR)
 # Gaussian GLMM with random intercept
 fit1 <- gllamm(y ~ x + (1 | group), data = mydata, family = gaussian())
 
-# Binomial GLMM (logistic regression)
+# Logistic GLMM
 fit2 <- gllamm(y ~ x + (1 | group), data = mydata, family = binomial())
 
-# Poisson GLMM (count data)
-fit3 <- gllamm(y ~ x + (1 | group), data = mydata, family = poisson())
-
-# Random slopes
-fit4 <- gllamm(y ~ x + (x | group), data = mydata)
+# Random intercept and slope
+fit3 <- gllamm(y ~ x + (x | group), data = mydata)
 
 summary(fit1)
+fixef(fit1)     # fixed effects
+ranef(fit1)     # random effects (empirical Bayes)
+VarCorr(fit1)   # variance components
 ```
 
-### Item Response Theory
+### Random slopes, nested, and crossed random effects
 
 ```r
-# Fit Rasch model
-fit_rasch <- fit_irt(response_matrix, model = "Rasch")
-
-# Fit 2PL model
-fit_2pl <- fit_irt(response_matrix, model = "2PL")
-
-# Fit 3PL model
-fit_3pl <- fit_irt(response_matrix, model = "3PL")
-
-# Extract item parameters
-fit_rasch$item_parameters
-
-# Extract person abilities
-fit_rasch$person_abilities
-```
-
-### Latent Class Analysis
-
-```r
-# Fit 2-class model
-fit_lca <- fit_lca(binary_data, nclass = 2)
-
-# Examine class probabilities
-fit_lca$class_probs
-
-# Examine item response probabilities
-fit_lca$item_probs
-
-# Get posterior class membership
-fit_lca$posterior
-
-summary(fit_lca)
-```
-
-### Random Intercept and Slope
-
-```r
-# Using the classic sleepstudy dataset
+# Random intercept + slope with full covariance (sleepstudy example)
 data(sleepstudy, package = "lme4")
+fit <- gllamm(Reaction ~ Days + (Days | Subject), data = sleepstudy)
 
-fit <- gllamm(
-  Reaction ~ Days + (Days | Subject),
-  data = sleepstudy,
-  family = gaussian()
-)
+# Nested: classes within schools
+fit_nested <- gllamm(score ~ ses + (1 | school/class), data = school_data)
 
-summary(fit)
-
-# Extract components
-fixef(fit)        # Fixed effects
-ranef(fit)        # Random effects (BLUPs)
-VarCorr(fit)      # Variance components
+# Crossed: persons crossed with items
+fit_crossed <- gllamm(correct ~ x + (1 | person) + (1 | item),
+                      data = test_data, family = stats::binomial())
 ```
-
-### Three-Level Model (Nested)
-
-```r
-# Students nested in classes nested in schools
-fit_nested <- gllamm(
-  score ~ ses + (1 | school/class),
-  data = school_data
-)
-```
-
-### Crossed Random Effects
-
-```r
-# Students crossed with items
-fit_crossed <- gllamm(
-  correct ~ difficulty + (1 | student) + (1 | item),
-  data = test_data,
-  family = binomial()
-)
-```
-
-## Advanced Features
-
-### Weights Support
-
-All GLLAMMR models support frequency weights and probability weights:
-
-```r
-# Frequency weights (aggregated data)
-fit_weighted <- gllamm(y ~ x + (1 | group),
-                       data = data,
-                       family = binomial(),
-                       weights = data$freq)
-
-# Probability weights (survey data)
-fit_survey <- gllamm(y ~ x + (1 | group),
-                    data = survey_data,
-                    family = binomial(),
-                    weights = survey_data$sampling_weight)
-
-# IRT models with person weights
-fit_irt_weighted <- fit_irt(responses,
-                            model = "2PL",
-                            weights = person_weights)
-```
-
-**Supported for all model families:**
-- GLMM (Gaussian, Binomial, Poisson)
-- IRT (Rasch, 2PL, 3PL, GRM, PCM, GPCM, NRM)
-- EIRT (Explanatory IRT)
-- Ordinal models
-- Latent class analysis
-- Multinomial models
-- Survival models
-
-See `vignette("weights")` for details.
-
-### Marginal Predictions
-
-Get population-averaged predictions by marginalizing over random effects:
-
-```r
-# Fit model
-fit <- gllamm(y ~ treatment + (1 | clinic),
-              data = data,
-              family = binomial())
-
-# Conditional predictions (at u=0)
-pred_cond <- predict(fit, type = "response")
-
-# Marginal predictions (population-averaged)
-pred_marg <- predict(fit, type = "marginal", n_sim = 1000)
-
-# For nonlinear links, these differ due to Jensen's inequality
-mean(pred_cond - pred_marg)  # Typically non-zero
-```
-
-**Available for all model families:**
-
-```r
-# IRT: Population-level item difficulty
-predict(fit_irt, type = "marginal", n_sim = 1000)
-
-# Ordinal: Population category probabilities
-predict(fit_ordinal, type = "marginal", n_sim = 1000)
-
-# Survival: Population-average survival curves
-predict(fit_survival, type = "marginal_survival",
-        times = c(5, 10, 15), n_sim = 1000)
-
-# EIRT: Predictions for NEW items
-new_items <- data.frame(item_length = c(10, 15, 20))
-predict(fit_eirt, newdata = new_items, type = "marginal")
-```
-
-**Key features:**
-- Monte Carlo integration over random effects
-- Standard errors available (`se.fit = TRUE`)
-- Optimized for Gaussian-identity (instant)
-- Adjustable precision via `n_sim` parameter
-
-See `vignette("marginal-predictions")` for mathematical details and examples.
-
-## Formula Syntax
-
-GLLAMMR uses lme4-style formula syntax:
 
 | Syntax | Description |
 |--------|-------------|
-| `(1 \| group)` | Random intercept for `group` |
-| `(x \| group)` | Random intercept and slope for `x` |
-| `(x \|\| group)` | Uncorrelated random intercept and slope |
-| `(1 \| level1/level2)` | Nested random effects |
+| `(1 \| g)` | Random intercept |
+| `(x \| g)` | Correlated random intercept and slope |
+| `(x \|\| g)` | Uncorrelated random intercept and slope |
+| `(1 \| g1/g2)` | Nested random effects |
 | `(1 \| g1) + (1 \| g2)` | Crossed random effects |
 
-## Supported Models
+Note: GLLAMMR exports its own `binomial()` (adding probit and cloglog links), which routes to a dedicated single-random-term fitter. For crossed/nested random effects, `integration = aghq()`, or level-specific weights with binary outcomes, use `stats::binomial()` to reach the general estimator.
 
-### Current Implementation
+### Unified family dispatch
 
-#### Phase 1: Basic GLMM ✅
-- ✅ **Gaussian GLMM** with identity link
-- ✅ Random intercepts (single and multiple levels)
-- ✅ Random slopes with `(x | group)` syntax
-- ✅ Uncorrelated random effects with `(x || group)`
-- ✅ lme4-style formula parsing (standalone)
+Latent variable models are available through `gllamm()` with special family objects, or directly through `fit_*()` functions:
 
-#### Phase 2: Enhanced GLMM ✅
-- ✅ **Binomial family** (logit, probit, cloglog links)
-- ✅ **Poisson family** (log link)
-- ✅ Random slopes and variance-covariance structures
-- ✅ Sparse matrix support for efficiency
+```r
+# IRT: first argument is the persons x items response matrix
+fit_2pl <- gllamm(resp_matrix, family = irt("2PL"))
+fit_2pl <- fit_irt(resp_matrix, model = "2PL")        # equivalent
+fit_2pl$item_parameters
+abilities(fit_2pl)
 
-#### Phase 4: IRT Models ✅
-- ✅ **Rasch model** (1-parameter logistic)
-- ✅ **2PL model** (2-parameter logistic)
-- ✅ **3PL model** (3-parameter with guessing)
-- ✅ Person ability estimation
-- ✅ Item parameter estimation
+# Latent class analysis
+fit_lca <- gllamm(indicator_matrix, family = lca(nclass = 3))
+fit_lca$class_probs
+fit_lca$posterior
 
-#### Phase 5: Latent Class Analysis ✅
-- ✅ **Latent class models** for binary indicators
-- ✅ Posterior class membership probabilities
-- ✅ Model selection via AIC/BIC
-- ✅ Multiple random starts for optimization
+# Ordinal and multinomial
+fit_ord <- gllamm(rating ~ temp + (1 | judge), data = wine,
+                  family = ordinal("logit"))
+fit_mnl <- gllamm(choice ~ x + (1 | region), data = d, family = multinomial())
+```
 
-### Coming Soon
+### Adaptive quadrature
 
-- **Phase 3**: Ordinal and multinomial responses
-- **Phase 4+**: Graded response model (GRM), multidimensional IRT
-- **Phase 5+**: Growth mixture models, latent class regression
-- **Phase 6**: Mixed response models and SEM
-- **Phase 7**: Survival models, constraints, advanced features
-- **Phase 8**: Enhanced prediction and simulation
-- **Phase 9**: Comprehensive documentation and CRAN release
+The default Laplace approximation can be replaced with adaptive Gauss-Hermite quadrature for small-cluster binary/count data:
 
-## Comparison to Other Packages
+```r
+fit <- gllamm(y ~ x + (1 | g), data = d, family = stats::binomial(),
+              integration = aghq(15))
+```
 
-| Feature | GLLAMMR | lme4 | galamm | mirt | poLCA |
-|---------|---------|------|--------|------|-------|
-| Basic GLMM | ✅ | ✅ | ✅ | ❌ | ❌ |
-| Random Slopes | ✅ | ✅ | ✅ | ❌ | ❌ |
-| Binomial/Poisson | ✅ | ✅ | ✅ | ❌ | ❌ |
-| IRT Models | ✅ | ❌ | ❌ | ✅ | ❌ |
-| Latent Class | ✅ | ❌ | ❌ | ✅ | ✅ |
-| Factor Models | 🚧 | ❌ | ✅ | ✅ | ❌ |
-| Mixed Response | 🚧 | ❌ | ❌ | ❌ | ❌ |
-| SEM | 🚧 | ❌ | ❌ | ❌ | ❌ |
-| TMB Backend | ✅ | ❌ | ✅ | ❌ | ❌ |
-| Stata GLLAMM Compatible | ✅ | ❌ | ❌ | ❌ | ❌ |
+### Survey weights
 
-✅ = Implemented | 🚧 = In Development | ❌ = Not Available
+Level-specific (pseudo-likelihood) weights, as in Stata GLLAMM's `pweight()`:
 
-### Why GLLAMMR?
+```r
+fit <- gllamm(y ~ x + (1 | cluster), data = d, family = stats::binomial(),
+              weights = list(level1 = obs_weights, level2 = cluster_weights))
+```
 
-- **Unified framework**: One package for GLMMs, IRT, latent class, and SEM
-- **Stata compatibility**: Replicate Stata GLLAMM analyses in R
-- **Speed**: TMB provides 10-100x speedup over pure R implementations
-- **Validation**: Extensively tested against multiple gold-standard packages
-- **Modern**: Built from scratch with current best practices
+A plain numeric `weights` vector is treated as observation-level frequency/probability weights. IRT, ordinal, LCA, and survival models accept weights too.
+
+### Other model classes
+
+```r
+# Parametric survival with shared frailty
+fit_surv <- fit_survival(Surv(time, status) ~ x + (1 | center),
+                         data = d, distribution = "weibull")
+
+# Joint mixed responses sharing a random effect
+fit_mr <- fit_mixed(formulas = list(gaussian = yc ~ x, binomial = yb ~ x),
+                    random = ~ (1 | grp), data = d)
+
+# Structural equation model
+fit_sem <- fit_sem(measurement = list(f1 = ~ x1 + x2 + x3,
+                                      f2 = ~ y1 + y2 + y3),
+                   structural = list(f2 ~ f1), data = d)
+
+# Rank-ordered (exploded) logit with random coefficients
+fit_rank <- fit_rank(rank ~ price + quality, case = ~ id,
+                     random = ~ (0 + price | region), data = d)
+
+# Nonparametric maximum likelihood (discrete mass points)
+fit_np <- fit_npml(y ~ x + (1 | grp), data = d, k = 3, family = binomial())
+```
+
+### Robust standard errors
+
+```r
+vcov(fit, type = "sandwich")   # cluster-robust (sandwich) covariance
+```
+
+### Predictions and simulation
+
+```r
+pred_cond <- predict(fit, type = "response")             # conditional on u = 0
+pred_marg <- predict(fit, type = "marginal", n_sim = 1000) # population-averaged
+sims <- simulate(fit, nsim = 100)                        # data frame of draws
+```
+
+For nonlinear links, conditional and marginal predictions differ; marginal predictions integrate over the random effects by Monte Carlo (`se.fit = TRUE` available). See `vignette("marginal-predictions")`.
+
+## Validation
+
+Parameter estimates, standard errors, and log-likelihoods are cross-validated against established packages — lme4, glmmTMB, ordinal, mirt, poLCA, npmlreg, and lavaan — by an automated suite of 49 checks covering Gaussian/binomial/Poisson/gamma GLMMs, ordinal models, Rasch/2PL/GRM, latent class models, survival, SEM, NPML, and adaptive quadrature:
+
+```r
+results <- gllammr_validate()   # requires the reference packages (Suggests)
+```
 
 ## Documentation
 
-### Vignettes (Coming Soon)
-
-- Getting Started with GLLAMMR
-- Multilevel GLMMs
-- Item Response Theory Models
-- Factor Analysis
-- Latent Class Models
-- Mixed Response Models
-- Advanced Features
-- Migrating from Stata GLLAMM
-
-### Help
-
 ```r
-# Main function help
 ?gllamm
-
-# Package overview
 help(package = "GLLAMMR")
+browseVignettes("GLLAMMR")
 ```
 
-## Development Status
-
-**Current Progress**: Phases 1, 2, 4, 5 Complete (Major Features)
-
-GLLAMMR provides:
-- ✅ **GLMMs**: Gaussian, binomial, Poisson families
-- ✅ **Random effects**: Intercepts and slopes with full variance-covariance
-- ✅ **IRT models**: Rasch, 2PL, 3PL
-- ✅ **Latent class analysis**: Binary indicators with flexible class numbers
-- ✅ **TMB backend**: Fast, efficient computation
-- 🚧 **In progress**: Ordinal/multinomial, factor analysis, SEM
-
-See `ROADMAP.md` for the complete implementation plan.
-
-## Contributing
-
-Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
-### Reporting Issues
-
-Please report bugs and feature requests on [GitHub Issues](https://github.com/yourusername/GLLAMMR/issues).
-
-## Citation
-
-If you use GLLAMMR in publications, please cite:
-
-```
-@Manual{gllammr,
-  title = {GLLAMMR: Generalized Linear Latent and Mixed Models in R},
-  author = {Your Name},
-  year = {2026},
-  note = {R package version 0.1.0},
-  url = {https://github.com/yourusername/GLLAMMR},
-}
-```
+Vignettes: getting started, multilevel GLMMs, IRT models, multilevel IRT, latent class analysis, marginal predictions, weights, advanced features, and migrating from Stata GLLAMM.
 
 ## References
 
-### GLLAMM Background
-
-- Rabe-Hesketh, S., Skrondal, A., & Pickles, A. (2004). GLLAMM Manual. U.C. Berkeley Division of Biostatistics Working Paper Series.
+- Rabe-Hesketh, S., Skrondal, A., & Pickles, A. (2004). Generalized multilevel structural equation modeling. *Psychometrika*, 69(2), 167-190.
 - Skrondal, A., & Rabe-Hesketh, S. (2004). *Generalized Latent Variable Modeling: Multilevel, Longitudinal, and Structural Equation Models*. Chapman & Hall/CRC.
-- [GLLAMM Website](http://www.gllamm.org/)
-
-### Related Packages
-
-- [lme4](https://github.com/lme4/lme4) - Linear Mixed-Effects Models
-- [galamm](https://github.com/LCBC-UiO/galamm) - Generalized Additive Latent and Mixed Models
-- [mirt](https://github.com/philchalmers/mirt) - Multidimensional Item Response Theory
-- [poLCA](https://cran.r-project.org/package=poLCA) - Latent Class Analysis
-- [TMB](https://github.com/kaskr/adcomp) - Template Model Builder
+- Kristensen, K., Nielsen, A., Berg, C. W., Skaug, H., & Bell, B. M. (2016). TMB: Automatic differentiation and Laplace approximation. *Journal of Statistical Software*, 70(5), 1-21.
 
 ## License
 
-GLLAMMR is licensed under GPL-3. See [LICENSE](LICENSE) for details.
-
-## Authors
-
-- **Josh** - Lead Developer
-- **Claude Sonnet 4.5** - Implementation Assistant
-
-## Acknowledgments
-
-- Sophia Rabe-Hesketh, Anders Skrondal, and Andrew Pickles for the original Stata GLLAMM
-- The TMB team for the computational backend
-- The lme4, mirt, and lavaan developers for inspiration and validation targets
+GPL-3. See [LICENSE](LICENSE).

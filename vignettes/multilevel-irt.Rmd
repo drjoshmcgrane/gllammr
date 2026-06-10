@@ -13,12 +13,15 @@ vignette: >
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
+  eval = FALSE,
   fig.width = 7,
   fig.height = 5
 )
 ```
 
 ## Introduction
+
+Note: the code in this vignette is illustrative and is not evaluated when the vignette is built.
 
 This vignette demonstrates how to fit multi-level (hierarchical) Item Response Theory (IRT) models using GLLAMMR. Multi-level IRT models are essential when test-takers are clustered within groups (e.g., students within classrooms, patients within hospitals, or repeated measurements within individuals).
 

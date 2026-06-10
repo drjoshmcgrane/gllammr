@@ -19,6 +19,21 @@
 #'
 #' @return Depends on \code{type}
 #'
+#' @rdname predict_survival
+#' @export
+predict.gllamm_survival <- function(object,
+                                    newdata = NULL,
+                                    type = c("lp", "risk", "survival", "hazard",
+                                             "marginal_survival",
+                                             "marginal_hazard"),
+                                    times = NULL,
+                                    n_sim = 1000,
+                                    ...) {
+  predict_survival(object, newdata = newdata, type = type,
+                   times = times, n_sim = n_sim, ...)
+}
+
+
 #' @keywords internal
 predict_survival <- function(object,
                             newdata = NULL,
@@ -33,14 +48,20 @@ predict_survival <- function(object,
   beta <- object$coefficients$fixed
   distribution <- object$distribution  # "exponential" or "Weibull"
 
+  # Rebuild the design formula: the stored formula has Surv() on the LHS,
+  # which the standard design-matrix machinery cannot evaluate
+  rhs <- deparse(object$formula[[3]], width.cutoff = 500)
+  design_formula <- stats::as.formula(
+    paste(object$time_var, "~", paste(rhs, collapse = " ")))
+
   # Get model matrices
   if (is.null(newdata)) {
     X <- object$X
-    parsed <- parse_formula(object$formula, object$data)
+    parsed <- parse_formula(design_formula, object$data)
     model_data <- make_model_matrices(parsed, object$data)
     Z <- model_data$Z[[1]]
   } else {
-    parsed <- parse_formula(object$formula, newdata)
+    parsed <- parse_formula(design_formula, newdata)
     new_mats <- make_model_matrices(parsed, newdata)
     X <- new_mats$X
     Z <- new_mats$Z[[1]]
@@ -79,10 +100,8 @@ predict_survival <- function(object,
       u_samples <- rmvnorm_chol(n_sim, Sigma_u)
     }
 
-    # Extract shape parameter for Weibull
-    if (distribution == "Weibull") {
-      shape <- object$shape_parameter
-    }
+    # Shape parameter (1 for exponential, estimated for Weibull)
+    shape <- if (is.null(object$shape)) 1 else object$shape
 
     # Storage for marginal predictions
     n_times <- length(times)

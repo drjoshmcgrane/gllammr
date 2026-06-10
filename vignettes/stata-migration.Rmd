@@ -19,6 +19,8 @@ knitr::opts_chunk$set(
 
 ## Introduction
 
+Note: the code in this vignette is illustrative and is not evaluated when the vignette is built.
+
 This guide helps Stata GLLAMM users transition to GLLAMMR.
 
 ## Syntax Comparison
