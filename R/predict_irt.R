@@ -138,23 +138,37 @@ predict.gllamm_irt <- function(object,
 #' @return Vector of marginal probabilities (one per item)
 #' @keywords internal
 predict_marginal_irt <- function(object, items, n_sim = 1000) {
-  # Extract parameters
-  difficulty <- object$item_parameters$difficulty[items]
-  discrimination <- object$item_parameters$discrimination[items]
   sigma_theta <- object$ability_sd
 
   # Draw ability samples from population distribution
   theta_samples <- rnorm(n_sim, mean = 0, sd = sigma_theta)
 
-  # Storage for marginal probabilities
-  marginal_probs <- numeric(length(items))
+  # Polytomous models: marginal category probabilities, items x categories
+  if (object$model %in% c("GRM", "PCM", "GPCM", "NRM")) {
+    thresholds <- object$item_parameters$thresholds[items]
+    discrimination <- object$item_parameters$discrimination[items]
 
-  # For each item
+    max_K <- max(vapply(thresholds, length, integer(1))) + 1L
+    out <- matrix(NA_real_, length(items), max_K)
+    for (j in seq_along(items)) {
+      p <- irt_category_probs(object$model, theta_samples,
+                              thresholds[[j]], discrimination[j])
+      out[j, seq_len(ncol(p))] <- colMeans(p)
+    }
+    rownames(out) <- paste0("Item", items)
+    colnames(out) <- paste0("Category", seq_len(max_K))
+    return(out)
+  }
+
+  # Dichotomous models: marginal P(Y = 1) per item
+  difficulty <- object$item_parameters$difficulty[items]
+  discrimination <- object$item_parameters$discrimination[items]
+
+  marginal_probs <- numeric(length(items))
   for (j in seq_along(items)) {
     b <- difficulty[j]
     a <- discrimination[j]
 
-    # Compute P(Y=1|θ) for each sampled θ
     if (object$model == "Rasch") {
       probs_samples <- plogis(theta_samples - b)
     } else if (object$model == "2PL") {
@@ -164,10 +178,9 @@ predict_marginal_irt <- function(object, items, n_sim = 1000) {
       c_param <- object$item_parameters$guessing[item_idx]
       probs_samples <- c_param + (1 - c_param) * plogis(a * (theta_samples - b))
     } else {
-      stop("Marginal predictions for model", object$model, "not yet implemented")
+      stop("Unknown IRT model: ", object$model)
     }
 
-    # Average across samples
     marginal_probs[j] <- mean(probs_samples)
   }
 

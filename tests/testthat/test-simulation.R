@@ -80,14 +80,16 @@ test_that("simulate.gllamm produces correct dimensions", {
 
   fit <- gllamm(y ~ x + (1 | group), data = data)
 
-  # Single simulation
+  # stats::simulate contract: data frame with nsim columns + seed attribute
   sim1 <- simulate(fit, nsim = 1, seed = 456)
-  expect_equal(length(sim1), 50)
-  expect_type(sim1, "double")
+  expect_s3_class(sim1, "data.frame")
+  expect_equal(nrow(sim1), 50)
+  expect_equal(ncol(sim1), 1)
+  expect_false(is.null(attr(sim1, "seed")))
 
   # Multiple simulations
   sim5 <- simulate(fit, nsim = 5, seed = 456)
-  expect_equal(dim(sim5), c(50, 5))
+  expect_equal(dim(sim5), c(50L, 5L))
 })
 
 

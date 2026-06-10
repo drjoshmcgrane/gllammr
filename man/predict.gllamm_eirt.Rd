@@ -17,15 +17,23 @@
 \item{object}{A fitted EIRT model (class gllamm_eirt)}
 
 \item{newdata}{Optional data frame with item covariates for new items.
-Must include all variables used in difficulty_formula and discrimination_formula.}
+Must include all variables used in the difficulty and discrimination
+formulas. For polytomous models, new-item predictions use the predicted
+item location with step deviations at their population value of zero
+(PCM/GPCM) or the threshold regression (LPCM); GRM threshold spacing is
+item-specific and cannot be predicted for new items.}
 
 \item{type}{Type of prediction:
 \describe{
-  \item{probability}{Item response probabilities P(Y=1|θ, item_covariates)}
-  \item{ability}{Person ability estimates (θ)}
+  \item{probability}{Item response probabilities. Dichotomous: persons x
+    items matrix of P(Y=1). Polytomous: list of persons x categories
+    matrices, one per item.}
+  \item{ability}{Person ability estimates (theta)}
   \item{difficulty}{Predicted item difficulties}
   \item{discrimination}{Predicted item discriminations}
-  \item{marginal}{Marginal item response probabilities E[P(Y=1|θ)]}
+  \item{marginal}{Marginal response probabilities, integrating ability
+    over its population distribution. Dichotomous: vector of E[P(Y=1)].
+    Polytomous: items x categories matrix of E[P(Y=k)].}
 }}
 
 \item{ability}{Optional vector of ability values. If NULL, uses estimated abilities.}
@@ -38,30 +46,5 @@ Must include all variables used in difficulty_formula and discrimination_formula
 Depends on \code{type}
 }
 \description{
-Obtain predictions from a fitted Explanatory IRT model
-}
-\examples{
-\dontrun{
-# Fit EIRT model
-responses <- matrix(rbinom(500, 1, 0.6), 50, 10)
-item_data <- data.frame(
-  item_id = 1:10,
-  difficulty_pred = rnorm(10)
-)
-
-fit <- fit_eirt(responses, item_data,
-                difficulty_formula = ~ difficulty_pred,
-                model = "2PL")
-
-# Predicted item difficulties
-pred_diff <- predict(fit, type = "difficulty")
-
-# Marginal item response probabilities
-marg_probs <- predict(fit, type = "marginal")
-
-# For new items
-new_items <- data.frame(difficulty_pred = c(-1, 0, 1))
-pred_new <- predict(fit, newdata = new_items, type = "marginal")
-}
-
+Obtain predictions from a fitted Explanatory IRT model.
 }

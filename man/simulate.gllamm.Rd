@@ -11,18 +11,23 @@
 
 \item{nsim}{Number of simulations (default: 1)}
 
-\item{seed}{Optional random seed}
+\item{seed}{Optional random seed (stored in the \code{"seed"} attribute,
+following the \code{\link[stats]{simulate}} contract)}
 
-\item{newdata}{Optional new data frame. If omitted, uses original data structure.}
+\item{newdata}{Optional new data frame containing the covariates and
+grouping variables of the model formula}
 
 \item{...}{Additional arguments (currently unused)}
 }
 \value{
-If \code{nsim = 1}, a vector of simulated responses. If \code{nsim > 1},
-  a matrix with \code{nsim} columns.
+A data frame with \code{nsim} columns, one simulated response
+  vector per column, with a \code{"seed"} attribute.
 }
 \description{
-Simulate response data from a fitted GLLAMM model
+Simulate response data from a fitted GLLAMM model. Random effects are
+drawn fresh from their estimated distribution for every replicate
+(population-level simulation), both for the original data and for
+\code{newdata}.
 }
 \examples{
 \dontrun{

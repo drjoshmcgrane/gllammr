@@ -275,6 +275,8 @@ fit_ordinal <- function(formula, data, link = c("logit", "probit", "acl",
     ),
     n_obs = model_data$n_obs,
     formula = formula,
+    data = data,
+    X = model_data$X,
     tmb_obj = obj,
     tmb_opt = opt,
     tmb_sdr = sdr

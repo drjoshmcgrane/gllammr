@@ -314,8 +314,36 @@ dif_plot <- function(dif_result, item, ...) {
     grid()
 
   } else {
-    # Polytomous models - plot category response curves
-    stop("DIF plotting for polytomous models not yet implemented")
+    # Polytomous models: category response curves, colors = categories,
+    # line type distinguishes groups (solid = group 1, dashed = group 2)
+    thr1 <- fit1$item_parameters$thresholds[[item]]
+    thr2 <- fit2$item_parameters$thresholds[[item]]
+    disc1 <- fit1$item_parameters$discrimination[item]
+    disc2 <- fit2$item_parameters$discrimination[item]
+
+    probs1 <- irt_category_probs(dif_result$model, theta_seq, thr1, disc1)
+    probs2 <- irt_category_probs(dif_result$model, theta_seq, thr2, disc2)
+
+    n_cat <- max(ncol(probs1), ncol(probs2))
+    colors <- rainbow(n_cat)
+
+    plot(theta_seq, rep(0, length(theta_seq)), type = "n",
+         xlab = "Ability (theta)", ylab = "P(Y = k)",
+         main = paste("Item", item, "- Category Response Curves by Group"),
+         ylim = c(0, 1), ...)
+    for (k in seq_len(ncol(probs1))) {
+      lines(theta_seq, probs1[, k], col = colors[k], lwd = 2, lty = 1)
+    }
+    for (k in seq_len(ncol(probs2))) {
+      lines(theta_seq, probs2[, k], col = colors[k], lwd = 2, lty = 2)
+    }
+    legend("topright",
+           legend = c(paste("Category", seq_len(n_cat)), dif_result$group_labels),
+           col = c(colors, "black", "black"),
+           lwd = 2,
+           lty = c(rep(1, n_cat), 1, 2),
+           bty = "n")
+    grid()
   }
 
   invisible(NULL)

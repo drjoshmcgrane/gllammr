@@ -133,16 +133,21 @@ predict.gllamm <- function(object,
 
 #' Simulate from a GLLAMM model
 #'
-#' Simulate response data from a fitted GLLAMM model
+#' Simulate response data from a fitted GLLAMM model. Random effects are
+#' drawn fresh from their estimated distribution for every replicate
+#' (population-level simulation), both for the original data and for
+#' \code{newdata}.
 #'
 #' @param object A fitted \code{gllamm} object
 #' @param nsim Number of simulations (default: 1)
-#' @param seed Optional random seed
-#' @param newdata Optional new data frame. If omitted, uses original data structure.
+#' @param seed Optional random seed (stored in the \code{"seed"} attribute,
+#'   following the \code{\link[stats]{simulate}} contract)
+#' @param newdata Optional new data frame containing the covariates and
+#'   grouping variables of the model formula
 #' @param ... Additional arguments (currently unused)
 #'
-#' @return If \code{nsim = 1}, a vector of simulated responses. If \code{nsim > 1},
-#'   a matrix with \code{nsim} columns.
+#' @return A data frame with \code{nsim} columns, one simulated response
+#'   vector per column, with a \code{"seed"} attribute.
 #'
 #' @examples
 #' \dontrun{
@@ -162,71 +167,70 @@ simulate.gllamm <- function(object,
                             newdata = NULL,
                             ...) {
 
-  if (!is.null(seed)) {
+  # stats::simulate contract: record the RNG state / seed used
+  if (!exists(".Random.seed", envir = globalenv(), inherits = FALSE)) {
+    runif(1)
+  }
+  if (is.null(seed)) {
+    rng_state <- get(".Random.seed", envir = globalenv())
+  } else {
     set.seed(seed)
+    rng_state <- structure(seed, kind = as.list(RNGkind()))
   }
 
-  if (!is.null(newdata)) {
-    stop("Simulation with new data not yet implemented")
-  }
-
-  # Get model components
-  n_obs <- object$n_obs
-  X <- object$X
   beta <- object$coefficients$fixed
 
-  # For now, only support single random effect term
-  n_groups <- object$n_groups[1]
-  sigma_u <- sqrt(object$coefficients$random_var[[1]])
-
-  # Get grouping structure from original data
-  parsed <- parse_formula(object$formula, object$data)
-  model_data <- make_model_matrices(parsed, object$data)
-  groups <- model_data$groups[[1]]
+  # Design matrices: original data or newdata via the same construction
+  sim_data <- if (is.null(newdata)) object$data else newdata
+  parsed <- parse_formula(object$formula, sim_data)
+  model_data <- make_model_matrices(parsed, sim_data)
+  X <- model_data$X
   Z <- model_data$Z[[1]]
+  groups <- model_data$groups[[1]]
+  n_groups <- model_data$n_groups[1]
+  n_obs <- model_data$n_obs
 
-  # Get residual SD
-  # For Gaussian: sigma is stored in the model
-  if (object$family$family == "gaussian") {
-    # Extract from TMB fit
-    sigma <- sqrt(var(object$residuals))  # Approximate for now
-  } else {
-    stop("Simulation for non-Gaussian families not yet implemented")
+  # Random-effects covariance (full matrix; handles slopes and correlation)
+  Sigma_u <- object$coefficients$random_var[[1]]
+  if (!is.matrix(Sigma_u)) {
+    Sigma_u <- diag(as.numeric(Sigma_u), nrow = ncol(Z))
   }
 
-  # Simulate
-  sims <- matrix(NA, nrow = n_obs, ncol = nsim)
+  family_name <- object$family$family
 
-  for (s in 1:nsim) {
-    # Simulate random effects
-    u_sim <- rnorm(n_groups * ncol(Z), mean = 0, sd = sigma_u)
-
-    # Compute linear predictor
-    eta <- as.numeric(X %*% beta)
-    for (i in 1:n_obs) {
-      g <- groups[i]
-      for (k in 1:ncol(Z)) {
-        u_idx <- g * ncol(Z) + k
-        eta[i] <- eta[i] + Z[i, k] * u_sim[u_idx]
-      }
-    }
-
-    # Simulate response
-    if (object$family$family == "gaussian") {
-      y_sim <- rnorm(n_obs, mean = eta, sd = sigma)
+  # Residual SD for gaussian: the actual estimate, not a residual-variance
+  # approximation
+  sigma <- NULL
+  if (family_name == "gaussian") {
+    log_sigma <- object$tmb_opt$par["log_sigma"]
+    sigma <- if (!is.na(log_sigma)) {
+      exp(unname(log_sigma))
     } else {
-      stop("Simulation for non-Gaussian families not yet implemented")
+      sqrt(var(object$residuals))
     }
-
-    sims[, s] <- y_sim
   }
 
-  if (nsim == 1) {
-    return(as.numeric(sims[, 1]))
-  } else {
-    colnames(sims) <- paste0("sim_", 1:nsim)
-    return(sims)
+  fixed_part <- as.numeric(X %*% beta)
+
+  sims <- matrix(NA_real_, nrow = n_obs, ncol = nsim)
+  for (s in seq_len(nsim)) {
+    # Fresh random effects each replicate: u_g ~ MVN(0, Sigma_u)
+    u_sim <- rmvnorm_chol(n_groups, Sigma_u)
+    eta <- fixed_part + rowSums(Z * u_sim[groups + 1, , drop = FALSE])
+
+    sims[, s] <- switch(family_name,
+      gaussian = rnorm(n_obs, mean = eta, sd = sigma),
+      binomial = rbinom(n_obs, size = 1,
+                        prob = object$family$linkinv(eta)),
+      poisson = rpois(n_obs, lambda = exp(eta)),
+      stop("Simulation not implemented for family: ", family_name)
+    )
   }
+
+  out <- as.data.frame(sims)
+  names(out) <- paste0("sim_", seq_len(nsim))
+  attr(out, "seed") <- rng_state
+  out
 }
 
 

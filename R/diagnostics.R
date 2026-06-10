@@ -70,8 +70,20 @@ plot.gllamm <- function(x, which = c(1, 2, 3, 5), ...) {
       lines(lowess(fitted_vals, sqrt_std_resids), col = "blue", lwd = 2)
 
     } else if (w == 4) {
-      # Cook's distance (if available)
-      warning("Cook's distance not yet implemented for GLLAMM")
+      # Cook's distance at the group level (case deletion per cluster)
+      D <- tryCatch(cooks.distance(x), error = function(e) {
+        warning("Cook's distance unavailable: ", conditionMessage(e))
+        NULL
+      })
+      if (!is.null(D)) {
+        barplot(D,
+                xlab = "Group",
+                ylab = "Cook's distance",
+                main = "Group-Level Cook's Distance",
+                col = "steelblue",
+                border = NA)
+        abline(h = 4 / length(D), lty = 2, col = "red")
+      }
 
     } else if (w == 5) {
       # Residuals vs Leverage (not standard for mixed models)
@@ -287,4 +299,67 @@ icc <- function(object, ...) {
 
     return(invisible(iccs))
   }
+}
+
+
+#' Group-level Cook's distance for GLLAMM models
+#'
+#' Influence of each cluster on the fixed effects, computed by refitting the
+#' model with the cluster deleted: D_j = (beta - beta_(-j))' V^{-1}
+#' (beta - beta_(-j)) / p, with V the estimated covariance of the fixed
+#' effects. Case deletion at the cluster level is the standard influence
+#' measure for mixed models; observation-level deletion would break the
+#' random-effects structure.
+#'
+#' @param model A fitted \code{gllamm} object (from \code{gllamm()})
+#' @param max_groups Refuse to run for more clusters than this (each cluster
+#'   costs one model refit); raise the limit explicitly for large data
+#' @param ... Additional arguments (currently unused)
+#'
+#' @return Named vector of Cook's distances, one per cluster. Clusters whose
+#'   deletion refit fails get \code{NA}.
+#'
+#' @export
+cooks.distance.gllamm <- function(model, max_groups = 50, ...) {
+  if (is.null(model$formula) || is.null(model$data) || is.null(model$family)) {
+    stop("Cook's distance requires a model fitted via gllamm() ",
+         "(formula, data, and family must be stored on the object)")
+  }
+
+  parsed <- parse_formula(model$formula, model$data)
+  model_data <- make_model_matrices(parsed, model$data)
+  groups <- model_data$groups[[1]]      # 0-indexed
+  n_groups <- model_data$n_groups[1]
+
+  if (n_groups > max_groups) {
+    stop("Model has ", n_groups, " clusters; each one costs a refit. ",
+         "Raise max_groups (currently ", max_groups, ") to proceed.")
+  }
+
+  beta_full <- model$coefficients$fixed
+  p <- length(beta_full)
+  V <- model$vcov$fixed
+  if (is.null(V) || anyNA(V)) {
+    stop("Fixed-effects covariance unavailable; cannot scale Cook's distance")
+  }
+  V_inv <- solve(V)
+
+  # Tight iteration caps: refits start near the full-data optimum
+  refit_control <- list(iter.max = 200, eval.max = 400)
+
+  D <- rep(NA_real_, n_groups)
+  for (j in seq_len(n_groups)) {
+    keep <- groups != (j - 1)
+    refit <- try(
+      gllamm(model$formula, data = model$data[keep, , drop = FALSE],
+             family = model$family, control = refit_control),
+      silent = TRUE
+    )
+    if (inherits(refit, "try-error")) next
+    delta <- beta_full - refit$coefficients$fixed
+    D[j] <- as.numeric(t(delta) %*% V_inv %*% delta) / p
+  }
+
+  names(D) <- paste0("Group", seq_len(n_groups))
+  D
 }

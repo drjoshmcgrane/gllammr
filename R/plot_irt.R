@@ -150,42 +150,24 @@ plot_icc_irt <- function(x, items, ...) {
 
     grid(col = "gray90")
 
-    # Number of categories for this item
-    if (x$model == "GRM") {
-      # Graded Response Model
-      n_cat <- length(x$item_parameters$thresholds[[item]]) + 1
-      a <- x$item_parameters$discrimination[item]
-      thresholds <- x$item_parameters$thresholds[[item]]
+    # Category response curves via the shared probability helper
+    # (same math as the TMB likelihood)
+    thresholds <- x$item_parameters$thresholds[[item]]
+    a <- x$item_parameters$discrimination[item]
+    n_cat <- length(thresholds) + 1
 
-      # Compute cumulative probabilities
-      cum_probs <- matrix(0, length(theta_seq), n_cat - 1)
-      for (k in 1:(n_cat - 1)) {
-        cum_probs[, k] <- plogis(a * (theta_seq - thresholds[k]))
-      }
+    cat_probs <- irt_category_probs(x$model, theta_seq, thresholds, a)
 
-      # Convert to category probabilities
-      cat_probs <- matrix(0, length(theta_seq), n_cat)
-      cat_probs[, 1] <- cum_probs[, 1]
-      for (k in 2:(n_cat - 1)) {
-        cat_probs[, k] <- cum_probs[, k] - cum_probs[, k - 1]
-      }
-      cat_probs[, n_cat] <- 1 - cum_probs[, n_cat - 1]
-
-      # Plot each category
-      colors <- rainbow(n_cat)
-      for (k in 1:n_cat) {
-        lines(theta_seq, cat_probs[, k], col = colors[k], lwd = 2)
-      }
-
-      legend("topright",
-             legend = paste("Category", 1:n_cat),
-             col = colors,
-             lwd = 2,
-             bty = "n")
-    } else {
-      text(0, 0.5, "Polytomous ICC plot\nnot yet implemented\nfor this model",
-           cex = 1.2, col = "gray50")
+    colors <- rainbow(n_cat)
+    for (k in 1:n_cat) {
+      lines(theta_seq, cat_probs[, k], col = colors[k], lwd = 2)
     }
+
+    legend("topright",
+           legend = paste("Category", 1:n_cat),
+           col = colors,
+           lwd = 2,
+           bty = "n")
   }
 }
 
