@@ -12,7 +12,8 @@
 #' @param cases Character vector of case names to run, or "all" (default).
 #'   Available: "gaussian_sleepstudy", "binomial_toenail",
 #'   "poisson_grouseticks", "ordinal_wine", "rasch_lsat", "twopl_simulated",
-#'   "lca_carcinoma", "grm_science", "gamma_simulated".
+#'   "lca_carcinoma", "grm_science", "gamma_simulated",
+#'   "survival_exponential".
 #' @param verbose Print progress messages (default TRUE)
 #'
 #' @return Data frame with one row per compared statistic: case, statistic,
@@ -31,7 +32,7 @@ gllammr_validate <- function(cases = "all", verbose = TRUE) {
   all_cases <- c("gaussian_sleepstudy", "binomial_toenail",
                  "poisson_grouseticks", "ordinal_wine", "rasch_lsat",
                  "twopl_simulated", "lca_carcinoma", "grm_science",
-                 "gamma_simulated")
+                 "gamma_simulated", "survival_exponential")
   if (identical(cases, "all")) cases <- all_cases
   unknown <- setdiff(cases, all_cases)
   if (length(unknown) > 0) {
@@ -352,5 +353,42 @@ gllammr_validate <- function(cases = "all", verbose = TRUE) {
     .val_row("gamma_simulated", "sigma_u",
              sqrt(fit$coefficients$random_var[[1]][1, 1]),
              unname(attr(glmmTMB::VarCorr(ref)$cond$grp, "stddev")), 1e-2)
+  )
+}
+
+
+#' @keywords internal
+.validate_survival_exponential <- function() {
+  if (!requireNamespace("lme4", quietly = TRUE)) {
+    return(NULL)
+  }
+  # The exponential frailty model is likelihood-equivalent to a Poisson GLMM
+  # on the event indicator with offset log(t): an exact cross-check.
+  set.seed(51)
+  n <- 1500; g <- 50
+  grp <- factor(rep(1:g, each = n %/% g))
+  x <- rnorm(n)
+  u <- rnorm(g, 0, 0.6)
+  eta <- -1 + 0.5 * x + u[as.integer(grp)]
+  t_true <- rexp(n, rate = exp(eta))
+  cens <- rexp(n, rate = 0.15)
+  d <- data.frame(time = pmin(t_true, cens),
+                  status = as.integer(t_true <= cens), x = x, grp = grp)
+
+  fit <- fit_survival(Surv(time, status) ~ x + (1 | grp), data = d,
+                      distribution = "exponential")
+  ref <- lme4::glmer(status ~ x + offset(log(time)) + (1 | grp), data = d,
+                     family = stats::poisson(), nAGQ = 1)
+
+  rbind(
+    .val_row("survival_exponential", "beta_x",
+             unname(coef(fit)$fixed[2]), unname(lme4::fixef(ref)[2]), 1e-3),
+    .val_row("survival_exponential", "sigma_frailty",
+             unname(fit$coefficients$random_sd),
+             unname(attr(lme4::VarCorr(ref)$grp, "stddev")), 1e-3),
+    .val_row("survival_exponential", "logLik_vs_poisson_plus_constant",
+             fit$logLik,
+             as.numeric(logLik(ref)) - sum(d$status * log(d$time)),
+             0.01, relative = FALSE)
   )
 }

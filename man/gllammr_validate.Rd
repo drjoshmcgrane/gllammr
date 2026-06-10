@@ -10,7 +10,8 @@ gllammr_validate(cases = "all", verbose = TRUE)
 \item{cases}{Character vector of case names to run, or "all" (default).
 Available: "gaussian_sleepstudy", "binomial_toenail",
 "poisson_grouseticks", "ordinal_wine", "rasch_lsat", "twopl_simulated",
-"lca_carcinoma", "grm_science", "gamma_simulated".}
+"lca_carcinoma", "grm_science", "gamma_simulated",
+"survival_exponential".}
 
 \item{verbose}{Print progress messages (default TRUE)}
 }
