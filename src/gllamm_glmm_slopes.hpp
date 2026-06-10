@@ -22,7 +22,8 @@ Type gllamm_glmm_slopes(objective_function<Type>* obj)
   DATA_INTEGER(family);        // 0=gaussian, 1=binomial, 2=poisson, 3=gamma
   DATA_INTEGER(link);          // 1 = canonical (identity/logit/log),
                                // 2 = probit, 3 = cloglog (binomial only)
-  DATA_VECTOR(weights);        // Case weights (fweights or pweights)
+  DATA_VECTOR(weights);        // Level-1 case weights (fweights or pweights)
+  DATA_VECTOR(group_weights);  // Level-2 weights (one per group; 1 = unweighted)
 
   // Parameters
   PARAMETER_VECTOR(beta);        // Fixed effects coefficients
@@ -72,11 +73,12 @@ Type gllamm_glmm_slopes(objective_function<Type>* obj)
   // when available (no-op on single-threaded builds)
   parallel_accumulator<Type> nll(obj);
 
-  // Prior for random effects: u_j ~ MVN(0, Sigma_u)
+  // Prior for random effects: u_j ~ MVN(0, Sigma_u), level-2 weighted
   for (int j = 0; j < n_groups; j++) {
     vector<Type> u_j = u.segment(j * n_random, n_random);
     Type quad_form = (u_j * (Sigma_u_inv * u_j)).sum();
-    nll += 0.5 * (Type(n_random) * log(2.0 * M_PI) + log_det_Sigma_u + quad_form);
+    nll += group_weights(j) * Type(0.5) *
+      (Type(n_random) * log(2.0 * M_PI) + log_det_Sigma_u + quad_form);
   }
 
   // Linear predictor: X beta computed once, RE contribution per observation
@@ -91,7 +93,7 @@ Type gllamm_glmm_slopes(objective_function<Type>* obj)
   // Likelihood (single pass; fitted values reuse the same eta)
   vector<Type> fitted(n_obs);
   for (int i = 0; i < n_obs; i++) {
-    Type w_i = weights(i);
+    Type w_i = weights(i) * group_weights(groups(i));
 
     if (family == 0) {
       // Gaussian

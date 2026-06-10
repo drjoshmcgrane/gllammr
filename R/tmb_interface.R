@@ -43,6 +43,7 @@ fit_tmb_gllamm <- function(model_data, family, start_params = NULL, control = li
     n_fixed = as.integer(model_data$n_fixed),
     n_random = as.integer(model_data$n_random_coefs[1]),
     weights = weights_vec,
+    group_weights = rep(1.0, model_data$n_groups[1]),
     model_name = "gaussian"
   )
 

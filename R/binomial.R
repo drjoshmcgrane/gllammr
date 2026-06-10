@@ -159,6 +159,7 @@ fit_binomial <- function(formula, data, link = c("logit", "probit", "cloglog"),
     link = as.integer(link_code),
     correlated = as.integer(correlated),
     weights = weights_vec,
+    group_weights = rep(1.0, model_data$n_groups[1]),
     model_name = "binomial"
   )
 

@@ -175,8 +175,9 @@ gllamm <- function(formula,
                            control = control))
   }
 
-  # Validate weights if provided
-  if (!is.null(weights)) {
+  # Validate weights if provided. Lists carry level-specific survey weights
+  # (validated downstream against the grouping structure).
+  if (!is.null(weights) && !is.list(weights)) {
     if (length(weights) != nrow(data)) {
       stop("Length of weights (", length(weights), ") must match number of observations (", nrow(data), ")")
     }

@@ -19,7 +19,8 @@ Type gllamm_gaussian(objective_function<Type>* obj)
   DATA_INTEGER(n_obs);         // Number of observations
   DATA_INTEGER(n_fixed);       // Number of fixed effects
   DATA_INTEGER(n_random);      // Number of random effects per group
-  DATA_VECTOR(weights);        // Case weights (fweights or pweights)
+  DATA_VECTOR(weights);        // Level-1 case weights (fweights or pweights)
+  DATA_VECTOR(group_weights);  // Level-2 weights (one per group; 1 = unweighted)
 
   // Parameters
   PARAMETER_VECTOR(beta);      // Fixed effects coefficients
@@ -36,11 +37,11 @@ Type gllamm_gaussian(objective_function<Type>* obj)
   // when available (no-op on single-threaded builds)
   parallel_accumulator<Type> nll(obj);
 
-  // Prior for random effects: u ~ N(0, sigma_u^2)
+  // Prior for random effects: u ~ N(0, sigma_u^2), scaled by level-2 weights
   for (int j = 0; j < n_groups; j++) {
     for (int k = 0; k < n_random; k++) {
       int idx = j * n_random + k;
-      nll -= dnorm(u[idx], Type(0.0), sigma_u, true);
+      nll -= group_weights(j) * dnorm(u[idx], Type(0.0), sigma_u, true);
     }
   }
 
@@ -61,8 +62,8 @@ Type gllamm_gaussian(objective_function<Type>* obj)
       eta += Z(i, k) * u[u_idx];
     }
 
-    // Gaussian likelihood: y ~ N(eta, sigma^2) (weighted)
-    Type w_i = weights[i];
+    // Gaussian likelihood: y ~ N(eta, sigma^2), weighted at both levels
+    Type w_i = weights[i] * group_weights(g);
     nll -= w_i * dnorm(y[i], eta, sigma, true);
   }
 

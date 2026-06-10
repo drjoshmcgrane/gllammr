@@ -21,7 +21,8 @@ Type gllamm_binomial(objective_function<Type>* obj)
   DATA_INTEGER(n_random);      // Number of random effects per group
   DATA_INTEGER(link);          // Link function: 1=logit, 2=probit, 3=cloglog
   DATA_INTEGER(correlated);    // 1 if correlated, 0 if uncorrelated
-  DATA_VECTOR(weights);        // Observation weights (pweights or fweights)
+  DATA_VECTOR(weights);
+  DATA_VECTOR(group_weights);  // Level-2 weights (one per group; 1 = unweighted)        // Observation weights (pweights or fweights)
 
   // Parameters
   PARAMETER_VECTOR(beta);      // Fixed effects coefficients
@@ -74,14 +75,15 @@ Type gllamm_binomial(objective_function<Type>* obj)
   // when available (no-op on single-threaded builds)
   parallel_accumulator<Type> nll(obj);
 
-  // Prior for random effects
+  // Prior for random effects, scaled by level-2 weights
   for (int j = 0; j < n_groups; j++) {
     vector<Type> u_j(n_random);
     for (int k = 0; k < n_random; k++) {
       u_j(k) = u(j * n_random + k);
     }
     Type quad_form = (u_j * (Sigma_u_inv * u_j)).sum();
-    nll += 0.5 * (Type(n_random) * log(2.0 * M_PI) + log_det_Sigma_u + quad_form);
+    nll += group_weights(j) * Type(0.5) *
+      (Type(n_random) * log(2.0 * M_PI) + log_det_Sigma_u + quad_form);
   }
 
   // Likelihood for observations
@@ -114,7 +116,7 @@ Type gllamm_binomial(objective_function<Type>* obj)
     }
 
     // Binomial log-likelihood (weighted)
-    Type w_i = weights(i);  // Observation weight
+    Type w_i = weights(i) * group_weights(g);  // Observation weight
     Type ll_i = y(i) * log(p + Type(1e-10)) + (Type(1.0) - y(i)) * log(Type(1.0) - p + Type(1e-10));
     nll -= w_i * ll_i;  // Weight the likelihood contribution
   }

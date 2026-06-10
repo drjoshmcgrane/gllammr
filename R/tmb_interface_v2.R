@@ -15,6 +15,10 @@ fit_tmb_gllamm_v2 <- function(model_data, family, random_terms, start_params = N
   # Multiple random-effects terms (crossed or expanded nested structures)
   # route to the combined-Z engine
   if (model_data$n_random_terms > 1) {
+    if (is.list(weights)) {
+      stop("Level-specific weights are currently supported for two-level ",
+           "models (a single random-effects term)")
+    }
     return(fit_tmb_gllamm_multi(model_data, family, random_terms,
                                 start_params = start_params,
                                 control = control, weights = weights))
@@ -27,12 +31,10 @@ fit_tmb_gllamm_v2 <- function(model_data, family, random_terms, start_params = N
   # Convert Z to sparse matrix for efficiency
   Z_sparse <- Matrix::Matrix(model_data$Z[[1]], sparse = TRUE)
 
-  # Prepare weights vector (default to 1.0 if NULL)
-  if (is.null(weights)) {
-    weights_vec <- rep(1.0, model_data$n_obs)
-  } else {
-    weights_vec <- as.numeric(weights)
-  }
+  # Level-1 and level-2 (survey) weights
+  w <- parse_level_weights(weights, model_data$n_obs,
+                           model_data$groups[[1]], model_data$n_groups[1])
+  weights_vec <- w$level1
 
   # Select model template: family + random-effects structure. Gamma always
   # routes through the general template (no gamma branch in the dedicated
@@ -61,6 +63,7 @@ fit_tmb_gllamm_v2 <- function(model_data, family, random_terms, start_params = N
     n_random = as.integer(n_random),
     correlated = as.integer(correlated),
     weights = weights_vec,
+    group_weights = w$level2,
     model_name = model_name
   )
 
