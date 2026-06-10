@@ -181,11 +181,19 @@ fit_binomial <- function(formula, data, link = c("logit", "probit", "cloglog"),
     tmb_params <- start
   }
 
+  # Fix theta when the template never reads it (no correlation structure);
+  # leaving it free creates a flat likelihood direction
+  tmb_map <- list()
+  if (!(correlated && n_random > 1)) {
+    tmb_map$theta <- factor(rep(NA, length(tmb_params$theta)))
+  }
+
   # Create TMB object
   obj <- TMB::MakeADFun(
     data = tmb_data,
     parameters = tmb_params,
     random = "u",
+    map = tmb_map,
     DLL = "GLLAMMR",
     silent = TRUE
   )
@@ -216,6 +224,25 @@ fit_binomial <- function(formula, data, link = c("logit", "probit", "cloglog"),
   sigma_u_hat <- exp(log_sigma_u_hat)
   names(sigma_u_hat) <- paste0("sigma_", seq_along(sigma_u_hat))
 
+  # Full random-effects covariance (reconstruct normalized correlation from
+  # the Cholesky parameters when present, matching the template)
+  if (correlated && n_random > 1) {
+    theta_hat <- par_full[names(par_full) == "theta"]
+    L <- diag(n_random)
+    idx <- 1
+    for (i in 2:n_random) {       # row-major fill, matching the template
+      for (j in 1:(i - 1)) {
+        L[i, j] <- theta_hat[idx]
+        idx <- idx + 1
+      }
+    }
+    R <- L %*% t(L)
+    R <- R / sqrt(diag(R) %o% diag(R))
+    Sigma_u_hat <- outer(sigma_u_hat, sigma_u_hat) * R
+  } else {
+    Sigma_u_hat <- diag(sigma_u_hat^2, nrow = n_random)
+  }
+
   # Get fitted values
   fitted_vals <- obj$report()$fitted
 
@@ -224,7 +251,7 @@ fit_binomial <- function(formula, data, link = c("logit", "probit", "cloglog"),
     coefficients = list(
       fixed = beta_hat,
       random_sd = sigma_u_hat,
-      random_var = sigma_u_hat^2
+      random_var = list(Sigma_u_hat)
     ),
     logLik = -opt$objective,
     AIC = 2 * opt$objective + 2 * length(obj$par),

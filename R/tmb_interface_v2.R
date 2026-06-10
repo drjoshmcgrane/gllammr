@@ -33,13 +33,6 @@ fit_tmb_gllamm_v2 <- function(model_data, family, random_terms, start_params = N
 
   # Select model template: family + random-effects structure
   use_slopes <- (n_random > 1)
-  if (use_slopes && family$family != "gaussian") {
-    stop("Random slopes are currently only supported for the gaussian family; ",
-         "support for binomial/poisson random slopes is in progress.")
-  }
-  if (use_slopes && !is.null(weights)) {
-    stop("Weights are not yet supported for random-slope models.")
-  }
   model_name <- if (use_slopes) {
     "glmm_slopes"
   } else if (family$family == "binomial") {
@@ -66,15 +59,14 @@ fit_tmb_gllamm_v2 <- function(model_data, family, random_terms, start_params = N
     model_name = model_name
   )
 
-  # Add family-specific data
-  if (family$family == "binomial") {
-    tmb_data$link = switch(family$link,
-                           logit = 1L,
-                           probit = 2L,
-                           cloglog = 3L,
-                           1L)
-  } else if (family$family == "poisson") {
-    tmb_data$link = 1L  # log link
+  # Family and link codes (read by the binomial and glmm_slopes templates;
+  # unused data entries are ignored by the others)
+  tmb_data$family <- switch(family$family,
+                            gaussian = 0L, binomial = 1L, poisson = 2L, 0L)
+  tmb_data$link <- if (family$family == "binomial") {
+    switch(family$link, logit = 1L, probit = 2L, cloglog = 3L, 1L)
+  } else {
+    1L  # canonical link (identity / log)
   }
 
   # Initialize parameters
@@ -128,12 +120,26 @@ fit_tmb_gllamm_v2 <- function(model_data, family, random_terms, start_params = N
     tmb_params <- start_params
   }
 
+  # Fix parameters the chosen model never reads: theta when there is no
+  # correlation structure, log_sigma for non-gaussian slopes models. Leaving
+  # them free creates flat likelihood directions and singular Hessians.
+  tmb_map <- list()
+  has_theta <- !is.null(tmb_params$theta)
+  theta_used <- use_slopes && correlated && n_random > 1
+  if (has_theta && !theta_used) {
+    tmb_map$theta <- factor(rep(NA, length(tmb_params$theta)))
+  }
+  if (model_name == "glmm_slopes" && family$family != "gaussian") {
+    tmb_map$log_sigma <- factor(NA)
+  }
+
   # Create TMB object
   tryCatch({
     obj <- TMB::MakeADFun(
       data = tmb_data,
       parameters = tmb_params,
       random = "u",
+      map = tmb_map,
       DLL = "GLLAMMR",
       silent = TRUE
     )
@@ -200,8 +206,10 @@ fit_tmb_gllamm_v2 <- function(model_data, family, random_terms, start_params = N
       }
     }
 
-    # Correlation matrix
+    # Normalized correlation matrix (matches the template: L L' rescaled to
+    # unit diagonal so sigma_u are genuine standard deviations)
     R <- L %*% t(L)
+    R <- R / sqrt(diag(R) %o% diag(R))
 
     # Covariance matrix
     D <- diag(sigma_u_hat)

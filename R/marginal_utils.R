@@ -197,13 +197,14 @@ extract_random_vcov <- function(object) {
         }
 
         R <- L %*% t(L)
+        R <- R / sqrt(diag(R) %o% diag(R))  # normalize to unit diagonal
 
         # Convert to covariance matrix
         Sigma_u <- outer(sigma_u, sigma_u) * R
         return(Sigma_u)
       } else {
         # Uncorrelated random effects (diagonal)
-        return(diag(sigma_u^2))
+        return(diag(sigma_u^2, nrow = n_random))
       }
     }
 
@@ -228,10 +229,11 @@ extract_random_vcov <- function(object) {
         }
 
         R <- L %*% t(L)
+        R <- R / sqrt(diag(R) %o% diag(R))  # normalize to unit diagonal
         Sigma_u <- outer(sigma_u, sigma_u) * R
         return(Sigma_u)
       } else {
-        return(diag(sigma_u^2))
+        return(diag(sigma_u^2, nrow = n_random))
       }
     }
   }
@@ -271,29 +273,13 @@ extract_random_vcov <- function(object) {
 #' @return Random effects design matrix Z
 #' @keywords internal
 construct_Z_matrix <- function(newdata, random_terms, group_var = NULL) {
-  # For simple random intercept: (1 | group)
-  # Z is a column of 1s (one per observation)
-
   if (is.null(random_terms) || length(random_terms) == 0) {
     stop("No random effects in model")
   }
 
-  # For now, handle simple random intercept
-  # TODO: Extend to random slopes
-
-  n_obs <- nrow(newdata)
-
-  # Extract random effect structure from first term
+  # Same construction the fitting code uses (make_model_matrices), so the
+  # columns line up with the estimated random effects: intercept-only gives
+  # a column of 1s, slope terms add their covariate columns.
   term <- random_terms[[1]]
-
-  if (term$formula == "1") {
-    # Random intercept: Z is column of 1s
-    Z <- matrix(1, nrow = n_obs, ncol = 1)
-    return(Z)
-  } else {
-    # Random slopes: need to construct from formula
-    # This is more complex - for now, error
-    stop("Random slopes not yet supported in marginal predictions. ",
-         "Only random intercepts (1 | group) are currently supported.")
-  }
+  model.matrix(term$formula, data = newdata)
 }

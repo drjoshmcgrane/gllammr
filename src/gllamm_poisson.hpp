@@ -48,11 +48,14 @@ Type gllamm_poisson(objective_function<Type>* obj)
       }
     }
 
+    // L L' rescaled to unit diagonal so sigma_u are genuine standard
+    // deviations (otherwise the scale is unidentified)
     matrix<Type> R = L * L.transpose();
 
     for (int i = 0; i < n_random; i++) {
       for (int j = 0; j < n_random; j++) {
-        Sigma_u(i, j) = sigma_u(i) * sigma_u(j) * R(i, j);
+        Type rij = R(i, j) / sqrt(R(i, i) * R(j, j));
+        Sigma_u(i, j) = sigma_u(i) * sigma_u(j) * rij;
       }
     }
   } else {

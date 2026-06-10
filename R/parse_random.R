@@ -95,10 +95,13 @@ parse_single_random_term <- function(term, data) {
   # Right side (after |)
   rhs <- term[[3]]
 
-  # Check if intercept only (we only support intercepts for now)
+  # Person-level random effects in IRT models are intercept-only; the
+  # multilevel IRT templates have no slope design. Random slopes ARE
+  # supported in gllamm() GLMMs via (x | group).
   if (!identical(lhs, 1)) {
-    stop("Only random intercepts (1 | group) are currently supported. ",
-         "Random slopes not yet implemented.")
+    stop("Person-level random effects in IRT/EIRT models support random ",
+         "intercepts only, e.g. (1 | group). Random slopes are available ",
+         "for GLMMs fitted with gllamm().")
   }
 
   # Parse grouping variable

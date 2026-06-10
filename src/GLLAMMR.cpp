@@ -5,7 +5,7 @@
 #include <TMB.hpp>
 
 #include "gllamm_gaussian.hpp"
-#include "gllamm_gaussian_slopes.hpp"
+#include "gllamm_glmm_slopes.hpp"
 #include "gllamm_binomial.hpp"
 #include "gllamm_poisson.hpp"
 #include "gllamm_ordinal.hpp"
@@ -27,7 +27,7 @@ Type objective_function<Type>::operator() ()
   DATA_STRING(model_name);
 
   if (model_name == "gaussian")                 return gllamm_gaussian(this);
-  else if (model_name == "glmm_slopes")         return gllamm_gaussian_slopes(this);
+  else if (model_name == "glmm_slopes")         return gllamm_glmm_slopes(this);
   else if (model_name == "binomial")            return gllamm_binomial(this);
   else if (model_name == "poisson")             return gllamm_poisson(this);
   else if (model_name == "ordinal")             return gllamm_ordinal(this);
