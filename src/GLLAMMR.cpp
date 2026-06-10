@@ -21,6 +21,7 @@
 #include "gllamm_sem.hpp"
 #include "gllamm_survival.hpp"
 #include "gllamm_rank.hpp"
+#include "gllamm_npml.hpp"
 
 template<class Type>
 Type objective_function<Type>::operator() ()
@@ -44,6 +45,7 @@ Type objective_function<Type>::operator() ()
   else if (model_name == "sem")                 return gllamm_sem(this);
   else if (model_name == "survival")            return gllamm_survival(this);
   else if (model_name == "rank")                return gllamm_rank(this);
+  else if (model_name == "npml")                return gllamm_npml(this);
   else Rf_error("Unknown model_name '%s'", model_name.c_str());
 
   return Type(0);

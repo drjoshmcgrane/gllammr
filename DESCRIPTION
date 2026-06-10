@@ -42,7 +42,8 @@ Suggests:
     mirt,
     TAM,
     MASS,
-    lavaan
+    lavaan,
+    npmlreg
 Encoding: UTF-8
 RoxygenNote: 7.3.3
 VignetteBuilder: knitr

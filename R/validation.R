@@ -13,7 +13,8 @@
 #'   Available: "gaussian_sleepstudy", "binomial_toenail",
 #'   "poisson_grouseticks", "ordinal_wine", "rasch_lsat", "twopl_simulated",
 #'   "lca_carcinoma", "grm_science", "gamma_simulated",
-#'   "survival_exponential", "sem_lavaan", "lca_polytomous".
+#'   "survival_exponential", "sem_lavaan", "lca_polytomous",
+#'   "npml_binomial".
 #' @param verbose Print progress messages (default TRUE)
 #'
 #' @return Data frame with one row per compared statistic: case, statistic,
@@ -33,7 +34,7 @@ gllammr_validate <- function(cases = "all", verbose = TRUE) {
                  "poisson_grouseticks", "ordinal_wine", "rasch_lsat",
                  "twopl_simulated", "lca_carcinoma", "grm_science",
                  "gamma_simulated", "survival_exponential", "sem_lavaan",
-                 "lca_polytomous")
+                 "lca_polytomous", "npml_binomial")
   if (identical(cases, "all")) cases <- all_cases
   unknown <- setdiff(cases, all_cases)
   if (length(unknown) > 0) {
@@ -457,5 +458,43 @@ gllammr_validate <- function(cases = "all", verbose = TRUE) {
              fit$logLik, ref$llik, 0.1, relative = FALSE),
     .val_row("lca_polytomous", "max_class_proportion",
              max(fit$class_probs), max(ref$P), 1e-2)
+  )
+}
+
+
+#' @keywords internal
+.validate_npml_binomial <- function() {
+  if (!requireNamespace("npmlreg", quietly = TRUE)) {
+    return(NULL)
+  }
+  set.seed(121)
+  g <- 80; n_per <- 10; n <- g * n_per
+  grp <- factor(rep(1:g, each = n_per))
+  x <- rnorm(n)
+  cls <- sample(1:2, g, TRUE, prob = c(0.6, 0.4))
+  locs_true <- c(-1, 1.5)
+  d <- data.frame(x = x, grp = grp,
+                  yb = rbinom(n, 1, plogis(locs_true[cls[as.integer(grp)]] +
+                                             0.5 * x)))
+
+  fit <- fit_npml(yb ~ x + (1 | grp), data = d, k = 2,
+                  family = stats::binomial())
+  ref <- suppressMessages(
+    npmlreg::allvc(yb ~ x, random = ~ 1 | grp, data = d, k = 2,
+                   family = binomial(), verbose = FALSE, plot.opt = 0))
+  ref_locs <- sort(ref$mass.points)
+  ref_masses <- ref$masses[order(ref$mass.points)]
+
+  rbind(
+    .val_row("npml_binomial", "beta_x",
+             unname(coef(fit)$fixed["x"]), unname(coef(ref)["x"]), 5e-3),
+    .val_row("npml_binomial", "location_1",
+             fit$locations[1], unname(ref_locs[1]), 1e-2),
+    .val_row("npml_binomial", "location_2",
+             fit$locations[2], unname(ref_locs[2]), 1e-2),
+    .val_row("npml_binomial", "mass_1",
+             fit$masses[1], unname(ref_masses[1]), 1e-2),
+    .val_row("npml_binomial", "logLik",
+             fit$logLik, -ref$disparity / 2, 0.1, relative = FALSE)
   )
 }
