@@ -16,6 +16,7 @@ Type objective_function<Type>::operator() ()
   DATA_INTEGER(n_fixed);       // Number of fixed effects
   DATA_INTEGER(n_random);      // Number of random effects per group
   DATA_INTEGER(correlated);    // 1 if correlated, 0 if uncorrelated
+  DATA_VECTOR(weights);        // Case weights (fweights or pweights)
 
   // Parameters
   PARAMETER_VECTOR(beta);      // Fixed effects coefficients
@@ -92,8 +93,9 @@ Type objective_function<Type>::operator() ()
     // Log link: lambda = exp(eta)
     Type lambda = exp(eta);
 
-    // Poisson log-likelihood
-    nll -= dpois(y(i), lambda, true);
+    // Poisson log-likelihood (weighted)
+    Type w_i = weights(i);
+    nll -= w_i * dpois(y(i), lambda, true);
   }
 
   // Report

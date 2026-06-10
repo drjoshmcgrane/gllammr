@@ -18,6 +18,7 @@ Type objective_function<Type>::operator() ()
   DATA_INTEGER(n_random);      // Number of random effects
   DATA_INTEGER(distribution);  // 1=exponential, 2=Weibull
   DATA_INTEGER(correlated);    // Random effects correlation
+  DATA_VECTOR(weights);        // Case weights (fweights or pweights)
 
   // Parameters
   PARAMETER_VECTOR(beta);      // Fixed effects (log hazard ratios)
@@ -91,17 +92,18 @@ Type objective_function<Type>::operator() ()
 
     Type t = time(i);
     int d = event(i);
+    Type w_i = weights(i);
 
     if (distribution == 1) {
       // Exponential: lambda = exp(eta)
       Type lambda = exp(eta);
 
       if (d == 1) {
-        // Event occurred: f(t) = lambda * exp(-lambda * t)
-        nll -= log(lambda) - lambda * t;
+        // Event occurred: f(t) = lambda * exp(-lambda * t) (weighted)
+        nll -= w_i * (log(lambda) - lambda * t);
       } else {
-        // Censored: S(t) = exp(-lambda * t)
-        nll -= -lambda * t;
+        // Censored: S(t) = exp(-lambda * t) (weighted)
+        nll -= w_i * (-lambda * t);
       }
 
     } else {
@@ -109,12 +111,12 @@ Type objective_function<Type>::operator() ()
       Type lambda = exp(eta);
 
       if (d == 1) {
-        // Event: f(t) = shape * lambda * (lambda*t)^(shape-1) * exp(-(lambda*t)^shape)
-        nll -= log(shape) + log(lambda) + (shape - Type(1.0)) * log(lambda * t) -
-               pow(lambda * t, shape);
+        // Event: f(t) = shape * lambda * (lambda*t)^(shape-1) * exp(-(lambda*t)^shape) (weighted)
+        nll -= w_i * (log(shape) + log(lambda) + (shape - Type(1.0)) * log(lambda * t) -
+               pow(lambda * t, shape));
       } else {
-        // Censored: S(t) = exp(-(lambda*t)^shape)
-        nll -= -pow(lambda * t, shape);
+        // Censored: S(t) = exp(-(lambda*t)^shape) (weighted)
+        nll -= w_i * (-pow(lambda * t, shape));
       }
     }
   }

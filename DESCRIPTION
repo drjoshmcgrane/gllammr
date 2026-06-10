@@ -1,8 +1,8 @@
 Package: GLLAMMR
 Type: Package
 Title: Generalized Linear Latent and Mixed Models
-Version: 1.0.0
-Date: 2026-02-06
+Version: 1.1.0
+Date: 2026-02-09
 Authors@R: c(
     person("Josh", "", email = "your.email@example.com", role = c("aut", "cre")),
     person("Claude", "Sonnet 4.5", role = "ctb", comment = "Implementation assistant"))
@@ -14,9 +14,11 @@ Description: Comprehensive implementation of Generalized Linear Latent and Mixed
     PCM, GPCM, NRM) models; differential item functioning (DIF) analysis; explanatory
     IRT (EIRT) with item covariates for both dichotomous and polytomous models; latent
     class analysis; structural equation models; mixed response models; and survival
-    models. Uses Template Model Builder (TMB) for efficient computation via automatic
-    differentiation. Provides comprehensive diagnostics, visualization, and model
-    comparison tools.
+    models. All models support frequency and probability weights for survey data and
+    aggregated observations. Provides marginal (population-averaged) predictions via
+    Monte Carlo integration. Uses Template Model Builder (TMB) for efficient computation
+    via automatic differentiation. Provides comprehensive diagnostics, visualization,
+    and model comparison tools.
 License: GPL-3
 Depends:
     R (>= 4.0.0)
@@ -35,9 +37,10 @@ Suggests:
     ggplot2,
     lme4,
     mirt,
-    TAM
+    TAM,
+    MASS
 Encoding: UTF-8
-RoxygenNote: 7.3.0
+RoxygenNote: 7.3.3
 VignetteBuilder: knitr
 URL: https://github.com/yourusername/GLLAMMR
 BugReports: https://github.com/yourusername/GLLAMMR/issues

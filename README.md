@@ -160,6 +160,88 @@ fit_crossed <- gllamm(
 )
 ```
 
+## Advanced Features
+
+### Weights Support
+
+All GLLAMMR models support frequency weights and probability weights:
+
+```r
+# Frequency weights (aggregated data)
+fit_weighted <- gllamm(y ~ x + (1 | group),
+                       data = data,
+                       family = binomial(),
+                       weights = data$freq)
+
+# Probability weights (survey data)
+fit_survey <- gllamm(y ~ x + (1 | group),
+                    data = survey_data,
+                    family = binomial(),
+                    weights = survey_data$sampling_weight)
+
+# IRT models with person weights
+fit_irt_weighted <- fit_irt(responses,
+                            model = "2PL",
+                            weights = person_weights)
+```
+
+**Supported for all model families:**
+- GLMM (Gaussian, Binomial, Poisson)
+- IRT (Rasch, 2PL, 3PL, GRM, PCM, GPCM, NRM)
+- EIRT (Explanatory IRT)
+- Ordinal models
+- Latent class analysis
+- Multinomial models
+- Survival models
+
+See `vignette("weights")` for details.
+
+### Marginal Predictions
+
+Get population-averaged predictions by marginalizing over random effects:
+
+```r
+# Fit model
+fit <- gllamm(y ~ treatment + (1 | clinic),
+              data = data,
+              family = binomial())
+
+# Conditional predictions (at u=0)
+pred_cond <- predict(fit, type = "response")
+
+# Marginal predictions (population-averaged)
+pred_marg <- predict(fit, type = "marginal", n_sim = 1000)
+
+# For nonlinear links, these differ due to Jensen's inequality
+mean(pred_cond - pred_marg)  # Typically non-zero
+```
+
+**Available for all model families:**
+
+```r
+# IRT: Population-level item difficulty
+predict(fit_irt, type = "marginal", n_sim = 1000)
+
+# Ordinal: Population category probabilities
+predict(fit_ordinal, type = "marginal", n_sim = 1000)
+
+# Survival: Population-average survival curves
+predict(fit_survival, type = "marginal_survival",
+        times = c(5, 10, 15), n_sim = 1000)
+
+# EIRT: Predictions for NEW items
+new_items <- data.frame(item_length = c(10, 15, 20))
+predict(fit_eirt, newdata = new_items, type = "marginal")
+```
+
+**Key features:**
+- Monte Carlo integration over random effects
+- Standard errors available (`se.fit = TRUE`)
+- Optimized for Gaussian-identity (instant)
+- Adjustable precision via `n_sim` parameter
+
+See `vignette("marginal-predictions")` for mathematical details and examples.
+
 ## Formula Syntax
 
 GLLAMMR uses lme4-style formula syntax:

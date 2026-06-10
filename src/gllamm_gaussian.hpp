@@ -15,6 +15,7 @@ Type objective_function<Type>::operator() ()
   DATA_INTEGER(n_obs);         // Number of observations
   DATA_INTEGER(n_fixed);       // Number of fixed effects
   DATA_INTEGER(n_random);      // Number of random effects per group
+  DATA_VECTOR(weights);        // Case weights (fweights or pweights)
 
   // Parameters
   PARAMETER_VECTOR(beta);      // Fixed effects coefficients
@@ -54,8 +55,9 @@ Type objective_function<Type>::operator() ()
       eta += Z(i, k) * u[u_idx];
     }
 
-    // Gaussian likelihood: y ~ N(eta, sigma^2)
-    nll -= dnorm(y[i], eta, sigma, true);
+    // Gaussian likelihood: y ~ N(eta, sigma^2) (weighted)
+    Type w_i = weights[i];
+    nll -= w_i * dnorm(y[i], eta, sigma, true);
   }
 
   // Report fitted values

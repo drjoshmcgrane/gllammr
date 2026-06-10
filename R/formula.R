@@ -66,13 +66,15 @@ parse_random_term <- function(term, data) {
   # Remove whitespace
   term <- gsub("\\s+", "", term)
 
-  # Check for parentheses
-  if (!grepl("^\\(.*\\)$", term)) {
-    stop("Random effects terms must be enclosed in parentheses: (term | group)")
+  # Check for parentheses and remove if present
+  # Note: terms() may have already stripped them
+  if (grepl("^\\(.*\\)$", term)) {
+    # Remove outer parentheses
+    term_inner <- gsub("^\\((.*)\\)$", "\\1", term)
+  } else {
+    # Already stripped by terms()
+    term_inner <- term
   }
-
-  # Remove outer parentheses
-  term_inner <- gsub("^\\((.*)\\)$", "\\1", term)
 
   # Check for || (uncorrelated random effects) BEFORE splitting
   uncorrelated <- grepl("\\|\\|", term_inner)

@@ -1,3 +1,2 @@
-// Compilation stub for polytomous IRT models
-#include <TMB.hpp>
+// Compile with TMB
 #include "gllamm_irt_poly.hpp"

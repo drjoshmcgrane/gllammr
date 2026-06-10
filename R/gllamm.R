@@ -12,8 +12,13 @@
 #' @param data A data frame containing the variables in the formula.
 #'
 #' @param family A GLM family object specifying the error distribution and link
-#'   function. Currently supports \code{gaussian()} (default). Future versions
-#'   will support \code{binomial()}, \code{poisson()}, and others.
+#'   function. Supports:
+#'   \itemize{
+#'     \item \code{gaussian()} - Normal distribution (default)
+#'     \item \code{binomial()} - Binary/binomial outcomes
+#'     \item \code{poisson()} - Count data
+#'     \item \code{ordinal()} - Ordered categorical responses (see \code{?ordinal})
+#'   }
 #'
 #' @param start Optional named list of starting values for parameters.
 #'
@@ -82,6 +87,17 @@
 #' VarCorr(fit2)      # Variance components
 #' fitted(fit2)       # Fitted values
 #' residuals(fit2)    # Residuals
+#'
+#' # Ordinal regression (proportional odds)
+#' data$satisfaction <- ordered(sample(1:5, nrow(data), replace = TRUE))
+#' fit3 <- gllamm(satisfaction ~ x + (1 | group),
+#'                data = data,
+#'                family = ordinal(link = "logit"))
+#'
+#' # Ordinal with adjacent category logit
+#' fit4 <- gllamm(satisfaction ~ x + (1 | group),
+#'                data = data,
+#'                family = ordinal(link = "acl"))
 #' }
 #'
 #' @references
@@ -96,6 +112,7 @@
 gllamm <- function(formula,
                    data,
                    family = gaussian(),
+                   weights = NULL,
                    start = NULL,
                    control = list(),
                    ...) {
@@ -116,8 +133,44 @@ gllamm <- function(formula,
     stop("'data' must be a data frame")
   }
 
+  # Validate weights if provided
+  if (!is.null(weights)) {
+    if (length(weights) != nrow(data)) {
+      stop("Length of weights (", length(weights), ") must match number of observations (", nrow(data), ")")
+    }
+    if (any(weights < 0, na.rm = TRUE)) {
+      stop("All weights must be non-negative")
+    }
+    if (any(is.na(weights))) {
+      stop("weights cannot contain missing values")
+    }
+  }
+
   # Validate formula
   validate_formula(formula, data)
+
+  # Dispatch to specialized fitting functions based on family type
+  # This provides a unified interface: gllamm(formula, data, family = ordinal(...))
+
+  if (inherits(family, "ordinal_family")) {
+    # Ordinal regression models
+    return(fit_ordinal(formula = formula,
+                      data = data,
+                      link = family$link,
+                      weights = weights,
+                      start = start,
+                      control = control))
+  }
+
+  if (inherits(family, "binomial_family")) {
+    # Binomial regression models with custom link (logit, probit, cloglog)
+    return(fit_binomial(formula = formula,
+                       data = data,
+                       link = family$link,
+                       weights = weights,
+                       start = start,
+                       control = control))
+  }
 
   # Parse formula
   parsed <- parse_formula(formula, data)
@@ -136,14 +189,16 @@ gllamm <- function(formula,
       family = family,
       random_terms = parsed$random_terms,
       start_params = start,
-      control = control
+      control = control,
+      weights = weights
     )
   } else {
     fit_result <- fit_tmb_gllamm(
       model_data = model_data,
       family = family,
       start_params = start,
-      control = control
+      control = control,
+      weights = weights
     )
   }
 

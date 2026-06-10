@@ -1,3 +1,2 @@
-// Compilation stub for Explanatory IRT models
-#include <TMB.hpp>
+// Compile with TMB
 #include "gllamm_eirt.hpp"

@@ -10,9 +10,15 @@
 #'     \item{response}{Predictions on the response scale (default)}
 #'     \item{link}{Predictions on the link scale (linear predictor)}
 #'     \item{random}{Random effects only}
+#'     \item{marginal}{Population-averaged predictions (integrating over random effects)}
 #'   }
 #' @param re.form Formula for random effects to include. Use \code{NA} or
 #'   \code{~0} to exclude all random effects (population-level predictions).
+#'   Ignored when \code{type = "marginal"}.
+#' @param n_sim Number of Monte Carlo samples for marginal predictions (default: 1000).
+#'   Only used when \code{type = "marginal"}.
+#' @param se.fit Logical; return standard errors for marginal predictions? (default: FALSE).
+#'   Only used when \code{type = "marginal"}.
 #' @param ... Additional arguments (currently unused)
 #'
 #' @return A vector of predictions
@@ -21,24 +27,37 @@
 #' \dontrun{
 #' fit <- gllamm(y ~ x + (1 | group), data = mydata)
 #'
-#' # Fitted values (default)
+#' # Fitted values (default - conditional on random effects)
 #' pred1 <- predict(fit)
 #'
-#' # Population-level predictions (no random effects)
+#' # Population-level predictions (fixed effects only, u=0)
 #' pred2 <- predict(fit, re.form = NA)
 #'
-#' # Predictions for new data
-#' pred3 <- predict(fit, newdata = newdata)
+#' # Marginal predictions (population-averaged, integrating over u)
+#' pred3 <- predict(fit, type = "marginal")
+#'
+#' # Marginal predictions with standard errors
+#' pred4 <- predict(fit, type = "marginal", se.fit = TRUE)
+#'
+#' # Marginal predictions for new data
+#' pred5 <- predict(fit, newdata = newdata, type = "marginal")
 #' }
 #'
 #' @export
 predict.gllamm <- function(object,
                            newdata = NULL,
-                           type = c("response", "link", "random"),
+                           type = c("response", "link", "random", "marginal"),
                            re.form = NULL,
+                           n_sim = 1000,
+                           se.fit = FALSE,
                            ...) {
 
   type <- match.arg(type)
+
+  # Handle marginal predictions separately
+  if (type == "marginal") {
+    return(predict_marginal_gllamm(object, newdata, n_sim, se.fit))
+  }
 
   # If no new data, return fitted values or random effects
   if (is.null(newdata)) {
@@ -207,5 +226,81 @@ simulate.gllamm <- function(object,
   } else {
     colnames(sims) <- paste0("sim_", 1:nsim)
     return(sims)
+  }
+}
+
+
+#' Internal function for marginal predictions
+#'
+#' Computes population-averaged predictions by integrating over random effects
+#'
+#' @param object Fitted gllamm object
+#' @param newdata New data for predictions (NULL = use original data)
+#' @param n_sim Number of Monte Carlo samples
+#' @param se.fit Return standard errors?
+#'
+#' @return Vector of marginal predictions, or list with fit and se.fit
+#' @keywords internal
+predict_marginal_gllamm <- function(object, newdata = NULL, n_sim = 1000, se.fit = FALSE) {
+
+  # Special case: Gaussian with identity link
+  # Marginal = conditional for linear models
+  if (object$family$family == "gaussian" && object$family$link == "identity") {
+    # Just return fixed effects predictions
+    if (is.null(newdata)) {
+      pred <- as.numeric(object$X %*% object$coefficients$fixed)
+    } else {
+      parsed <- parse_formula(object$formula, newdata)
+      new_mats <- make_model_matrices(parsed, newdata)
+      pred <- as.numeric(new_mats$X %*% object$coefficients$fixed)
+    }
+
+    if (se.fit) {
+      # SE is 0 for marginal = conditional case
+      return(list(fit = pred, se.fit = rep(0, length(pred))))
+    } else {
+      return(pred)
+    }
+  }
+
+  # General case: Nonlinear link requires Monte Carlo integration
+
+  # Get model matrices
+  if (is.null(newdata)) {
+    X <- object$X
+    # Construct Z for original data
+    parsed <- parse_formula(object$formula, object$data)
+    model_data <- make_model_matrices(parsed, object$data)
+    Z <- model_data$Z[[1]]
+  } else {
+    parsed <- parse_formula(object$formula, newdata)
+    new_mats <- make_model_matrices(parsed, newdata)
+    X <- new_mats$X
+    Z <- new_mats$Z[[1]]
+  }
+
+  # Get fixed effects
+  beta <- object$coefficients$fixed
+
+  # Extract random effects variance-covariance matrix
+  Sigma_u <- extract_random_vcov(object)
+
+  # Get inverse link function
+  inv_link <- get_inverse_link(object$family)
+
+  # Monte Carlo integration
+  result <- mc_integrate_marginal(
+    X = as.matrix(X),
+    Z = as.matrix(Z),
+    beta = beta,
+    Sigma_u = Sigma_u,
+    inv_link_fn = inv_link,
+    n_sim = n_sim
+  )
+
+  if (se.fit) {
+    return(list(fit = result$fit, se.fit = result$se))
+  } else {
+    return(result$fit)
   }
 }

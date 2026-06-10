@@ -11,3 +11,6 @@ src/*.dll
 inst/doc
 doc
 Meta
+src/Rplots.pdf
+Rplots.pdf
+*.pdf

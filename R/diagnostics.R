@@ -15,6 +15,18 @@ NULL
 #' @export
 plot.gllamm <- function(x, which = c(1, 2, 3, 5), ...) {
 
+  # Dispatch to model-specific plotting functions
+  if (inherits(x, "gllamm_irt")) {
+    return(plot.gllamm_irt(x, which = which, ...))
+  }
+  if (inherits(x, "gllamm_lca")) {
+    return(plot.gllamm_lca(x, which = which, ...))
+  }
+  if (inherits(x, "gllamm_ordinal")) {
+    return(plot.gllamm_ordinal(x, which = which, ...))
+  }
+
+  # Default GLMM diagnostics for standard models
   # Calculate residuals and fitted values
   resids <- residuals(x, type = "response")
   fitted_vals <- fitted(x)

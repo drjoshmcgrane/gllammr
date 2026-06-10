@@ -9,7 +9,7 @@
 #'
 #' @return TMB fit object with parameter estimates
 #' @keywords internal
-fit_tmb_gllamm <- function(model_data, family, start_params = NULL, control = list()) {
+fit_tmb_gllamm <- function(model_data, family, start_params = NULL, control = list(), weights = NULL) {
 
   # Currently only support Gaussian
   if (family$family != "gaussian" || family$link != "identity") {
@@ -25,6 +25,13 @@ fit_tmb_gllamm <- function(model_data, family, start_params = NULL, control = li
   n_random <- model_data$n_random_coefs[1]
   use_slopes <- (n_random > 1)
 
+  # Prepare weights vector (default to 1.0 if NULL)
+  if (is.null(weights)) {
+    weights_vec <- rep(1.0, model_data$n_obs)
+  } else {
+    weights_vec <- as.numeric(weights)
+  }
+
   # Prepare TMB data
   tmb_data <- list(
     y = as.numeric(model_data$y),
@@ -34,7 +41,8 @@ fit_tmb_gllamm <- function(model_data, family, start_params = NULL, control = li
     n_groups = as.integer(model_data$n_groups[1]),
     n_obs = as.integer(model_data$n_obs),
     n_fixed = as.integer(model_data$n_fixed),
-    n_random = as.integer(model_data$n_random_coefs[1])
+    n_random = as.integer(model_data$n_random_coefs[1]),
+    weights = weights_vec
   )
 
   # Initialize parameters

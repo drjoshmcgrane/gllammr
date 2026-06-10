@@ -17,6 +17,7 @@ Type objective_function<Type>::operator() ()
   DATA_INTEGER(n_random);      // Number of random effects per group
   DATA_INTEGER(n_categories);  // Number of nominal categories
   DATA_INTEGER(correlated);    // 1 if correlated, 0 if uncorrelated
+  DATA_VECTOR(weights);        // Case weights (fweights or pweights)
 
   // Parameters
   // beta is a matrix: (n_categories - 1) x n_fixed
@@ -111,8 +112,9 @@ Type objective_function<Type>::operator() ()
       prob_obs_cat = exp(eta(obs_cat)) / sum_exp;
     }
 
-    // Add to negative log-likelihood
-    nll -= log(prob_obs_cat + Type(1e-10));
+    // Add to negative log-likelihood (weighted)
+    Type w_i = weights(i);
+    nll -= w_i * log(prob_obs_cat + Type(1e-10));
   }
 
   // Report

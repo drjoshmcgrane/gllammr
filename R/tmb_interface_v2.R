@@ -10,7 +10,7 @@
 #'
 #' @return TMB fit object with parameter estimates
 #' @keywords internal
-fit_tmb_gllamm_v2 <- function(model_data, family, random_terms, start_params = NULL, control = list()) {
+fit_tmb_gllamm_v2 <- function(model_data, family, random_terms, start_params = NULL, control = list(), weights = NULL) {
 
   # For now, only handle single random effect term
   if (model_data$n_random_terms != 1) {
@@ -24,6 +24,13 @@ fit_tmb_gllamm_v2 <- function(model_data, family, random_terms, start_params = N
   # Convert Z to sparse matrix for efficiency
   Z_sparse <- Matrix::Matrix(model_data$Z[[1]], sparse = TRUE)
 
+  # Prepare weights vector (default to 1.0 if NULL)
+  if (is.null(weights)) {
+    weights_vec <- rep(1.0, model_data$n_obs)
+  } else {
+    weights_vec <- as.numeric(weights)
+  }
+
   # Prepare TMB data
   tmb_data <- list(
     y = as.numeric(model_data$y),
@@ -34,7 +41,8 @@ fit_tmb_gllamm_v2 <- function(model_data, family, random_terms, start_params = N
     n_obs = as.integer(model_data$n_obs),
     n_fixed = as.integer(model_data$n_fixed),
     n_random = as.integer(n_random),
-    correlated = as.integer(correlated)
+    correlated = as.integer(correlated),
+    weights = weights_vec
   )
 
   # Add family-specific data

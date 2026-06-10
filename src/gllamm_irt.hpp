@@ -13,7 +13,9 @@ Type objective_function<Type>::operator() ()
   DATA_INTEGER(n_persons);     // Number of persons
   DATA_INTEGER(n_items);       // Number of items
   DATA_INTEGER(n_obs);         // Number of observations
+  DATA_VECTOR(weights);        // Case weights (fweights or pweights)
   DATA_INTEGER(model_type);    // 1=Rasch, 2=2PL, 3=3PL
+  DATA_IVECTOR(mc_items);      // 1 if item has guessing parameter, 0 otherwise (for 3PL)
 
   // Parameters
   PARAMETER_VECTOR(theta);     // Person abilities (latent trait)
@@ -52,13 +54,22 @@ Type objective_function<Type>::operator() ()
 
     } else {
       // 3PL model: P(Y=1) = c + (1-c) * logit^{-1}(a*(theta - b))
+      // Guessing only applied if mc_items[item] == 1
       Type eta = discrimination(item) * (theta(person) - difficulty(item));
-      Type c = guessing(item);
-      prob = c + (Type(1.0) - c) * invlogit(eta);
+
+      if (mc_items(item) == 1) {
+        // MC item: apply guessing parameter
+        Type c = guessing(item);
+        prob = c + (Type(1.0) - c) * invlogit(eta);
+      } else {
+        // Non-MC item: no guessing (same as 2PL)
+        prob = invlogit(eta);
+      }
     }
 
-    // Bernoulli log-likelihood
-    nll -= y(i) * log(prob + Type(1e-10)) + (Type(1.0) - y(i)) * log(Type(1.0) - prob + Type(1e-10));
+    // Bernoulli log-likelihood (weighted)
+    Type w_i = weights(i);
+    nll -= w_i * (y(i) * log(prob + Type(1e-10)) + (Type(1.0) - y(i)) * log(Type(1.0) - prob + Type(1e-10)));
   }
 
   // Report estimates

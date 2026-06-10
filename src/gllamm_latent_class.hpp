@@ -11,6 +11,7 @@ Type objective_function<Type>::operator() ()
   DATA_INTEGER(n_obs);         // Number of observations
   DATA_INTEGER(n_items);       // Number of items/variables
   DATA_INTEGER(n_classes);     // Number of latent classes
+  DATA_VECTOR(weights);        // Case weights (fweights or pweights)
 
   // Parameters
   PARAMETER_MATRIX(item_probs); // Item response probabilities (n_items x n_classes)
@@ -51,8 +52,9 @@ Type objective_function<Type>::operator() ()
       obs_likelihood += class_probs(k) * class_likelihood;
     }
 
-    // Add to total log-likelihood
-    nll -= log(obs_likelihood + Type(1e-10));
+    // Add to total log-likelihood (weighted)
+    Type w_i = weights(i);
+    nll -= w_i * log(obs_likelihood + Type(1e-10));
   }
 
   // Constraints: probabilities must be in (0,1)

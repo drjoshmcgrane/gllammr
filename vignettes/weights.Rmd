@@ -1,0 +1,352 @@
+---
+title: "Using Weights in GLLAMMR"
+author: "GLLAMMR Package"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Using Weights in GLLAMMR}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+## Introduction
+
+GLLAMMR supports two types of weights for all model families:
+
+- **Frequency weights (fweights)**: Integer weights representing the number of observations at each unique covariate pattern
+- **Probability weights (pweights)**: Continuous weights for survey sampling or inverse probability weighting
+
+This vignette demonstrates how to use weights with various model types in GLLAMMR.
+
+## Types of Weights
+
+### Frequency Weights
+
+Frequency weights are used when your data represents aggregated observations. Each row represents multiple observations with identical covariate values.
+
+**Example:** Instead of 100 individual observations, you have 10 rows where each row represents 10 identical observations.
+
+```{r fweights_example, eval=FALSE}
+# Original data (100 observations)
+# x: 1,1,1,1,1,2,2,2,2,2,...
+
+# Aggregated data (10 observations)
+data_agg <- data.frame(
+  x = rep(1:10, each = 1),
+  y = c(5, 8, 6, 7, 9, 4, 5, 8, 6, 7),
+  freq = rep(10, 10)  # Each row represents 10 observations
+)
+```
+
+### Probability Weights
+
+Probability weights are used in survey sampling where different observations have different sampling probabilities, or in causal inference with inverse probability weights.
+
+**Example:** Survey data where some demographic groups are oversampled.
+
+```{r pweights_example, eval=FALSE}
+# Survey data with sampling weights
+data_survey <- data.frame(
+  outcome = rbinom(1000, 1, 0.5),
+  treatment = rbinom(1000, 1, 0.5),
+  group = factor(sample(1:10, 1000, replace = TRUE)),
+  weight = runif(1000, 0.5, 2.0)  # Inverse of sampling probability
+)
+```
+
+## Using Weights in GLMM
+
+All GLMM families (Gaussian, Binomial, Poisson) support weights.
+
+### Example 1: Binomial GLMM with Aggregated Data
+
+```{r binomial_weights, eval=FALSE}
+library(GLLAMMR)
+
+# Aggregated binary data
+data <- data.frame(
+  success = c(15, 23, 18, 20, 25),
+  total = c(20, 30, 25, 25, 30),
+  treatment = c(0, 0, 1, 1, 1),
+  clinic = factor(1:5)
+)
+
+# Create frequency weights
+data$freq <- data$total
+
+# Expand to binary format
+data$prop <- data$success / data$total
+
+# Fit with weights
+fit <- gllamm(cbind(success, total - success) ~ treatment + (1 | clinic),
+              data = data,
+              family = binomial(),
+              weights = data$freq)
+
+summary(fit)
+```
+
+### Example 2: Poisson GLMM with Survey Weights
+
+```{r poisson_weights, eval=FALSE}
+# Survey data with counts
+data <- data.frame(
+  count = rpois(100, lambda = 5),
+  x1 = rnorm(100),
+  group = factor(rep(1:10, each = 10)),
+  survey_weight = runif(100, 0.8, 1.5)
+)
+
+# Fit Poisson model with weights
+fit <- gllamm(count ~ x1 + (1 | group),
+              data = data,
+              family = poisson(),
+              weights = data$survey_weight)
+
+summary(fit)
+```
+
+## Using Weights in IRT
+
+IRT models support weights at the person level. Weights are automatically expanded to the item-response level.
+
+### Example: IRT with Weighted Persons
+
+```{r irt_weights, eval=FALSE}
+# Item response matrix
+n_persons <- 200
+n_items <- 10
+responses <- matrix(rbinom(n_persons * n_items, 1, 0.6),
+                   n_persons, n_items)
+
+# Person weights (e.g., sampling weights)
+person_weights <- runif(n_persons, 0.5, 2.0)
+
+# Fit weighted 2PL model
+fit_irt <- fit_irt(responses,
+                   model = "2PL",
+                   weights = person_weights)
+
+# Item parameters account for differential person weighting
+print(fit_irt$item_parameters)
+```
+
+**Key point:** The weights vector has length `n_persons`, but internally GLLAMMR expands it to length `n_persons × n_items` for the TMB likelihood.
+
+### Example: EIRT with Weights
+
+```{r eirt_weights, eval=FALSE}
+# Item data
+item_data <- data.frame(
+  item_id = 1:n_items,
+  difficulty_pred = rnorm(n_items)
+)
+
+# Fit weighted EIRT model
+fit_eirt <- fit_eirt(responses,
+                     item_data = item_data,
+                     difficulty_formula = ~ difficulty_pred,
+                     model = "2PL",
+                     weights = person_weights)
+
+summary(fit_eirt)
+```
+
+## Using Weights in Ordinal Models
+
+Ordinal models support weights for observations with ordinal outcomes.
+
+```{r ordinal_weights, eval=FALSE}
+# Ordinal data
+data <- data.frame(
+  rating = sample(1:5, 500, replace = TRUE),
+  temp = rnorm(500),
+  judge = factor(rep(1:25, each = 20)),
+  weight = runif(500, 0.8, 1.2)
+)
+
+# Fit proportional odds model with weights
+fit_ord <- gllamm(rating ~ temp + (1 | judge),
+                  data = data,
+                  family = ordinal(link = "logit"),
+                  weights = data$weight)
+
+summary(fit_ord)
+```
+
+## Using Weights in Latent Class Analysis
+
+LCA supports weights for case-level observations.
+
+```{r lca_weights, eval=FALSE}
+# Binary indicators for LCA
+indicators <- matrix(rbinom(500 * 8, 1, 0.6), 500, 8)
+
+# Case weights
+case_weights <- runif(500, 0.5, 1.5)
+
+# Fit weighted LCA
+fit_lca <- fit_lca(indicators,
+                   nclass = 3,
+                   weights = case_weights)
+
+# Class proportions account for weighting
+print(fit_lca$class_proportions)
+```
+
+## Using Weights in Multinomial Models
+
+```{r multinomial_weights, eval=FALSE}
+# Multinomial choice data
+data <- data.frame(
+  choice = sample(0:2, 300, replace = TRUE),
+  price = rnorm(300),
+  quality = rnorm(300),
+  person = factor(rep(1:100, each = 3)),
+  weight = runif(300, 0.7, 1.3)
+)
+
+# Fit weighted multinomial model
+fit_mult <- fit_multinomial(choice ~ price + quality + (1 | person),
+                            data = data,
+                            weights = data$weight)
+
+summary(fit_mult)
+```
+
+## Using Weights in Survival Models
+
+Survival models support weights for time-to-event data.
+
+```{r survival_weights, eval=FALSE}
+# Survival data
+data <- data.frame(
+  time = rexp(200, rate = 0.1),
+  status = rbinom(200, 1, 0.7),
+  treatment = rep(0:1, each = 100),
+  hospital = factor(rep(1:10, each = 20)),
+  weight = runif(200, 0.6, 1.4)
+)
+
+# Fit weighted survival model
+fit_surv <- fit_survival(time ~ treatment + (1 | hospital),
+                        data = data,
+                        event = data$status,
+                        distribution = "Weibull",
+                        weights = data$weight)
+
+summary(fit_surv)
+```
+
+## Weight Validation
+
+GLLAMMR automatically validates weights:
+
+```{r validation, eval=FALSE}
+# These will produce errors:
+
+# Negative weights
+fit <- gllamm(y ~ x + (1 | g), data = data,
+              weights = c(-1, 2, 3))  # Error!
+
+# Wrong length
+fit <- gllamm(y ~ x + (1 | g), data = data,
+              weights = c(1, 2))  # Error if nrow(data) != 2
+
+# Missing values
+fit <- gllamm(y ~ x + (1 | g), data = data,
+              weights = c(1, NA, 3))  # Error!
+```
+
+All weights must be:
+- Non-negative
+- Same length as number of observations
+- Non-missing (no NA values)
+
+## Practical Guidelines
+
+### When to Use Frequency Weights
+
+1. **Aggregated data**: You have summary statistics rather than individual observations
+2. **Computational efficiency**: Reduce dataset size when many observations are identical
+3. **Count data**: Each row represents a count of occurrences
+
+### When to Use Probability Weights
+
+1. **Survey sampling**: Observations sampled with unequal probabilities
+2. **Inverse probability weighting**: Causal inference adjusting for treatment assignment
+3. **Meta-analysis**: Combining studies with different sample sizes
+4. **Stratified sampling**: Correcting for oversampling of subgroups
+
+### Best Practices
+
+1. **Document your weights**: Clearly explain what the weights represent
+2. **Check diagnostics**: Weighted models may have different convergence properties
+3. **Report weighted sample size**: For frequency weights, report effective N
+4. **Validate results**: Compare weighted vs unweighted estimates when possible
+5. **Center weights**: Consider centering probability weights around 1
+
+## Implementation Details
+
+### How Weights Affect the Likelihood
+
+In the TMB template, weights multiply the log-likelihood contribution:
+
+```cpp
+// Without weights
+nll -= log(prob);
+
+// With weights
+Type w_i = weights(i);
+nll -= w_i * log(prob);
+```
+
+This means:
+- Observations with weight = 2 contribute twice as much to the likelihood
+- Observations with weight = 0.5 contribute half as much
+- Observations with weight = 0 are effectively excluded
+
+### Computational Cost
+
+Weights add minimal computational overhead:
+- Validation: O(n) where n is number of observations
+- Likelihood evaluation: Single multiplication per observation
+- No change to optimization algorithm
+
+## Comparison with Other Software
+
+| Software | Frequency Weights | Probability Weights |
+|----------|-------------------|---------------------|
+| GLLAMMR  | ✓ | ✓ |
+| lme4     | ✓ (via cbind) | Limited |
+| glmmTMB  | ✓ | ✓ |
+| Stata    | ✓ (fweight) | ✓ (pweight) |
+| SAS      | ✓ (FREQ) | ✓ (WEIGHT) |
+
+GLLAMMR provides unified support across all model families.
+
+## Summary
+
+- All GLLAMMR model families support weights
+- Use `weights` parameter in all fitting functions
+- Weights are validated automatically
+- Choose frequency vs probability weights based on data structure
+- For IRT models, provide person-level weights (auto-expanded internally)
+
+For more examples and technical details, see:
+- `?gllamm` for GLMM weights
+- `?fit_irt` for IRT weights
+- `?fit_ordinal` for ordinal model weights
+
+## References
+
+- Pfeffermann, D. (1993). The role of sampling weights when modeling survey data. *International Statistical Review*, 61(2), 317-337.
+
+- DuMouchel, W. H., & Duncan, G. J. (1983). Using sample survey weights in multiple regression analyses of stratified samples. *Journal of the American Statistical Association*, 78(383), 535-543.

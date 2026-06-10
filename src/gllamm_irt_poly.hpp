@@ -1,6 +1,8 @@
 // Polytomous IRT Models: GRM, PCM, GPCM, NRM
 // Template for ordered and unordered categorical item responses
 
+#include <TMB.hpp>
+
 template<class Type>
 Type objective_function<Type>::operator() ()
 {
@@ -16,6 +18,7 @@ Type objective_function<Type>::operator() ()
   DATA_INTEGER(n_persons);            // Number of persons
   DATA_INTEGER(n_items);              // Number of items
   DATA_INTEGER(n_obs);                // Number of observations
+  DATA_VECTOR(weights);               // Case weights (fweights or pweights)
   DATA_INTEGER(model_type);           // 1=GRM, 2=PCM, 3=GPCM, 4=NRM
 
   // ============================================================================
@@ -78,19 +81,21 @@ Type objective_function<Type>::operator() ()
       // P(Y = k) = P(Y >= k) - P(Y >= k+1)
       // where P(Y >= k) = invlogit(a * (theta - tau_k))
 
+      // Standard IRT GRM: P(Y >= k) = invlogit(a*(theta - tau_{k-1}))
+      // P(Y = k) = P(Y >= k) - P(Y >= k+1), requires ordered thresholds
       if (obs_cat == 0) {
-        // P(Y = 1) = P(Y <= 1) = invlogit(a * (theta - tau_1))
-        prob_cat = invlogit(a * (theta(person) - ordered_threshold(0)));
+        // P(Y = 0) = 1 - P(Y >= 1) = 1 - invlogit(a*(theta - tau_0))
+        prob_cat = Type(1.0) - invlogit(a * (theta(person) - ordered_threshold(0)));
 
       } else if (obs_cat == K - 1) {
-        // P(Y = K) = 1 - P(Y <= K-1) = 1 - invlogit(a * (theta - tau_{K-1}))
-        prob_cat = Type(1.0) - invlogit(a * (theta(person) - ordered_threshold(K - 2)));
+        // P(Y = K-1) = P(Y >= K-1) = invlogit(a*(theta - tau_{K-2}))
+        prob_cat = invlogit(a * (theta(person) - ordered_threshold(K - 2)));
 
       } else {
-        // P(Y = k) = P(Y <= k) - P(Y <= k-1)
-        Type p_le_k = invlogit(a * (theta(person) - ordered_threshold(obs_cat)));
-        Type p_le_k_minus_1 = invlogit(a * (theta(person) - ordered_threshold(obs_cat - 1)));
-        prob_cat = p_le_k - p_le_k_minus_1;
+        // P(Y = k) = invlogit(a*(theta - tau_{k-1})) - invlogit(a*(theta - tau_k))
+        Type p_ge_k = invlogit(a * (theta(person) - ordered_threshold(obs_cat - 1)));
+        Type p_ge_k_plus_1 = invlogit(a * (theta(person) - ordered_threshold(obs_cat)));
+        prob_cat = p_ge_k - p_ge_k_plus_1;
       }
     }
 
@@ -98,29 +103,23 @@ Type objective_function<Type>::operator() ()
     // MODEL 2: PARTIAL CREDIT MODEL (PCM) - Rasch for polytomous
     // ========================================================================
     else if (model_type == 2) {
-      // PCM uses sequential logits with discrimination = 1
-      // P(Y = k) = exp(sum_{m=0}^k (theta - delta_m)) / sum_j exp(sum_{m=0}^j (theta - delta_m))
+      // PCM uses adjacent-categories logits: log[P(Y=m)/P(Y=m-1)] = theta - delta_m
+      // Step difficulties delta_m are FREE (no ordering constraint).
+      // P(Y = k) = exp(sum_{m=1}^k (theta - delta_m)) / sum_j exp(sum_{m=1}^j (theta - delta_m))
 
-      // Compute cumulative sums for each category
       vector<Type> cumsum(K);
-      cumsum(0) = Type(0.0);  // Reference category
+      cumsum(0) = Type(0.0);
 
       for (int m = 1; m < K; m++) {
-        // Enforce ordering: use ordered thresholds
-        if (m == 1) {
-          cumsum(m) = theta(person) - threshold_raw(item, m - 1);
-        } else {
-          cumsum(m) = cumsum(m-1) + (theta(person) - (threshold_raw(item, m-2) + exp(threshold_raw(item, m - 1))));
-        }
+        // threshold_raw(item, m-1) = delta_{i,m} directly (free step difficulty)
+        cumsum(m) = cumsum(m-1) + (theta(person) - threshold_raw(item, m - 1));
       }
 
-      // Compute denominator (sum over all categories)
       Type denom = Type(0.0);
       for (int m = 0; m < K; m++) {
         denom += exp(cumsum(m));
       }
 
-      // Probability for observed category
       prob_cat = exp(cumsum(obs_cat)) / denom;
     }
 
@@ -128,28 +127,24 @@ Type objective_function<Type>::operator() ()
     // MODEL 3: GENERALIZED PARTIAL CREDIT MODEL (GPCM)
     // ========================================================================
     else if (model_type == 3) {
-      // GPCM is PCM with item-specific discriminations
+      // GPCM: adjacent-categories logit with item-specific discrimination
+      // log[P(Y=m)/P(Y=m-1)] = a * (theta - delta_m)
+      // Step difficulties delta_m are FREE (no ordering constraint).
       Type a = discrimination(item);
 
-      // Compute cumulative sums with discrimination
       vector<Type> cumsum(K);
       cumsum(0) = Type(0.0);
 
       for (int m = 1; m < K; m++) {
-        if (m == 1) {
-          cumsum(m) = a * (theta(person) - threshold_raw(item, m - 1));
-        } else {
-          cumsum(m) = cumsum(m-1) + a * (theta(person) - (threshold_raw(item, m-2) + exp(threshold_raw(item, m - 1))));
-        }
+        // threshold_raw(item, m-1) = delta_{i,m} directly (free step difficulty)
+        cumsum(m) = cumsum(m-1) + a * (theta(person) - threshold_raw(item, m - 1));
       }
 
-      // Compute denominator
       Type denom = Type(0.0);
       for (int m = 0; m < K; m++) {
         denom += exp(cumsum(m));
       }
 
-      // Probability for observed category
       prob_cat = exp(cumsum(obs_cat)) / denom;
     }
 
@@ -186,9 +181,9 @@ Type objective_function<Type>::operator() ()
     // ADD TO NEGATIVE LOG-LIKELIHOOD
     // ========================================================================
 
-    // Bernoulli/categorical log-likelihood
-    // Add small constant to avoid log(0)
-    nll -= log(prob_cat + Type(1e-10));
+    // Categorical log-likelihood (weighted)
+    Type w_i = weights(i);
+    nll -= w_i * log(prob_cat + Type(1e-10));
   }
 
   // ============================================================================

@@ -37,6 +37,7 @@
 #'
 #' @export
 fit_lca <- function(formula, data = NULL, nclass = 2,
+                    weights = NULL,
                     start = NULL, control = list()) {
 
   # Handle formula or matrix input
@@ -51,6 +52,19 @@ fit_lca <- function(formula, data = NULL, nclass = 2,
   n_obs <- nrow(Y)
   n_items <- ncol(Y)
 
+  # Validate weights if provided
+  if (!is.null(weights)) {
+    if (length(weights) != n_obs) {
+      stop("Length of weights (", length(weights), ") must match number of observations (", n_obs, ")")
+    }
+    if (any(weights < 0, na.rm = TRUE)) {
+      stop("All weights must be non-negative")
+    }
+    if (any(is.na(weights))) {
+      stop("weights cannot contain missing values")
+    }
+  }
+
   # Check binary responses
   if (!all(Y %in% c(0, 1, NA))) {
     stop("All manifest variables must be binary (0/1)")
@@ -61,7 +75,17 @@ fit_lca <- function(formula, data = NULL, nclass = 2,
   if (sum(complete_rows) < n_obs) {
     warning("Removing ", n_obs - sum(complete_rows), " rows with missing data")
     Y <- Y[complete_rows, ]
+    if (!is.null(weights)) {
+      weights <- weights[complete_rows]
+    }
     n_obs <- nrow(Y)
+  }
+
+  # Prepare weights vector (default to 1.0 if NULL)
+  if (is.null(weights)) {
+    weights_vec <- rep(1.0, n_obs)
+  } else {
+    weights_vec <- as.numeric(weights)
   }
 
   # Prepare TMB data
@@ -69,7 +93,8 @@ fit_lca <- function(formula, data = NULL, nclass = 2,
     Y = Y,
     n_obs = as.integer(n_obs),
     n_items = as.integer(n_items),
-    n_classes = as.integer(nclass)
+    n_classes = as.integer(nclass),
+    weights = weights_vec
   )
 
   # Initialize parameters
