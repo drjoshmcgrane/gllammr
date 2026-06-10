@@ -192,12 +192,17 @@ test_that("GRM validates response coding", {
   n_persons <- 50
   n_items <- 5
 
-  # Invalid: responses coded 0 to 4 instead of 1 to 5
-  responses_invalid <- matrix(sample(0:4, n_persons * n_items, replace = TRUE),
-                               n_persons, n_items)
+  # 0-based coding is auto-recoded to 1-based with a message
+  responses_zero_based <- matrix(sample(0:4, n_persons * n_items, replace = TRUE),
+                                 n_persons, n_items)
+  expect_message(fit_irt(responses_zero_based, model = "GRM"),
+                 "Auto-recoding")
 
+  # Truly invalid coding (categories starting at 2) must error
+  responses_invalid <- matrix(sample(2:6, n_persons * n_items, replace = TRUE),
+                              n_persons, n_items)
   expect_error(fit_irt(responses_invalid, model = "GRM"),
-               "must be coded 1 to")
+               "invalid response coding")
 })
 
 

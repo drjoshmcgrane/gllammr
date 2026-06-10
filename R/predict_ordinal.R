@@ -62,7 +62,7 @@ predict.gllamm_ordinal <- function(object,
   } else {
     parsed <- parse_formula(object$formula, newdata)
     new_mats <- make_model_matrices(parsed, newdata)
-    X <- new_mats$X
+    X <- drop_intercept_column(new_mats$X)  # thresholds carry the location
     Z <- new_mats$Z[[1]]
   }
 
@@ -251,7 +251,7 @@ simulate.gllamm_ordinal <- function(object,
   sim_data <- if (is.null(newdata)) object$data else newdata
   parsed <- parse_formula(object$formula, sim_data)
   model_data <- make_model_matrices(parsed, sim_data)
-  X <- model_data$X
+  X <- drop_intercept_column(model_data$X)  # thresholds carry the location
   Z <- model_data$Z[[1]]
   groups <- model_data$groups[[1]]
   n_groups <- model_data$n_groups[1]

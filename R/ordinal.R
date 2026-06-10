@@ -120,15 +120,21 @@ fit_ordinal <- function(formula, data, link = c("logit", "probit", "acl",
     weights_vec <- as.numeric(weights)
   }
 
+  # Cumulative-link models: the thresholds carry the location, so the
+  # intercept must be dropped from X (a free intercept and free thresholds
+  # are jointly unidentified)
+  X_fixed <- drop_intercept_column(as.matrix(model_data$X))
+  n_fixed <- ncol(X_fixed)
+
   # Prepare TMB data
   tmb_data <- list(
     y = as.integer(y_numeric),
-    X = as.matrix(model_data$X),
+    X = X_fixed,
     Z = Z_sparse,
     groups = as.integer(model_data$groups[[1]]),
     n_groups = as.integer(model_data$n_groups[1]),
     n_obs = as.integer(model_data$n_obs),
-    n_fixed = as.integer(model_data$n_fixed),
+    n_fixed = as.integer(n_fixed),
     n_random = as.integer(n_random),
     n_categories = as.integer(n_categories),
     link = as.integer(link_code),
@@ -155,8 +161,8 @@ fit_ordinal <- function(formula, data, link = c("logit", "probit", "acl",
 
     # PPO requires beta_ppo matrix, others use beta vector
     if (link == "ppo") {
-      beta_ppo_init <- matrix(0, nrow = n_categories - 1, ncol = model_data$n_fixed)
-      beta_init <- rep(0, model_data$n_fixed)  # Still need beta for compatibility
+      beta_ppo_init <- matrix(0, nrow = n_categories - 1, ncol = n_fixed)
+      beta_init <- rep(0, n_fixed)  # Still need beta for compatibility
 
       tmb_params <- list(
         beta = beta_init,
@@ -167,9 +173,9 @@ fit_ordinal <- function(formula, data, link = c("logit", "probit", "acl",
         beta_ppo = beta_ppo_init
       )
     } else {
-      beta_init <- rep(0, model_data$n_fixed)
+      beta_init <- rep(0, n_fixed)
       # For non-PPO models, beta_ppo is still needed but not used
-      beta_ppo_init <- matrix(0, nrow = n_categories - 1, ncol = model_data$n_fixed)
+      beta_ppo_init <- matrix(0, nrow = n_categories - 1, ncol = n_fixed)
 
       tmb_params <- list(
         beta = beta_init,
@@ -184,12 +190,28 @@ fit_ordinal <- function(formula, data, link = c("logit", "probit", "acl",
     tmb_params <- start
   }
 
+  # Fix parameters the chosen link never reads (dead parameters create flat
+  # likelihood directions): beta_ppo for links 1-5, beta for PPO, theta
+  # without a correlation structure
+  tmb_map <- list()
+  if (link == "ppo") {
+    if (length(tmb_params$beta) > 0) {
+      tmb_map$beta <- factor(rep(NA, length(tmb_params$beta)))
+    }
+  } else {
+    tmb_map$beta_ppo <- factor(rep(NA, length(tmb_params$beta_ppo)))
+  }
+  if (!(correlated && n_random > 1)) {
+    tmb_map$theta <- factor(rep(NA, length(tmb_params$theta)))
+  }
+
   # Create TMB object
   tmb_data$model_name <- "ordinal"
   obj <- TMB::MakeADFun(
     data = tmb_data,
     parameters = tmb_params,
     random = "u",
+    map = tmb_map,
     DLL = "GLLAMMR",
     silent = TRUE
   )
@@ -215,13 +237,13 @@ fit_ordinal <- function(formula, data, link = c("logit", "probit", "acl",
   if (link == "ppo") {
     beta_ppo_hat <- matrix(par_full[names(par_full) == "beta_ppo"],
                            nrow = n_categories - 1,
-                           ncol = model_data$n_fixed)
+                           ncol = n_fixed)
     rownames(beta_ppo_hat) <- paste0("Threshold", 1:(n_categories - 1))
-    colnames(beta_ppo_hat) <- colnames(model_data$X)
+    colnames(beta_ppo_hat) <- colnames(X_fixed)
     beta_hat <- NULL  # Not used for PPO
   } else {
     beta_hat <- par_full[names(par_full) == "beta"]
-    names(beta_hat) <- colnames(model_data$X)
+    names(beta_hat) <- colnames(X_fixed)
     beta_ppo_hat <- NULL
   }
 

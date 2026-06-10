@@ -195,8 +195,8 @@ test_that("ordinal model coefficient structure is correct", {
   expect_true("thresholds" %in% names(fit$coefficients))
   expect_true("random_var" %in% names(fit$coefficients))
 
-  # Fixed effects should include intercept and two covariates
-  expect_equal(length(fit$coefficients$fixed), 3)
+  # Fixed effects: the two covariates (intercept is absorbed into thresholds)
+  expect_equal(length(fit$coefficients$fixed), 2)
 
   # Thresholds should be K-1 (3 categories = 2 thresholds)
   expect_equal(length(fit$coefficients$thresholds), 2)

@@ -220,3 +220,21 @@ validate_formula <- function(formula, data) {
 
   TRUE
 }
+
+
+#' Drop the intercept column from a fixed-effects design matrix
+#'
+#' Cumulative-link (ordinal) models absorb the location into the thresholds;
+#' keeping a free intercept alongside free thresholds leaves the model
+#' unidentified (only their difference enters the likelihood).
+#'
+#' @param X Design matrix from model.matrix()
+#' @return X without its "(Intercept)" column
+#' @keywords internal
+drop_intercept_column <- function(X) {
+  ic <- which(colnames(X) == "(Intercept)")
+  if (length(ic) > 0) {
+    X <- X[, -ic, drop = FALSE]
+  }
+  X
+}

@@ -112,7 +112,7 @@ fit_lca <- function(formula, data = NULL, nclass = 2,
     class_logits_init <- rep(0, nclass - 1)
 
     tmb_params <- list(
-      item_probs = item_probs_init,
+      item_logits = qlogis(item_probs_init),
       class_logits = class_logits_init
     )
   } else {
@@ -130,6 +130,7 @@ fit_lca <- function(formula, data = NULL, nclass = 2,
 
   # Optimize with multiple restarts (LCA is prone to local optima)
   best_opt <- NULL
+  best_obj <- NULL
   best_obj_val <- Inf
 
   n_starts <- control$n_starts %||% 3
@@ -137,7 +138,8 @@ fit_lca <- function(formula, data = NULL, nclass = 2,
   for (restart in 1:n_starts) {
     if (restart > 1) {
       # Random restart
-      tmb_params$item_probs <- matrix(runif(n_items * nclass, 0.2, 0.8), n_items, nclass)
+      tmb_params$item_logits <- matrix(qlogis(runif(n_items * nclass, 0.2, 0.8)),
+                                       n_items, nclass)
       tmb_params$class_logits <- rnorm(nclass - 1, 0, 0.5)
       obj <- TMB::MakeADFun(
         data = tmb_data,
@@ -156,6 +158,7 @@ fit_lca <- function(formula, data = NULL, nclass = 2,
 
     if (!inherits(opt, "try-error") && opt$objective < best_obj_val) {
       best_opt <- opt
+      best_obj <- obj   # keep the TMB object whose restart won
       best_obj_val <- opt$objective
     }
   }
@@ -165,6 +168,7 @@ fit_lca <- function(formula, data = NULL, nclass = 2,
   }
 
   opt <- best_opt
+  obj <- best_obj
 
   # Get standard errors
   sdr <- try(TMB::sdreport(obj), silent = TRUE)
@@ -172,9 +176,9 @@ fit_lca <- function(formula, data = NULL, nclass = 2,
   # Extract parameters
   par_full <- obj$env$last.par.best
 
-  # Item probabilities
+  # Item probabilities (logit-parameterized in the template)
   item_probs_matrix <- matrix(
-    par_full[names(par_full) == "item_probs"],
+    plogis(par_full[names(par_full) == "item_logits"]),
     nrow = n_items,
     ncol = nclass
   )

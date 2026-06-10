@@ -303,6 +303,26 @@ fit_irt_dichotomous <- function(response_matrix, model, weights, mc_items, re_in
     tmb_params <- start
   }
 
+  # Identification and dead-parameter maps:
+  # - Rasch: discrimination/guessing never read; sigma_theta free (Rasch metric)
+  # - 2PL/3PL: sigma_theta fixed at 1 (standard IRT identification; a free
+  #   discrimination and a free ability SD are jointly unidentified)
+  # - 3PL: guessing only for designated multiple-choice items
+  map_list <- list()
+  if (model_code == 1) {
+    map_list$discrimination <- factor(rep(NA, n_items))
+    map_list$guessing <- factor(rep(NA, n_items))
+  } else if (model_code == 2) {
+    map_list$guessing <- factor(rep(NA, n_items))
+    map_list$log_sigma_theta <- factor(NA)
+  } else {
+    map_list$guessing <- factor(ifelse(mc_indicator == 1, seq_len(n_items), NA))
+    map_list$log_sigma_theta <- factor(NA)
+  }
+  if (!is.null(map_list$log_sigma_theta)) {
+    tmb_params$log_sigma_theta <- 0   # exp(0) = 1 when fixed
+  }
+
   # Create TMB object with appropriate model and random effects
   if (has_random) {
     # Multi-level model: integrate out theta_0 and u_random
@@ -311,6 +331,7 @@ fit_irt_dichotomous <- function(response_matrix, model, weights, mc_items, re_in
       data = tmb_data,
       parameters = tmb_params,
       random = c("theta_0", "u_random"),
+      map = map_list,
       DLL = "GLLAMMR",
       silent = TRUE
     )
@@ -321,19 +342,32 @@ fit_irt_dichotomous <- function(response_matrix, model, weights, mc_items, re_in
       data = tmb_data,
       parameters = tmb_params,
       random = "theta",
+      map = map_list,
       DLL = "GLLAMMR",
       silent = TRUE
     )
   }
 
-  # Optimize
+  # Optimize. Box constraints keep discrimination positive and bounded
+  # (unbounded a can diverge under the Laplace approximation) and guessing
+  # inside its probability range.
   control_defaults <- list(eval.max = 2000, iter.max = 1000, trace = 0)
   control <- modifyList(control_defaults, control)
+
+  par_names <- names(obj$par)
+  lower <- rep(-Inf, length(par_names))
+  upper <- rep(Inf, length(par_names))
+  lower[par_names == "discrimination"] <- 0.05
+  upper[par_names == "discrimination"] <- 10
+  lower[par_names == "guessing"] <- 1e-3
+  upper[par_names == "guessing"] <- 0.5
 
   opt <- nlminb(
     start = obj$par,
     objective = obj$fn,
     gradient = obj$gr,
+    lower = lower,
+    upper = upper,
     control = control
   )
 
@@ -355,7 +389,11 @@ fit_irt_dichotomous <- function(response_matrix, model, weights, mc_items, re_in
   }
 
   if (model_code == 3) {
-    guessing_hat <- par_full[names(par_full) == "guessing"]
+    # Guessing is mapped off for non-MC items; estimated values fill the
+    # MC positions, others have no guessing parameter
+    guessing_free <- par_full[names(par_full) == "guessing"]
+    guessing_hat <- rep(0, n_items)
+    guessing_hat[mc_indicator == 1] <- guessing_free
     names(guessing_hat) <- paste0("Item", 1:n_items)
   } else {
     guessing_hat <- NULL
@@ -371,7 +409,9 @@ fit_irt_dichotomous <- function(response_matrix, model, weights, mc_items, re_in
     names(theta_hat) <- paste0("Person", 1:n_persons)
   }
 
-  sigma_theta_hat <- exp(par_full[names(par_full) == "log_sigma_theta"])
+  # Fixed at 1 (mapped) for 2PL/3PL identification
+  log_sigma_free <- par_full[names(par_full) == "log_sigma_theta"]
+  sigma_theta_hat <- if (length(log_sigma_free) == 0) 1 else exp(unname(log_sigma_free))
 
   # Extract random effects if present
   if (has_random) {
@@ -723,6 +763,18 @@ fit_irt_polytomous <- function(response_matrix, model, weights, re_info, start, 
     tmb_params <- start
   }
 
+  # Identification and dead-parameter maps:
+  # - PCM: discrimination never read; sigma_theta free (Rasch-family metric)
+  # - GRM/GPCM/NRM: sigma_theta fixed at 1 (free discrimination and free
+  #   ability SD are jointly unidentified)
+  map_list <- list()
+  if (model == "PCM") {
+    map_list$discrimination <- factor(rep(NA, n_items))
+  } else {
+    map_list$log_sigma_theta <- factor(NA)
+    tmb_params$log_sigma_theta <- 0   # exp(0) = 1 when fixed
+  }
+
   # Create TMB object with appropriate model and random effects
   if (has_random) {
     # Multi-level polytomous model
@@ -731,6 +783,7 @@ fit_irt_polytomous <- function(response_matrix, model, weights, re_info, start, 
       data = tmb_data,
       parameters = tmb_params,
       random = c("theta_0", "u_random"),
+      map = map_list,
       DLL = "GLLAMMR",
       silent = TRUE
     )
@@ -741,19 +794,28 @@ fit_irt_polytomous <- function(response_matrix, model, weights, re_info, start, 
       data = tmb_data,
       parameters = tmb_params,
       random = "theta",
+      map = map_list,
       DLL = "GLLAMMR",
       silent = TRUE
     )
   }
 
-  # Optimize
+  # Optimize, with discrimination kept positive and bounded
   control_defaults <- list(eval.max = 3000, iter.max = 1500, trace = 0)
   control <- modifyList(control_defaults, control)
+
+  par_names <- names(obj$par)
+  lower <- rep(-Inf, length(par_names))
+  upper <- rep(Inf, length(par_names))
+  lower[par_names == "discrimination"] <- 0.05
+  upper[par_names == "discrimination"] <- 10
 
   opt <- nlminb(
     start = obj$par,
     objective = obj$fn,
     gradient = obj$gr,
+    lower = lower,
+    upper = upper,
     control = control
   )
 
@@ -763,8 +825,11 @@ fit_irt_polytomous <- function(response_matrix, model, weights, re_info, start, 
   # Extract parameters
   par_full <- obj$env$last.par.best
 
-  # Extract discrimination parameters
+  # Extract discrimination parameters (mapped off, fixed at 1, for PCM)
   discrimination_hat <- par_full[names(par_full) == "discrimination"]
+  if (length(discrimination_hat) == 0) {
+    discrimination_hat <- rep(1, n_items)
+  }
   names(discrimination_hat) <- paste0("Item", 1:n_items)
 
   # Extract threshold parameters and reconstruct ordered thresholds
@@ -804,7 +869,9 @@ fit_irt_polytomous <- function(response_matrix, model, weights, re_info, start, 
     names(theta_hat) <- paste0("Person", 1:n_persons)
   }
 
-  sigma_theta_hat <- exp(par_full[names(par_full) == "log_sigma_theta"])
+  # Fixed at 1 (mapped) for GRM/GPCM/NRM identification
+  log_sigma_free <- par_full[names(par_full) == "log_sigma_theta"]
+  sigma_theta_hat <- if (length(log_sigma_free) == 0) 1 else exp(unname(log_sigma_free))
 
   # Extract random effects if present
   if (has_random) {
