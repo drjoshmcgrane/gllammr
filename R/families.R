@@ -5,6 +5,14 @@
 #' @name families
 NULL
 
+# Register the S4 inheritance so objects from GLLAMMR's binomial() remain
+# usable by S4-based consumers (e.g. lme4 slots typed "family")
+methods::setOldClass(c("binomial_family", "family"))
+methods::setOldClass(c("ordinal_family", "family"))
+methods::setOldClass(c("irt_family", "family"))
+methods::setOldClass(c("lca_family", "family"))
+methods::setOldClass(c("multinomial_family", "family"))
+
 
 #' Ordinal Family for Proportional and Non-Proportional Odds Models
 #'
@@ -180,20 +188,97 @@ print.ordinal_family <- function(x, ...) {
 binomial <- function(link = c("logit", "probit", "cloglog")) {
   link <- match.arg(link)
 
-  # Map link function to numeric code for TMB
-  link_code <- switch(link,
+  # Build on the full stats family object so the result remains usable by
+  # other packages (lme4, glm, ...) when GLLAMMR masks stats::binomial
+  f <- stats::binomial(link = link)
+  f$link_code <- switch(link,
     logit = 1L,
     probit = 2L,
     cloglog = 3L
   )
+  class(f) <- c("binomial_family", class(f))
+  f
+}
 
+
+#' IRT Family for Item Response Theory Models
+#'
+#' Create a family object for fitting IRT models through the unified
+#' \code{gllamm()} interface. The response is a persons x items matrix
+#' passed as the first argument of \code{gllamm()}.
+#'
+#' @param model IRT model type: "Rasch", "2PL", "3PL" (dichotomous) or
+#'   "GRM", "PCM", "GPCM", "NRM" (polytomous)
+#' @param mc_items For 3PL only: which items have guessing parameters
+#'   (NULL = all; logical or integer index vector)
+#'
+#' @return A family object of class \code{irt_family}
+#'
+#' @examples
+#' \dontrun{
+#' fit <- gllamm(response_matrix, family = irt("2PL"))
+#' # Multi-level IRT: persons nested in classes
+#' fit_ml <- gllamm(response_matrix, data = person_data,
+#'                  family = irt("Rasch"), random = ~ (1 | class))
+#' }
+#'
+#' @export
+irt <- function(model = c("Rasch", "2PL", "3PL", "GRM", "PCM", "GPCM", "NRM"),
+                mc_items = NULL) {
+  model <- match.arg(model)
   structure(
-    list(
-      family = "binomial",
-      link = link,
-      link_code = link_code
-    ),
-    class = c("binomial_family", "family")
+    list(family = "irt", model = model, mc_items = mc_items),
+    class = c("irt_family", "family")
+  )
+}
+
+
+#' Latent Class Family for Finite Mixture Models
+#'
+#' Create a family object for fitting latent class models through the unified
+#' \code{gllamm()} interface. The response is a matrix of binary manifest
+#' variables passed as the first argument of \code{gllamm()}.
+#'
+#' @param nclass Number of latent classes (default 2)
+#'
+#' @return A family object of class \code{lca_family}
+#'
+#' @examples
+#' \dontrun{
+#' fit <- gllamm(indicator_matrix, family = lca(nclass = 3))
+#' }
+#'
+#' @export
+lca <- function(nclass = 2) {
+  if (!is.numeric(nclass) || length(nclass) != 1 || nclass < 2) {
+    stop("nclass must be a single integer >= 2")
+  }
+  structure(
+    list(family = "lca", nclass = as.integer(nclass)),
+    class = c("lca_family", "family")
+  )
+}
+
+
+#' Multinomial Family for Unordered Categorical Outcomes
+#'
+#' Create a family object for baseline-category multinomial logit models
+#' through the unified \code{gllamm()} interface.
+#'
+#' @param reference Reference category (default: first level)
+#'
+#' @return A family object of class \code{multinomial_family}
+#'
+#' @examples
+#' \dontrun{
+#' fit <- gllamm(choice ~ x + (1 | region), data = d, family = multinomial())
+#' }
+#'
+#' @export
+multinomial <- function(reference = NULL) {
+  structure(
+    list(family = "multinomial", reference = reference),
+    class = c("multinomial_family", "family")
   )
 }
 

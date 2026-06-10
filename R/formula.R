@@ -24,11 +24,12 @@ parse_formula <- function(formula, data) {
   random_terms <- list()
   fixed_terms <- character(0)
 
-  # Split terms into fixed and random
+  # Split terms into fixed and random; nested grouping (a/b/c) expands
+  # lme4-style into (a), (a:b), (a:b:c)
   for (term in all_terms) {
     if (grepl("\\|", term)) {
-      # This is a random effects term
-      random_terms <- c(random_terms, list(parse_random_term(term, data)))
+      parsed_term <- parse_random_term(term, data)
+      random_terms <- c(random_terms, expand_nested_random_term(parsed_term))
     } else {
       # This is a fixed effect
       fixed_terms <- c(fixed_terms, term)
@@ -124,6 +125,33 @@ parse_random_term <- function(term, data) {
 }
 
 
+#' Expand a nested random-effects term into one term per level
+#'
+#' (x | a/b/c) becomes the lme4-equivalent (x | a) + (x | a:b) + (x | a:b:c).
+#' Each expanded term carries an interaction grouping over the levels above it.
+#'
+#' @param parsed_term Output of parse_random_term()
+#' @return List of parsed terms (length 1 for non-nested input)
+#' @keywords internal
+expand_nested_random_term <- function(parsed_term) {
+  if (!isTRUE(parsed_term$nested) || length(parsed_term$grouping) <= 1) {
+    parsed_term$grouping_vars <- parsed_term$grouping
+    return(list(parsed_term))
+  }
+
+  vars <- parsed_term$grouping
+  lapply(seq_along(vars), function(d) {
+    t_d <- parsed_term
+    t_d$grouping_vars <- vars[seq_len(d)]   # interaction over levels 1..d
+    t_d$grouping <- paste(vars[seq_len(d)], collapse = ":")
+    t_d$nested <- FALSE
+    t_d$original <- paste0("(", deparse(parsed_term$formula[[2]]), " | ",
+                           t_d$grouping, ")")
+    t_d
+  })
+}
+
+
 #' Extract model matrices
 #'
 #' Create design matrices for fixed and random effects
@@ -149,13 +177,13 @@ make_model_matrices <- function(parsed_formula, data) {
   for (i in seq_along(parsed_formula$random_terms)) {
     rt <- parsed_formula$random_terms[[i]]
 
-    # Get grouping variable(s)
-    if (rt$nested) {
-      # Create nested grouping variable
-      group_vars <- rt$grouping
+    # Grouping factor: interaction over the term's grouping variables
+    # (expanded nested terms carry the full path in grouping_vars)
+    group_vars <- rt$grouping_vars %||% rt$grouping
+    if (length(group_vars) > 1) {
       group_factor <- interaction(data[, group_vars], drop = TRUE)
     } else {
-      group_factor <- factor(data[[rt$grouping]])
+      group_factor <- factor(data[[group_vars]])
     }
 
     # Random effects design matrix for this term

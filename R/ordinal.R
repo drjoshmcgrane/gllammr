@@ -444,7 +444,8 @@ fit_multinomial <- function(formula, data, reference = NULL,
     n_fixed = as.integer(model_data$n_fixed),
     n_random = as.integer(n_random),
     n_categories = as.integer(n_categories),
-    correlated = as.integer(correlated)
+    correlated = as.integer(correlated),
+    weights = rep(1.0, model_data$n_obs)
   )
 
   # Initialize parameters
@@ -468,12 +469,19 @@ fit_multinomial <- function(formula, data, reference = NULL,
     tmb_params <- start
   }
 
+  # Fix theta when the template never reads it (no correlation structure)
+  tmb_map <- list()
+  if (!(correlated && n_random > 1)) {
+    tmb_map$theta <- factor(rep(NA, length(tmb_params$theta)))
+  }
+
   # Create TMB object
   tmb_data$model_name <- "multinomial"
   obj <- TMB::MakeADFun(
     data = tmb_data,
     parameters = tmb_params,
     random = "u",
+    map = tmb_map,
     DLL = "GLLAMMR",
     silent = TRUE
   )

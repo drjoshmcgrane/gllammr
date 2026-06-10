@@ -113,6 +113,7 @@ gllamm <- function(formula,
                    data,
                    family = gaussian(),
                    weights = NULL,
+                   random = NULL,
                    start = NULL,
                    control = list(),
                    ...) {
@@ -125,12 +126,53 @@ gllamm <- function(formula,
     stop("Argument 'formula' is required")
   }
 
+  # Matrix-response families dispatch before formula validation: the first
+  # argument is the response matrix, `data` (optional) carries person-level
+  # variables, `random` the person-level random-effects formula
+  if (inherits(family, "irt_family")) {
+    if (!is.matrix(formula) && !is.data.frame(formula)) {
+      stop("For family = irt(), the first argument must be the persons x ",
+           "items response matrix")
+    }
+    return(fit_irt(as.matrix(formula),
+                   model = family$model,
+                   person_data = if (missing(data)) NULL else data,
+                   random = random,
+                   weights = weights,
+                   mc_items = family$mc_items,
+                   start = start,
+                   control = control))
+  }
+
+  if (inherits(family, "lca_family")) {
+    if (!is.matrix(formula) && !is.data.frame(formula)) {
+      stop("For family = lca(), the first argument must be the matrix of ",
+           "binary manifest variables")
+    }
+    return(fit_lca(as.matrix(formula),
+                   nclass = family$nclass,
+                   weights = weights,
+                   start = start,
+                   control = control))
+  }
+
   if (missing(data)) {
     stop("Argument 'data' is required")
   }
 
   if (!is.data.frame(data)) {
     stop("'data' must be a data frame")
+  }
+
+  if (inherits(family, "multinomial_family")) {
+    if (!is.null(weights)) {
+      warning("Weights are not yet supported for multinomial models; ignoring.")
+    }
+    return(fit_multinomial(formula = formula,
+                           data = data,
+                           reference = family$reference,
+                           start = start,
+                           control = control))
   }
 
   # Validate weights if provided
