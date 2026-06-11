@@ -14,7 +14,7 @@
 #'   "poisson_grouseticks", "ordinal_wine", "rasch_lsat", "twopl_simulated",
 #'   "lca_carcinoma", "grm_science", "gamma_simulated",
 #'   "survival_exponential", "sem_lavaan", "lca_polytomous",
-#'   "npml_binomial", "aghq_binomial".
+#'   "npml_binomial", "aghq_binomial", "twopl_lsat_em".
 #' @param verbose Print progress messages (default TRUE)
 #'
 #' @return Data frame with one row per compared statistic: case, statistic,
@@ -34,7 +34,8 @@ gllammr_validate <- function(cases = "all", verbose = TRUE) {
                  "poisson_grouseticks", "ordinal_wine", "rasch_lsat",
                  "twopl_simulated", "lca_carcinoma", "grm_science",
                  "gamma_simulated", "survival_exponential", "sem_lavaan",
-                 "lca_polytomous", "npml_binomial", "aghq_binomial")
+                 "lca_polytomous", "npml_binomial", "aghq_binomial",
+                 "twopl_lsat_em")
   if (identical(cases, "all")) cases <- all_cases
   unknown <- setdiff(cases, all_cases)
   if (length(unknown) > 0) {
@@ -528,5 +529,30 @@ gllammr_validate <- function(cases = "all", verbose = TRUE) {
              unname(attr(lme4::VarCorr(ref)$grp, "stddev")), 5e-3),
     .val_row("aghq_binomial", "logLik",
              fit$logLik, as.numeric(logLik(ref)), 0.05, relative = FALSE)
+  )
+}
+
+
+#' @keywords internal
+.validate_twopl_lsat_em <- function() {
+  if (!requireNamespace("ltm", quietly = TRUE)) {
+    return(NULL)
+  }
+  # The 5-item LSAT 2PL diverges under joint Laplace (documented); the EM
+  # path handles it like ltm's EM does.
+  data("LSAT", package = "ltm", envir = environment())
+  fit <- fit_irt(as.matrix(LSAT), model = "2PL", method = "em")
+  ref_coef <- coef(ltm::ltm(LSAT ~ z1))
+
+  rbind(
+    .val_row("twopl_lsat_em", "difficulty_item1",
+             unname(fit$item_parameters$difficulty[1]),
+             unname(ref_coef[1, "Dffclt"]), 0.02),
+    .val_row("twopl_lsat_em", "discrimination_item1",
+             unname(fit$item_parameters$discrimination[1]),
+             unname(ref_coef[1, "Dscrmn"]), 0.03),
+    .val_row("twopl_lsat_em", "difficulty_mean",
+             mean(fit$item_parameters$difficulty),
+             mean(ref_coef[, "Dffclt"]), 0.02)
   )
 }

@@ -11,6 +11,8 @@ fit_irt(
   random = NULL,
   weights = NULL,
   mc_items = NULL,
+  method = c("laplace", "em"),
+  quad_points = 61,
   se = FALSE,
   start = NULL,
   control = list()
@@ -40,6 +42,16 @@ Requires person_data to contain the grouping variables.}
 \item{mc_items}{For 3PL model only: which items have guessing parameters.
 Can be: NULL (default, all items have guessing), logical vector (length = n_items),
 or integer vector (indices of MC items). Non-MC items use 2PL likelihood (no guessing).}
+
+\item{method}{Estimation method: "laplace" (default; TMB Laplace
+approximation, required for multi-level models) or "em" (Bock-Aitkin
+marginal maximum likelihood with fixed Gauss-Hermite quadrature - the
+algorithm used by mirt/TAM, typically 10-50x faster for standard
+single-level IRT). Estimates agree closely; EM person abilities are
+EAP scores rather than posterior modes.}
+
+\item{quad_points}{Number of quadrature nodes for method = "em"
+(default 61)}
 
 \item{se}{Compute parameter standard errors via TMB::sdreport (default
 FALSE, matching the default behavior of mirt; SE computation roughly

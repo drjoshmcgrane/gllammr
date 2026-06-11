@@ -18,6 +18,14 @@
 #'   \code{~ (1 | student) + (1 | time)}.
 #'   Requires person_data to contain the grouping variables.
 #' @param weights Optional vector of case weights. Length must equal number of persons.
+#' @param method Estimation method: "laplace" (default; TMB Laplace
+#'   approximation, required for multi-level models) or "em" (Bock-Aitkin
+#'   marginal maximum likelihood with fixed Gauss-Hermite quadrature - the
+#'   algorithm used by mirt/TAM, typically 10-50x faster for standard
+#'   single-level IRT). Estimates agree closely; EM person abilities are
+#'   EAP scores rather than posterior modes.
+#' @param quad_points Number of quadrature nodes for method = "em"
+#'   (default 61)
 #' @param se Compute parameter standard errors via TMB::sdreport (default
 #'   FALSE, matching the default behavior of mirt; SE computation roughly
 #'   doubles the fitting time for large person samples)
@@ -92,10 +100,27 @@ fit_irt <- function(response_matrix,
                     random = NULL,
                     weights = NULL,
                     mc_items = NULL,
+                    method = c("laplace", "em"),
+                    quad_points = 61,
                     se = FALSE,
                     start = NULL, control = list()) {
 
   model <- match.arg(model)
+  method <- match.arg(method)
+
+  if (method == "em") {
+    if (!is.null(random)) {
+      stop("method = \"em\" supports single-level models; ",
+           "use method = \"laplace\" for multi-level IRT")
+    }
+    if (!is.null(mc_items) && model != "3PL") {
+      warning("mc_items parameter is only used for 3PL model. Ignoring.")
+      mc_items <- NULL
+    }
+    return(fit_irt_em(response_matrix, model = model, weights = weights,
+                      mc_items = mc_items, quad_points = quad_points,
+                      control = control))
+  }
 
   # Validate multi-level parameters
   has_random <- !is.null(random)
