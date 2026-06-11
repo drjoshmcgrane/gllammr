@@ -5,48 +5,103 @@
 \title{Test for Differential Item Functioning (DIF)}
 \usage{
 dif_test(
-  irt_fit,
-  group,
+  response_matrix,
+  dif,
+  person_data = NULL,
+  model = c("auto", "Rasch", "2PL", "GRM", "PCM", "GPCM"),
+  match = c("theta", "score"),
   items = NULL,
   type = c("both", "uniform", "nonuniform"),
-  method = c("lr", "wald", "both"),
-  alpha = 0.05
+  purify = TRUE,
+  anchors = NULL,
+  alpha = 0.05,
+  p_adjust = "none",
+  max_iter = 10
 )
 }
 \arguments{
-\item{irt_fit}{A fitted IRT model from fit_irt()}
+\item{response_matrix}{Item response matrix (persons x items): binary
+0/1 or polytomous 1..K (NA allowed)}
 
-\item{group}{Vector of group indicators (must have exactly 2 unique values)}
+\item{dif}{The DIF specification: either a single grouping vector, or a
+one-sided formula over columns of \code{person_data} - e.g.
+\code{~ gender}, \code{~ gender + language}, or
+\code{~ gender * language} (the interaction tests whether DIF for one
+factor differs by the level of the other).}
 
-\item{items}{Vector of item indices to test. If NULL, tests all items.}
+\item{person_data}{Data frame with the DIF variables (required when
+\code{dif} is a formula)}
 
-\item{type}{Type of DIF to test: "uniform" (difficulty), "nonuniform" (discrimination), or "both"}
+\item{model}{Matching (measurement) model for the latent criterion:
+"auto" (default: 2PL for dichotomous, GRM for polytomous), or any of
+"Rasch", "2PL", "GRM", "PCM", "GPCM"}
 
-\item{method}{Test method: "lr" (likelihood ratio), "wald", or "both"}
+\item{match}{"theta" (default; EAP score from the anchor items under
+\code{model}) or "score" (observed anchor-set total score, the
+classical Swaminathan-Rogers criterion, comparable to
+\code{difR::difLogistic})}
 
-\item{alpha}{Significance level for flagging items (default 0.05)}
+\item{items}{Item indices to test (default: all)}
+
+\item{type}{"both" (default; joint test of uniform + nonuniform DIF),
+"uniform" (group effects given the criterion), or "nonuniform"
+(criterion x group interactions given the uniform terms)}
+
+\item{purify}{Iteratively purify the matching criterion (default TRUE):
+re-derive it from the currently unflagged items and re-test, until
+the flagged set stabilizes}
+
+\item{anchors}{Optional item indices guaranteed DIF-free; they are
+always part of the matching criterion and never tested}
+
+\item{alpha}{Significance level for flagging (default 0.05)}
+
+\item{p_adjust}{Multiple-testing correction passed to
+\code{\link[stats]{p.adjust}} ("none" default; e.g. "BH", "holm")}
+
+\item{max_iter}{Maximum purification iterations (default 10)}
 }
 \value{
-An object of class \code{dif_analysis} with components:
-  \item{dif_results}{Data frame with test statistics for each item}
-  \item{flagged_items}{Vector of item indices that show significant DIF}
-  \item{group_fits}{List of fitted models for each group}
-  \item{baseline_fit}{The original fitted model}
+An object of class \code{dif_analysis}: \code{dif_results}
+  (per item: LR chi-square, df, p, adjusted p, Nagelkerke
+  \eqn{\Delta R^2} effect size with the Jodoin-Gierl A/B/C
+  classification, flag), \code{flagged_items}, \code{anchor_items},
+  \code{purification} (iterations, history, converged), the matching
+  scores, and per-item full-model coefficients for plotting.
 }
 \description{
-Detect whether item parameters differ systematically across groups
+Logistic-regression DIF (Swaminathan & Rogers 1990; Zumbo 1999) with
+latent-trait or observed-score matching, generalized to multiple DIF
+variables and their interactions through a formula interface, with
+iterative purification of the matching criterion. Polytomous items are
+tested with cumulative-logit (proportional odds) regression.
+}
+\details{
+For each studied item the nested models
+\deqn{M_0: y ~ m,\quad M_1: y ~ m + Z,\quad M_2: y ~ m + Z + m:Z}
+are fitted, where m is the matching criterion and Z the design matrix
+of the DIF formula. Uniform DIF is \eqn{M_1} vs \eqn{M_0}, nonuniform
+\eqn{M_2} vs \eqn{M_1}, and "both" \eqn{M_2} vs \eqn{M_0}. With
+multiple DIF variables each test has as many degrees of freedom as Z
+has columns, and an interaction in the formula (e.g.
+\code{~ g1 * g2}) tests intersectional DIF beyond the additive
+effects. Effect sizes are Nagelkerke \eqn{\Delta R^2} between the
+compared models (A < 0.035, B < 0.07, C otherwise; Jodoin & Gierl
+2001).
+
+Purification (Lord 1980; Candell & Drasgow 1988): items flagged in one
+round are removed from the matching criterion for the next, so DIF
+items do not contaminate the score against which DIF is judged.
 }
 \examples{
 \dontrun{
-# Fit IRT model
-fit <- fit_irt(responses, model = "2PL")
+# Single factor, purified
+res <- dif_test(resp, dif = gender)
 
-# Test for DIF across gender
-dif_result <- dif_test(fit, group = gender)
-print(dif_result)
-
-# Plot ICCs for flagged items
-dif_plot(dif_result, item = 5)
+# Two factors plus their interaction, latent matching
+res <- dif_test(resp, dif = ~ gender * language, person_data = persons)
+summary(res)
+dif_plot(res, item = 3, by = "gender")
 }
 
 }

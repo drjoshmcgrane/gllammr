@@ -8,7 +8,7 @@ Reference packages using the same Laplace approximation (lme4 nAGQ=1,
 ordinal::clmm) agree to numerical precision; packages using different
 integration (mirt, ltm) agree within stated tolerances.
 
-**Overall: 87 / 87 checks pass.**
+**Overall: 90 / 90 checks pass.**
 
 | Case | Statistic | GLLAMMR | Reference | Rel. diff | Tolerance | Pass |
 |---|---|---|---|---|---|---|
@@ -90,6 +90,9 @@ integration (mirt, ltm) agree within stated tolerances.
 | ordinal_crossed | sigma_judge | 1.072 | 1.072 | 1.06e-06 | 0.02 | yes |
 | ordinal_crossed | sigma_bottle | 0.7209 | 0.7209 | 1.97e-06 | 0.05 | yes |
 | ordinal_crossed | logLik | -87.4 | -87.4 | 4.21e-10 | 0.05 | yes |
+| dif_logistic | flag_agreement |     1 |     1 |    0 | 1e-09 | yes |
+| dif_logistic | stat_rank_correlation |     1 |     1 |    0 | 0.05 | yes |
+| dif_logistic | stat_item3 | 38.33 | 38.33 |    0 | 0.15 | yes |
 | large_glmm_binomial | beta_x | 0.4915 | 0.4915 | 1.95e-06 | 0.001 | yes |
 | large_glmm_binomial | sigma_u | 0.7882 | 0.7882 | 2.05e-05 | 0.001 | yes |
 | large_glmm_binomial | logLik | -6.154e+04 | -6.154e+04 | 3.35e-10 |  0.5 | yes |

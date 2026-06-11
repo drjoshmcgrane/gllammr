@@ -2,7 +2,7 @@
 % Please edit documentation in R/dif.R
 \name{dif_test_with_data}
 \alias{dif_test_with_data}
-\title{Test for DIF with explicit response data}
+\title{Test for DIF with explicit response data (deprecated)}
 \usage{
 dif_test_with_data(
   response_matrix,
@@ -10,22 +10,22 @@ dif_test_with_data(
   model = c("Rasch", "2PL", "3PL", "GRM", "PCM", "GPCM"),
   items = NULL,
   type = c("both", "uniform", "nonuniform"),
-  method = c("lr", "wald", "both"),
+  method = NULL,
   alpha = 0.05
 )
 }
 \arguments{
 \item{response_matrix}{Matrix of item responses (persons x items)}
 
-\item{group}{Vector of group indicators}
+\item{group}{Grouping vector}
 
-\item{model}{IRT model type}
+\item{model}{Matching model}
 
 \item{items}{Items to test (default: all)}
 
 \item{type}{Type of DIF}
 
-\item{method}{Test method}
+\item{method}{Ignored (kept for compatibility)}
 
 \item{alpha}{Significance level}
 }
@@ -33,11 +33,7 @@ dif_test_with_data(
 Object of class \code{dif_analysis}
 }
 \description{
-Test for DIF with explicit response data
-}
-\examples{
-\dontrun{
-dif_result <- dif_test_with_data(responses, group = gender, model = "2PL")
-}
-
+Deprecated single-factor wrapper kept for backward compatibility; use
+\code{\link{dif_test}}, which supports multiple DIF variables,
+interactions, and iterative purification.
 }

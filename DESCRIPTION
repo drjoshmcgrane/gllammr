@@ -50,7 +50,8 @@ Suggests:
     survival,
     HSAUR3,
     ltm,
-    CDM
+    CDM,
+    difR
 Encoding: UTF-8
 RoxygenNote: 7.3.3
 VignetteBuilder: knitr

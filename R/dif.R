@@ -1,372 +1,490 @@
 #' Test for Differential Item Functioning (DIF)
 #'
-#' Detect whether item parameters differ systematically across groups
+#' Logistic-regression DIF (Swaminathan & Rogers 1990; Zumbo 1999) with
+#' latent-trait or observed-score matching, generalized to multiple DIF
+#' variables and their interactions through a formula interface, with
+#' iterative purification of the matching criterion. Polytomous items are
+#' tested with cumulative-logit (proportional odds) regression.
 #'
-#' @param irt_fit A fitted IRT model from fit_irt()
-#' @param group Vector of group indicators (must have exactly 2 unique values)
-#' @param items Vector of item indices to test. If NULL, tests all items.
-#' @param type Type of DIF to test: "uniform" (difficulty), "nonuniform" (discrimination), or "both"
-#' @param method Test method: "lr" (likelihood ratio), "wald", or "both"
-#' @param alpha Significance level for flagging items (default 0.05)
+#' @param response_matrix Item response matrix (persons x items): binary
+#'   0/1 or polytomous 1..K (NA allowed)
+#' @param dif The DIF specification: either a single grouping vector, or a
+#'   one-sided formula over columns of \code{person_data} - e.g.
+#'   \code{~ gender}, \code{~ gender + language}, or
+#'   \code{~ gender * language} (the interaction tests whether DIF for one
+#'   factor differs by the level of the other).
+#' @param person_data Data frame with the DIF variables (required when
+#'   \code{dif} is a formula)
+#' @param model Matching (measurement) model for the latent criterion:
+#'   "auto" (default: 2PL for dichotomous, GRM for polytomous), or any of
+#'   "Rasch", "2PL", "GRM", "PCM", "GPCM"
+#' @param match "theta" (default; EAP score from the anchor items under
+#'   \code{model}) or "score" (observed anchor-set total score, the
+#'   classical Swaminathan-Rogers criterion, comparable to
+#'   \code{difR::difLogistic})
+#' @param items Item indices to test (default: all)
+#' @param type "both" (default; joint test of uniform + nonuniform DIF),
+#'   "uniform" (group effects given the criterion), or "nonuniform"
+#'   (criterion x group interactions given the uniform terms)
+#' @param purify Iteratively purify the matching criterion (default TRUE):
+#'   re-derive it from the currently unflagged items and re-test, until
+#'   the flagged set stabilizes
+#' @param anchors Optional item indices guaranteed DIF-free; they are
+#'   always part of the matching criterion and never tested
+#' @param alpha Significance level for flagging (default 0.05)
+#' @param p_adjust Multiple-testing correction passed to
+#'   \code{\link[stats]{p.adjust}} ("none" default; e.g. "BH", "holm")
+#' @param max_iter Maximum purification iterations (default 10)
 #'
-#' @return An object of class \code{dif_analysis} with components:
-#'   \item{dif_results}{Data frame with test statistics for each item}
-#'   \item{flagged_items}{Vector of item indices that show significant DIF}
-#'   \item{group_fits}{List of fitted models for each group}
-#'   \item{baseline_fit}{The original fitted model}
+#' @return An object of class \code{dif_analysis}: \code{dif_results}
+#'   (per item: LR chi-square, df, p, adjusted p, Nagelkerke
+#'   \eqn{\Delta R^2} effect size with the Jodoin-Gierl A/B/C
+#'   classification, flag), \code{flagged_items}, \code{anchor_items},
+#'   \code{purification} (iterations, history, converged), the matching
+#'   scores, and per-item full-model coefficients for plotting.
+#'
+#' @details
+#' For each studied item the nested models
+#' \deqn{M_0: y ~ m,\quad M_1: y ~ m + Z,\quad M_2: y ~ m + Z + m:Z}
+#' are fitted, where m is the matching criterion and Z the design matrix
+#' of the DIF formula. Uniform DIF is \eqn{M_1} vs \eqn{M_0}, nonuniform
+#' \eqn{M_2} vs \eqn{M_1}, and "both" \eqn{M_2} vs \eqn{M_0}. With
+#' multiple DIF variables each test has as many degrees of freedom as Z
+#' has columns, and an interaction in the formula (e.g.
+#' \code{~ g1 * g2}) tests intersectional DIF beyond the additive
+#' effects. Effect sizes are Nagelkerke \eqn{\Delta R^2} between the
+#' compared models (A < 0.035, B < 0.07, C otherwise; Jodoin & Gierl
+#' 2001).
+#'
+#' Purification (Lord 1980; Candell & Drasgow 1988): items flagged in one
+#' round are removed from the matching criterion for the next, so DIF
+#' items do not contaminate the score against which DIF is judged.
 #'
 #' @examples
 #' \dontrun{
-#' # Fit IRT model
-#' fit <- fit_irt(responses, model = "2PL")
+#' # Single factor, purified
+#' res <- dif_test(resp, dif = gender)
 #'
-#' # Test for DIF across gender
-#' dif_result <- dif_test(fit, group = gender)
-#' print(dif_result)
-#'
-#' # Plot ICCs for flagged items
-#' dif_plot(dif_result, item = 5)
+#' # Two factors plus their interaction, latent matching
+#' res <- dif_test(resp, dif = ~ gender * language, person_data = persons)
+#' summary(res)
+#' dif_plot(res, item = 3, by = "gender")
 #' }
 #'
 #' @export
-dif_test <- function(irt_fit,
-                     group,
+dif_test <- function(response_matrix, dif, person_data = NULL,
+                     model = c("auto", "Rasch", "2PL", "GRM", "PCM",
+                               "GPCM"),
+                     match = c("theta", "score"),
                      items = NULL,
                      type = c("both", "uniform", "nonuniform"),
-                     method = c("lr", "wald", "both"),
-                     alpha = 0.05) {
-
-  type <- match.arg(type)
-  method <- match.arg(method)
-
-  # Validate inputs
-  if (!inherits(irt_fit, "gllamm_irt")) {
-    stop("irt_fit must be a fitted IRT model from fit_irt()")
-  }
-
-  # Extract response matrix from fit
-  # Note: This requires storing response matrix in fit object
-  # For now, we'll require user to provide it
-  stop("DIF analysis requires response matrix. Please use dif_test_with_data() instead.")
-}
-
-
-#' Test for DIF with explicit response data
-#'
-#' @param response_matrix Matrix of item responses (persons x items)
-#' @param group Vector of group indicators
-#' @param model IRT model type
-#' @param items Items to test (default: all)
-#' @param type Type of DIF
-#' @param method Test method
-#' @param alpha Significance level
-#'
-#' @return Object of class \code{dif_analysis}
-#'
-#' @examples
-#' \dontrun{
-#' dif_result <- dif_test_with_data(responses, group = gender, model = "2PL")
-#' }
-#'
-#' @export
-dif_test_with_data <- function(response_matrix,
-                                group,
-                                model = c("Rasch", "2PL", "3PL", "GRM", "PCM", "GPCM"),
-                                items = NULL,
-                                type = c("both", "uniform", "nonuniform"),
-                                method = c("lr", "wald", "both"),
-                                alpha = 0.05) {
-
-  type <- match.arg(type)
-  method <- match.arg(method)
+                     purify = TRUE, anchors = NULL,
+                     alpha = 0.05, p_adjust = "none",
+                     max_iter = 10) {
   model <- match.arg(model)
-
-  # Validate group variable
-  unique_groups <- unique(group[!is.na(group)])
-  if (length(unique_groups) != 2) {
-    stop("group must have exactly 2 unique values. Found: ", length(unique_groups))
-  }
-
-  if (length(group) != nrow(response_matrix)) {
-    stop("group length (", length(group), ") must match number of persons (",
-         nrow(response_matrix), ")")
-  }
-
+  match <- match.arg(match)
+  type <- match.arg(type)
+  response_matrix <- as.matrix(response_matrix)
+  n_persons <- nrow(response_matrix)
   n_items <- ncol(response_matrix)
-  if (is.null(items)) {
-    items <- 1:n_items
-  }
+  item_names <- colnames(response_matrix) %||% paste0("Item", 1:n_items)
 
-  # Validate items
+  # ---- DIF design matrix from formula or vector ----
+  if (inherits(dif, "formula")) {
+    if (is.null(person_data)) {
+      stop("person_data is required when dif is a formula")
+    }
+    if (nrow(person_data) != n_persons) {
+      stop("person_data must have one row per person (",
+           n_persons, "); found ", nrow(person_data))
+    }
+    mm <- model.matrix(dif, data = person_data)
+    dif_formula <- dif
+  } else {
+    if (length(dif) != n_persons) {
+      stop("dif length (", length(dif), ") must match number of persons (",
+           n_persons, ")")
+    }
+    person_data <- data.frame(group = factor(dif))
+    mm <- model.matrix(~ group, data = person_data)
+    dif_formula <- ~ group
+  }
+  has_int <- "(Intercept)" %in% colnames(mm)
+  Z <- mm[, setdiff(colnames(mm), "(Intercept)"), drop = FALSE]
+  if (ncol(Z) == 0) stop("The DIF specification has no terms to test")
+
+  # ---- Item type bookkeeping ----
+  n_cats <- apply(response_matrix, 2, function(v) {
+    length(unique(v[!is.na(v)]))
+  })
+  is_poly <- any(n_cats > 2)
+  if (model == "auto") model <- if (is_poly) "GRM" else "2PL"
+
+  if (is.null(items)) items <- seq_len(n_items)
   if (any(items < 1 | items > n_items)) {
     stop("items must be between 1 and ", n_items)
   }
-
-  # Fit baseline model (no DIF)
-  message("Fitting baseline model (no DIF)...")
-  fit_baseline <- fit_irt(response_matrix, model = model)
-
-  # Fit separate models for each group
-  message("Fitting group-specific models...")
-  group1_idx <- group == unique_groups[1]
-  group2_idx <- group == unique_groups[2]
-
-  fit_group1 <- fit_irt(response_matrix[group1_idx, , drop = FALSE], model = model)
-  fit_group2 <- fit_irt(response_matrix[group2_idx, , drop = FALSE], model = model)
-
-  # Test each item for DIF
-  dif_results <- data.frame(
-    item = integer(),
-    chi_square = numeric(),
-    df = integer(),
-    p_value = numeric(),
-    effect_size = numeric(),
-    dif_type = character(),
-    stringsAsFactors = FALSE
-  )
-
-  message("Testing ", length(items), " items for DIF...")
-
-  for (item_idx in items) {
-    # Extract item parameters for this item from each group
-    if (model %in% c("Rasch", "2PL", "3PL")) {
-      # Dichotomous models
-      diff1 <- fit_group1$item_parameters$difficulty[item_idx]
-      diff2 <- fit_group2$item_parameters$difficulty[item_idx]
-
-      disc1 <- fit_group1$item_parameters$discrimination[item_idx]
-      disc2 <- fit_group2$item_parameters$discrimination[item_idx]
-    } else {
-      # Polytomous models
-      diff1 <- mean(fit_group1$item_parameters$thresholds[[item_idx]])
-      diff2 <- mean(fit_group2$item_parameters$thresholds[[item_idx]])
-
-      disc1 <- fit_group1$item_parameters$discrimination[item_idx]
-      disc2 <- fit_group2$item_parameters$discrimination[item_idx]
+  if (!is.null(anchors)) {
+    if (any(anchors < 1 | anchors > n_items)) {
+      stop("anchors must be valid item indices")
     }
-
-    # Compute likelihood ratio test statistic
-    # LR = -2 * (logLik_constrained - logLik_unconstrained)
-    # Constrained: baseline model (equal parameters)
-    # Unconstrained: separate group models (different parameters)
-
-    loglik_constrained <- fit_baseline$logLik
-    loglik_unconstrained <- fit_group1$logLik + fit_group2$logLik
-
-    # Approximate test for this item
-    # (Proper test would refit with single item having DIF)
-    chi_square <- -2 * (loglik_constrained - loglik_unconstrained) / n_items
-
-    # Degrees of freedom
-    if (type == "uniform") {
-      df <- 1  # Test difficulty only
-    } else if (type == "nonuniform") {
-      df <- 1  # Test discrimination only
-    } else {
-      df <- 2  # Test both
-    }
-
-    p_value <- pchisq(chi_square, df = df, lower.tail = FALSE)
-
-    # Effect size: ETS Delta scale
-    # Delta = (b_group2 - b_group1) / SD_pooled
-    sd_pooled <- sqrt((var(fit_group1$person_abilities) + var(fit_group2$person_abilities)) / 2)
-    effect_size <- (diff2 - diff1) / sd_pooled
-
-    # Determine DIF type
-    dif_type_result <- "None"
-    if (p_value < alpha) {
-      if (abs(diff2 - diff1) > abs(disc2 - disc1)) {
-        dif_type_result <- "Uniform"
-      } else {
-        dif_type_result <- "Nonuniform"
-      }
-    }
-
-    dif_results <- rbind(dif_results, data.frame(
-      item = item_idx,
-      chi_square = chi_square,
-      df = df,
-      p_value = p_value,
-      effect_size = effect_size,
-      dif_type = dif_type_result,
-      stringsAsFactors = FALSE
-    ))
+    items <- setdiff(items, anchors)
   }
 
-  # Identify flagged items
-  flagged_items <- dif_results$item[dif_results$p_value < alpha]
+  # ---- Matching criterion from a given anchor set ----
+  matching <- function(anchor_set, studied = NULL) {
+    if (match == "theta") {
+      f <- fit_irt(response_matrix[, anchor_set, drop = FALSE],
+                   model = model)
+      unname(f$person_abilities)
+    } else {
+      # Observed score over the anchors plus the studied item (the
+      # difR::difLogistic convention)
+      cols <- union(anchor_set, studied)
+      rowSums(response_matrix[, cols, drop = FALSE], na.rm = TRUE)
+    }
+  }
+
+  # ---- One purification round: test every studied item ----
+  test_round <- function(anchor_set) {
+    th_global <- if (match == "theta") matching(anchor_set) else NULL
+    rows <- lapply(items, function(j) {
+      m <- if (match == "theta") th_global else matching(anchor_set, j)
+      .dif_item_tests(response_matrix[, j], m, Z, type, n_cats[j])
+    })
+    res <- do.call(rbind, rows)
+    res$item <- items
+    res$name <- item_names[items]
+    res$p_adj <- stats::p.adjust(res$p_value, method = p_adjust)
+    res$flagged <- !is.na(res$p_adj) & res$p_adj < alpha
+    list(res = res, th = th_global)
+  }
+
+  # ---- Purification loop ----
+  all_idx <- seq_len(n_items)
+  base_anchor <- if (is.null(anchors)) all_idx else
+    union(anchors, setdiff(all_idx, items))
+  if (is_poly && !requireNamespace("MASS", quietly = TRUE)) {
+    stop("Package 'MASS' is required for polytomous DIF tests")
+  }
+
+  flagged <- integer(0)
+  history <- list()
+  converged <- TRUE
+  iter <- 1
+  res <- NULL
+  th_final <- NULL
+  last_anchor <- base_anchor
+
+  repeat {
+    anchor_set <- setdiff(base_anchor, flagged)
+    if (length(anchor_set) < 2) {
+      if (is.null(res)) {
+        stop("Fewer than 2 anchor items available; provide more items ",
+             "or explicit anchors")
+      }
+      # Purification breakdown (typically: too large a fraction of the
+      # test has same-direction DIF for the criterion to disentangle DIF
+      # from impact). Keep the last valid round's results.
+      warning("Purification removed (almost) all items from the anchor; ",
+              "the DIF/impact decomposition is not identified from these ",
+              "items alone. Reporting the last valid round - consider ",
+              "supplying known DIF-free 'anchors'.")
+      converged <- FALSE
+      anchor_set <- last_anchor
+      break
+    }
+    rt <- test_round(anchor_set)
+    res <- rt$res
+    th_final <- rt$th
+    last_anchor <- anchor_set
+    new_flagged <- res$item[res$flagged]
+    history[[iter]] <- new_flagged
+    if (!purify || setequal(new_flagged, flagged)) {
+      flagged <- new_flagged
+      break
+    }
+    flagged <- new_flagged
+    if (iter >= max_iter) {
+      warning("Purification did not stabilize in ", max_iter,
+              " iterations")
+      converged <- FALSE
+      break
+    }
+    iter <- iter + 1
+  }
+
+  # ---- Per-item full-model coefficients for plotting ----
+  # (matching criterion from the last valid round)
+  item_models <- lapply(items, function(j) {
+    m <- if (match == "theta") th_final else matching(anchor_set, j)
+    .dif_item_fullfit(response_matrix[, j], m, Z, n_cats[j])
+  })
+  names(item_models) <- item_names[items]
 
   result <- list(
-    dif_results = dif_results,
-    flagged_items = flagged_items,
-    group_fits = list(
-      group1 = fit_group1,
-      group2 = fit_group2
-    ),
-    baseline_fit = fit_baseline,
-    group_labels = as.character(unique_groups),
+    dif_results = res[, c("item", "name", "chisq", "df", "p_value",
+                          "p_adj", "delta_R2", "classification",
+                          "flagged")],
+    flagged_items = flagged,
+    anchor_items = anchor_set,
+    matching = if (match == "theta") th_final else NULL,
+    match = match,
+    dif_formula = dif_formula,
+    dif_terms = colnames(Z),
+    person_data = person_data,
+    item_models = item_models,
+    purification = list(purify = purify, iterations = iter,
+                        history = history, converged = converged),
     model = model,
     type = type,
-    method = method,
-    alpha = alpha
+    alpha = alpha,
+    p_adjust = p_adjust,
+    n_items = n_items
   )
-
   class(result) <- "dif_analysis"
-
-  return(result)
+  result
 }
 
 
-#' Print DIF analysis results
+#' Nested-model LR tests for one item
+#' @keywords internal
+.dif_item_tests <- function(y, m, Z, type, K) {
+  ok <- !is.na(y) & !is.na(m) & stats::complete.cases(Z)
+  d <- data.frame(y = y[ok], m = m[ok], Z[ok, , drop = FALSE],
+                  check.names = FALSE)
+  if (K > 2) d$y <- factor(d$y, ordered = TRUE)
+  zn <- colnames(Z)
+  bt <- function(v) paste0("`", v, "`")
+  f0 <- stats::as.formula("y ~ m")
+  f1 <- stats::as.formula(paste("y ~ m +", paste(bt(zn), collapse = "+")))
+  f2 <- stats::as.formula(paste("y ~ m +", paste(bt(zn), collapse = "+"),
+                                "+", paste(paste0("m:", bt(zn)),
+                                           collapse = "+")))
+  out <- data.frame(chisq = NA_real_, df = NA_integer_,
+                    p_value = NA_real_, delta_R2 = NA_real_,
+                    classification = NA_character_,
+                    stringsAsFactors = FALSE)
+  fit <- function(f) {
+    if (K > 2) {
+      g <- tryCatch(MASS::polr(f, data = d, Hess = FALSE),
+                    error = function(e) NULL)
+      if (is.null(g)) return(NULL)
+      list(dev = g$deviance, np = length(g$coefficients) + length(g$zeta))
+    } else {
+      g <- tryCatch(stats::glm(f, data = d, family = stats::binomial()),
+                    error = function(e) NULL)
+      if (is.null(g)) return(NULL)
+      list(dev = g$deviance, np = length(stats::coef(g)))
+    }
+  }
+  m0 <- fit(f0); m1 <- fit(f1); m2 <- fit(f2)
+  null_dev <- if (K > 2) {
+    g <- tryCatch(MASS::polr(y ~ 1, data = d, Hess = FALSE),
+                  error = function(e) NULL)
+    if (is.null(g)) NA_real_ else g$deviance
+  } else {
+    g <- stats::glm(y ~ 1, data = d, family = stats::binomial())
+    g$deviance
+  }
+  if (is.null(m0) || is.null(m1) || is.null(m2) || !is.finite(null_dev)) {
+    return(out)
+  }
+  pair <- switch(type,
+                 uniform = list(m0, m1),
+                 nonuniform = list(m1, m2),
+                 both = list(m0, m2))
+  out$chisq <- max(pair[[1]]$dev - pair[[2]]$dev, 0)
+  out$df <- pair[[2]]$np - pair[[1]]$np
+  out$p_value <- stats::pchisq(out$chisq, out$df, lower.tail = FALSE)
+
+  n <- nrow(d)
+  nagelkerke <- function(dev) {
+    r2_cs <- 1 - exp((dev - null_dev) / n)
+    r2_cs / (1 - exp(-null_dev / n))
+  }
+  out$delta_R2 <- nagelkerke(pair[[2]]$dev) - nagelkerke(pair[[1]]$dev)
+  out$classification <- if (!is.finite(out$delta_R2)) NA_character_
+    else if (out$delta_R2 < 0.035) "A"
+    else if (out$delta_R2 < 0.07) "B"
+    else "C"
+  out
+}
+
+
+#' Full-model (M2) fit for one item, kept for plotting
+#' @keywords internal
+.dif_item_fullfit <- function(y, m, Z, K) {
+  ok <- !is.na(y) & !is.na(m) & stats::complete.cases(Z)
+  d <- data.frame(y = y[ok], m = m[ok], Z[ok, , drop = FALSE],
+                  check.names = FALSE)
+  zn <- paste0("`", colnames(Z), "`")
+  f2 <- stats::as.formula(paste("y ~ m +", paste(zn, collapse = "+"),
+                                "+", paste(paste0("m:", zn),
+                                           collapse = "+")))
+  if (K > 2) {
+    d$y <- factor(d$y, ordered = TRUE)
+    tryCatch(MASS::polr(f2, data = d, Hess = FALSE),
+             error = function(e) NULL)
+  } else {
+    tryCatch(stats::glm(f2, data = d, family = stats::binomial()),
+             error = function(e) NULL)
+  }
+}
+
+
+#' Test for DIF with explicit response data (deprecated)
 #'
-#' @param x Object of class dif_analysis
-#' @param ... Additional arguments (not used)
+#' Deprecated single-factor wrapper kept for backward compatibility; use
+#' \code{\link{dif_test}}, which supports multiple DIF variables,
+#' interactions, and iterative purification.
 #'
+#' @param response_matrix Matrix of item responses (persons x items)
+#' @param group Grouping vector
+#' @param model Matching model
+#' @param items Items to test (default: all)
+#' @param type Type of DIF
+#' @param method Ignored (kept for compatibility)
+#' @param alpha Significance level
+#'
+#' @return Object of class \code{dif_analysis}
+#' @export
+dif_test_with_data <- function(response_matrix, group,
+                               model = c("Rasch", "2PL", "3PL", "GRM",
+                                         "PCM", "GPCM"),
+                               items = NULL,
+                               type = c("both", "uniform", "nonuniform"),
+                               method = NULL, alpha = 0.05) {
+  .Deprecated("dif_test")
+  model <- match.arg(model)
+  if (model == "3PL") model <- "2PL"
+  dif_test(response_matrix, dif = group, model = model, items = items,
+           type = match.arg(type), alpha = alpha, purify = TRUE)
+}
+
+
 #' @export
 print.dif_analysis <- function(x, ...) {
   cat("Differential Item Functioning (DIF) Analysis\n")
   cat("==============================================\n\n")
-
-  cat("Model:", x$model, "\n")
-  cat("Groups:", paste(x$group_labels, collapse = " vs "), "\n")
-  cat("DIF type tested:", x$type, "\n")
-  cat("Significance level:", x$alpha, "\n\n")
-
-  cat("Items tested:", nrow(x$dif_results), "\n")
-  cat("Items flagged for DIF:", length(x$flagged_items), "\n")
-
-  if (length(x$flagged_items) > 0) {
-    cat("\nFlagged items:", paste(x$flagged_items, collapse = ", "), "\n\n")
-
-    cat("DIF Results (flagged items only):\n")
-    flagged_results <- x$dif_results[x$dif_results$item %in% x$flagged_items, ]
-    print(flagged_results, row.names = FALSE)
-  } else {
-    cat("\nNo items flagged for DIF\n")
+  cat("DIF specification:", deparse(x$dif_formula),
+      "(", length(x$dif_terms), "term(s) )\n")
+  cat("Matching:", if (x$match == "theta")
+    paste0("latent (", x$model, " EAP)") else "observed score",
+    "| Type:", x$type, "\n")
+  if (isTRUE(x$purification$purify)) {
+    cat("Purification:", x$purification$iterations, "iteration(s),",
+        if (x$purification$converged) "converged" else "NOT converged",
+        "\n")
   }
-
+  cat("Items tested:", nrow(x$dif_results),
+      "| flagged:", length(x$flagged_items),
+      "(alpha =", x$alpha,
+      if (x$p_adjust != "none") paste0(", ", x$p_adjust, "-adjusted")
+      else "", ")\n\n")
+  if (length(x$flagged_items) > 0) {
+    cat("Flagged items:\n")
+    fr <- x$dif_results[x$dif_results$flagged, ]
+    fr[, c("chisq", "p_value", "p_adj", "delta_R2")] <-
+      round(fr[, c("chisq", "p_value", "p_adj", "delta_R2")], 4)
+    print(fr, row.names = FALSE)
+  } else {
+    cat("No items flagged for DIF\n")
+  }
   invisible(x)
 }
 
 
-#' Summary of DIF analysis
-#'
-#' @param object Object of class dif_analysis
-#' @param ... Additional arguments (not used)
-#'
 #' @export
 summary.dif_analysis <- function(object, ...) {
   print(object)
-
-  cat("\n\nAll Items:\n")
-  print(object$dif_results, row.names = FALSE)
-
+  cat("\nAll items:\n")
+  fr <- object$dif_results
+  fr[, c("chisq", "p_value", "p_adj", "delta_R2")] <-
+    round(fr[, c("chisq", "p_value", "p_adj", "delta_R2")], 4)
+  print(fr, row.names = FALSE)
+  cat("\nEffect sizes: Nagelkerke delta-R2 between the compared models;\n")
+  cat("A < 0.035 (negligible), B < 0.07 (moderate), C (large)\n")
   invisible(object)
 }
 
 
-#' Plot Item Characteristic Curves by group
+#' Plot item response curves by DIF group
 #'
-#' @param dif_result Object of class dif_analysis
-#' @param item Item index to plot
-#' @param ... Additional plotting parameters
+#' Plots the model-implied probability of a correct/positive response (or
+#' the expected score, for polytomous items) against the matching
+#' criterion, for each level of one DIF variable, from the per-item
+#' full DIF model. Other DIF variables are held at their reference level.
+#'
+#' @param dif_result Object from \code{\link{dif_test}}
+#' @param item Item index (position among the tested items)
+#' @param by Name of the DIF variable to display (default: the first one)
+#' @param ... Additional graphical parameters
 #'
 #' @export
-dif_plot <- function(dif_result, item, ...) {
+dif_plot <- function(dif_result, item, by = NULL, ...) {
   if (!inherits(dif_result, "dif_analysis")) {
-    stop("dif_result must be output from dif_test_with_data()")
+    stop("dif_result must be output from dif_test()")
+  }
+  ridx <- match(item, dif_result$dif_results$item)
+  if (is.na(ridx)) stop("item ", item, " was not among the tested items")
+  fit <- dif_result$item_models[[ridx]]
+  if (is.null(fit)) stop("no stored model for item ", item)
+
+  pd <- dif_result$person_data
+  vars <- all.vars(dif_result$dif_formula)
+  if (is.null(by)) by <- vars[1]
+  if (!by %in% vars) stop("'by' must be one of: ", paste(vars, collapse = ", "))
+
+  by_levels <- if (is.factor(pd[[by]])) levels(pd[[by]])
+               else sort(unique(pd[[by]]))
+  if (length(by_levels) > 8) {
+    by_levels <- stats::quantile(pd[[by]], c(0.1, 0.5, 0.9))
   }
 
-  if (item < 1 || item > nrow(dif_result$dif_results)) {
-    stop("item must be between 1 and ", nrow(dif_result$dif_results))
+  m_seq <- if (!is.null(dif_result$matching)) {
+    seq(min(dif_result$matching, na.rm = TRUE),
+        max(dif_result$matching, na.rm = TRUE), length.out = 100)
+  } else seq(0, dif_result$n_items, length.out = 100)
+
+  ref_row <- pd[1, vars, drop = FALSE]
+  for (v in vars) {
+    ref_row[[v]] <- if (is.factor(pd[[v]])) factor(levels(pd[[v]])[1],
+                                                   levels = levels(pd[[v]]))
+                    else 0
   }
 
-  # Extract item parameters for both groups
-  fit1 <- dif_result$group_fits$group1
-  fit2 <- dif_result$group_fits$group2
-
-  # Create theta sequence
-  theta_seq <- seq(-4, 4, length.out = 100)
-
-  # Compute probabilities for each group
-  if (dif_result$model %in% c("Rasch", "2PL", "3PL")) {
-    # Dichotomous models
-    diff1 <- fit1$item_parameters$difficulty[item]
-    diff2 <- fit2$item_parameters$difficulty[item]
-
-    disc1 <- fit1$item_parameters$discrimination[item]
-    disc2 <- fit2$item_parameters$discrimination[item]
-
-    prob1 <- plogis(disc1 * (theta_seq - diff1))
-    prob2 <- plogis(disc2 * (theta_seq - diff2))
-
-    # Plot
-    plot(theta_seq, prob1, type = "l", col = "blue", lwd = 2,
-         xlab = "Ability (theta)", ylab = "P(Y = 1)",
-         main = paste("Item", item, "- ICC by Group"),
-         ylim = c(0, 1), ...)
-    lines(theta_seq, prob2, col = "red", lwd = 2)
-    legend("bottomright",
-           legend = dif_result$group_labels,
-           col = c("blue", "red"),
-           lwd = 2)
-    grid()
-
-  } else {
-    # Polytomous models: category response curves, colors = categories,
-    # line type distinguishes groups (solid = group 1, dashed = group 2)
-    thr1 <- fit1$item_parameters$thresholds[[item]]
-    thr2 <- fit2$item_parameters$thresholds[[item]]
-    disc1 <- fit1$item_parameters$discrimination[item]
-    disc2 <- fit2$item_parameters$discrimination[item]
-
-    probs1 <- irt_category_probs(dif_result$model, theta_seq, thr1, disc1)
-    probs2 <- irt_category_probs(dif_result$model, theta_seq, thr2, disc2)
-
-    n_cat <- max(ncol(probs1), ncol(probs2))
-    colors <- rainbow(n_cat)
-
-    plot(theta_seq, rep(0, length(theta_seq)), type = "n",
-         xlab = "Ability (theta)", ylab = "P(Y = k)",
-         main = paste("Item", item, "- Category Response Curves by Group"),
-         ylim = c(0, 1), ...)
-    for (k in seq_len(ncol(probs1))) {
-      lines(theta_seq, probs1[, k], col = colors[k], lwd = 2, lty = 1)
+  curves <- lapply(by_levels, function(lv) {
+    nd_vars <- ref_row[rep(1, length(m_seq)), , drop = FALSE]
+    nd_vars[[by]] <- if (is.factor(pd[[by]]))
+      factor(lv, levels = levels(pd[[by]])) else lv
+    Znew <- model.matrix(dif_result$dif_formula, data = nd_vars)
+    Znew <- Znew[, setdiff(colnames(Znew), "(Intercept)"), drop = FALSE]
+    nd <- data.frame(m = m_seq, Znew, check.names = FALSE)
+    if (inherits(fit, "polr")) {
+      pr <- stats::predict(fit, newdata = nd, type = "probs")
+      as.numeric(pr %*% seq_len(ncol(pr)))      # expected score
+    } else {
+      stats::predict(fit, newdata = nd, type = "response")
     }
-    for (k in seq_len(ncol(probs2))) {
-      lines(theta_seq, probs2[, k], col = colors[k], lwd = 2, lty = 2)
+  })
+
+  ylim <- range(unlist(curves))
+  cols <- grDevices::hcl.colors(length(by_levels), "Dark 2")
+  plot(m_seq, curves[[1]], type = "l", lwd = 2, col = cols[1],
+       xlab = if (dif_result$match == "theta") "Ability (theta)"
+              else "Matching score",
+       ylab = if (inherits(fit, "polr")) "Expected score" else "P(Y = 1)",
+       main = paste0(dif_result$dif_results$name[ridx],
+                     " - response curves by ", by),
+       ylim = ylim, ...)
+  if (length(by_levels) > 1) {
+    for (k in 2:length(by_levels)) {
+      graphics::lines(m_seq, curves[[k]], lwd = 2, col = cols[k])
     }
-    legend("topright",
-           legend = c(paste("Category", seq_len(n_cat)), dif_result$group_labels),
-           col = c(colors, "black", "black"),
-           lwd = 2,
-           lty = c(rep(1, n_cat), 1, 2),
-           bty = "n")
-    grid()
   }
-
-  invisible(NULL)
-}
-
-
-#' Compute effect size for DIF
-#'
-#' @param fit1 Fitted model for group 1
-#' @param fit2 Fitted model for group 2
-#' @param item Item index
-#'
-#' @return Effect size (ETS Delta scale)
-#'
-#' @keywords internal
-compute_dif_effect_size <- function(fit1, fit2, item) {
-  # ETS Delta scale
-  diff1 <- fit1$item_parameters$difficulty[item]
-  diff2 <- fit2$item_parameters$difficulty[item]
-
-  sd_pooled <- sqrt((var(fit1$person_abilities) + var(fit2$person_abilities)) / 2)
-
-  effect_size <- (diff2 - diff1) / sd_pooled
-
-  return(effect_size)
+  graphics::legend("bottomright", legend = as.character(by_levels),
+                   col = cols, lwd = 2, title = by)
+  graphics::grid()
+  invisible(dif_result)
 }

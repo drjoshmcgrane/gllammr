@@ -15,7 +15,8 @@
 #'   "lca_carcinoma", "grm_science", "gamma_simulated",
 #'   "survival_exponential", "sem_lavaan", "lca_polytomous",
 #'   "npml_binomial", "aghq_binomial", "twopl_lsat_em", "eirt_verbagg",
-#'   "eirt_verbagg_pcm", "cdm_fraction_dina", "ordinal_crossed".
+#'   "eirt_verbagg_pcm", "cdm_fraction_dina", "ordinal_crossed",
+#'   "dif_logistic".
 #' @param scale "standard" (default) runs the canonical-dataset cases;
 #'   "large" runs the large-scale tier (n in the tens of thousands, long
 #'   item batteries - sizes where quadrature grids and tolerances can fail
@@ -43,7 +44,7 @@ gllammr_validate <- function(cases = "all", scale = c("standard", "large", "all"
                  "gamma_simulated", "survival_exponential", "sem_lavaan",
                  "lca_polytomous", "npml_binomial", "aghq_binomial",
                  "twopl_lsat_em", "eirt_verbagg", "eirt_verbagg_pcm",
-                 "cdm_fraction_dina", "ordinal_crossed")
+                 "cdm_fraction_dina", "ordinal_crossed", "dif_logistic")
   # Large-scale tier: numerical behavior at sizes where quadrature grids,
   # tolerances, and interpreted-loop costs can fail silently
   large_cases <- c("large_glmm_binomial", "large_grm_battery",
@@ -710,6 +711,49 @@ gllammr_validate <- function(cases = "all", scale = c("standard", "large", "all"
              unname(fit$ability_sd), 0.97, 0.05, relative = FALSE),
     .val_row("eirt_verbagg_pcm", "step_difficulty_cor_vs_pcm",
              step_cor, 0.99, 0.01, relative = FALSE)
+  )
+}
+
+
+#' @keywords internal
+.validate_dif_logistic <- function() {
+  if (!requireNamespace("difR", quietly = TRUE)) {
+    return(NULL)
+  }
+  # Logistic-regression DIF with score matching and purification: with
+  # the same (observed-score) matching criterion, GLLAMMR's tests are the
+  # same nested-model LR tests as difR::difLogistic.
+  set.seed(19)
+  n <- 1200; ni <- 12
+  theta <- rnorm(n)
+  g <- rep(c(0, 1), length.out = n)
+  b <- seq(-1.5, 1.5, length.out = ni)
+  resp <- sapply(seq_len(ni), function(j) {
+    eta <- theta - b[j]
+    if (j %in% c(3, 7)) eta <- eta - 0.8 * g
+    rbinom(n, 1, plogis(eta))
+  })
+  grp <- factor(ifelse(g == 1, "B", "A"))
+
+  fit <- dif_test(resp, dif = grp, match = "score", type = "both",
+                  purify = TRUE)
+  ref <- difR::difLogistic(as.data.frame(resp), group = grp,
+                           focal.name = "B", type = "both", purify = TRUE)
+  ref_flagged <- ref$DIFitems
+  if (identical(ref_flagged, "No DIF item detected")) {
+    ref_flagged <- integer(0)
+  }
+
+  rbind(
+    .val_row("dif_logistic", "flag_agreement",
+             as.numeric(setequal(fit$flagged_items, ref_flagged)), 1,
+             1e-9, relative = FALSE),
+    .val_row("dif_logistic", "stat_rank_correlation",
+             stats::cor(fit$dif_results$chisq, ref$Logistik,
+                        method = "spearman"), 1, 0.05, relative = FALSE),
+    .val_row("dif_logistic", "stat_item3",
+             fit$dif_results$chisq[fit$dif_results$item == 3],
+             unname(ref$Logistik[3]), 0.15)
   )
 }
 

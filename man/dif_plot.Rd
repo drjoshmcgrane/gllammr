@@ -2,17 +2,22 @@
 % Please edit documentation in R/dif.R
 \name{dif_plot}
 \alias{dif_plot}
-\title{Plot Item Characteristic Curves by group}
+\title{Plot item response curves by DIF group}
 \usage{
-dif_plot(dif_result, item, ...)
+dif_plot(dif_result, item, by = NULL, ...)
 }
 \arguments{
-\item{dif_result}{Object of class dif_analysis}
+\item{dif_result}{Object from \code{\link{dif_test}}}
 
-\item{item}{Item index to plot}
+\item{item}{Item index (position among the tested items)}
 
-\item{...}{Additional plotting parameters}
+\item{by}{Name of the DIF variable to display (default: the first one)}
+
+\item{...}{Additional graphical parameters}
 }
 \description{
-Plot Item Characteristic Curves by group
+Plots the model-implied probability of a correct/positive response (or
+the expected score, for polytomous items) against the matching
+criterion, for each level of one DIF variable, from the per-item
+full DIF model. Other DIF variables are held at their reference level.
 }

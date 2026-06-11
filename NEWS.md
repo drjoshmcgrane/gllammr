@@ -2,6 +2,22 @@
 
 ## Post-1.2.0 development
 
+* DIF analysis rewritten (`dif_test`): logistic-regression DIF with a
+  latent (EAP) or observed-score matching criterion, a formula interface
+  for **multiple DIF variables and their interactions**
+  (`dif = ~ gender * language`), **iterative purification** of the
+  matching criterion (with graceful degradation and a warning when the
+  DIF/impact decomposition is unidentified), uniform/nonuniform/joint
+  LR tests with correct per-item degrees of freedom, Nagelkerke
+  delta-R2 effect sizes with the Jodoin-Gierl A/B/C classification,
+  optional multiplicity adjustment, anchor-item support, and
+  cumulative-logit tests for polytomous items. With score matching the
+  flags reproduce `difR::difLogistic` exactly (validation case
+  `dif_logistic`). The previous implementation divided one global LR
+  statistic equally across items and confounded DIF with impact via
+  separate per-group calibrations; `dif_test_with_data` is deprecated
+  and now wraps the new engine. `dif_plot` draws model-implied response
+  curves by any DIF variable.
 * SEM overhaul (`fit_sem`): exogenous latent variables now covary freely
   (previously silently orthogonal - a plain two-factor CFA was
   misspecified); MIMIC models (structural regressions on observed

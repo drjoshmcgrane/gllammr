@@ -413,15 +413,23 @@ for (i in 1:n_persons_dif) {
 ### Testing for DIF
 
 ```{r dif-test}
-dif_result <- dif_test_with_data(
+dif_result <- dif_test(
   responses_dif,
-  group = group,
+  dif = group,
   model = "2PL",
+  purify = TRUE,
   alpha = 0.05
 )
 
 print(dif_result)
 ```
+
+`dif_test()` uses logistic-regression DIF with a latent (EAP) matching
+criterion and iterative purification: items flagged in one round are
+removed from the matching criterion for the next, so DIF items do not
+contaminate the score against which DIF is judged. Multiple DIF
+variables and their interactions are specified with a formula, e.g.
+`dif = ~ gender * language` with `person_data`.
 
 ### Interpreting DIF Results
 
@@ -436,8 +444,8 @@ dif_results_df <- dif_result$dif_results
 flagged_df <- dif_results_df[dif_results_df$item %in% dif_result$flagged_items, ]
 print(flagged_df)
 
-# Effect size interpretation (standardized difficulty difference):
-# |effect| < 0.3: negligible; 0.3-0.5: moderate; >= 0.5: large
+# Effect sizes are Nagelkerke delta-R2 between the compared models
+# (Jodoin-Gierl): A < 0.035 negligible, B < 0.07 moderate, C large
 ```
 
 ### Visualizing DIF
@@ -451,9 +459,9 @@ dif_plot(dif_result, item = 3)
 
 ```{r dif-polytomous}
 # DIF analysis also works with polytomous models
-dif_result_grm <- dif_test_with_data(
+dif_result_grm <- dif_test(
   responses_grm,
-  group = sample(c("Male", "Female"), nrow(responses_grm), replace = TRUE),
+  dif = sample(c("Male", "Female"), nrow(responses_grm), replace = TRUE),
   model = "GRM",
   alpha = 0.05
 )

@@ -1,288 +1,200 @@
-test_that("DIF test accepts valid input", {
-  skip_if_not_installed("TMB")
+# Logistic-regression DIF: single/multiple factors, interactions,
+# purification, polytomous items, difR agreement
 
-  set.seed(123)
-  n_persons <- 200
-  n_items <- 10
-
-  # Simulate data without DIF
-  theta <- rnorm(n_persons, 0, 1)
-  difficulty <- rnorm(n_items, 0, 1)
-
-  responses <- matrix(NA, n_persons, n_items)
-  for (i in 1:n_persons) {
-    for (j in 1:n_items) {
-      p <- plogis(theta[i] - difficulty[j])
-      responses[i, j] <- rbinom(1, 1, p)
-    }
+sim_dif <- function(n = 1500, ni = 12, seed = 123,
+                    dif_items = integer(0), dif_size = 0.8,
+                    nonuniform_items = integer(0), nu_size = 0.8) {
+  set.seed(seed)
+  theta <- rnorm(n)
+  g <- rep(c(0, 1), length.out = n)
+  b <- seq(-1.5, 1.5, length.out = ni)
+  resp <- matrix(0L, n, ni)
+  for (j in seq_len(ni)) {
+    eta <- theta - b[j]
+    if (j %in% dif_items) eta <- eta - dif_size * g
+    if (j %in% nonuniform_items) eta <- eta + nu_size * g * theta
+    resp[, j] <- rbinom(n, 1, plogis(eta))
   }
+  list(resp = resp, group = factor(ifelse(g == 1, "B", "A")),
+       theta = theta)
+}
 
-  # Create group variable
-  group <- rep(c("A", "B"), each = n_persons/2)
+test_that("clean data yields few flags; DIF items are detected", {
+  d <- sim_dif(dif_items = c(3, 7))
+  res <- dif_test(d$resp, dif = d$group, model = "Rasch")
 
-  # Test for DIF
-  dif_result <- dif_test_with_data(responses, group = group, model = "Rasch")
-
-  expect_s3_class(dif_result, "dif_analysis")
-  expect_equal(nrow(dif_result$dif_results), n_items)
+  expect_s3_class(res, "dif_analysis")
+  expect_equal(nrow(res$dif_results), 12)
+  expect_true(all(c(3, 7) %in% res$flagged_items))
+  # False positives controlled (allow at most 1 of the 10 clean items)
+  expect_lte(length(setdiff(res$flagged_items, c(3, 7))), 1)
+  # DIF items excluded from the final anchor
+  expect_false(any(c(3, 7) %in% res$anchor_items))
 })
 
+test_that("uniform vs nonuniform types separate correctly", {
+  d <- sim_dif(dif_items = 2, nonuniform_items = 9, seed = 7)
+  res_u <- dif_test(d$resp, dif = d$group, type = "uniform",
+                    model = "Rasch")
+  res_n <- dif_test(d$resp, dif = d$group, type = "nonuniform",
+                    model = "2PL")
+  expect_true(2 %in% res_u$flagged_items)
+  expect_true(9 %in% res_n$flagged_items)
+  expect_false(2 %in% res_n$flagged_items)
+})
 
-test_that("DIF detects uniform DIF in simulated data", {
-  skip_if_not_installed("TMB")
+test_that("multiple DIF factors are tested jointly", {
+  set.seed(31)
+  n <- 2000; ni <- 12
+  theta <- rnorm(n)
+  pd <- data.frame(gender = factor(sample(c("M", "F"), n, TRUE)),
+                   lang = factor(sample(c("X", "Y"), n, TRUE)))
+  b <- seq(-1.5, 1.5, length.out = ni)
+  resp <- sapply(seq_len(ni), function(j) {
+    eta <- theta - b[j]
+    if (j == 4) eta <- eta - 0.8 * (pd$gender == "M")   # gender DIF
+    if (j == 8) eta <- eta - 0.8 * (pd$lang == "Y")     # language DIF
+    rbinom(n, 1, plogis(eta))
+  })
 
-  set.seed(456)
-  n_persons <- 300
-  n_items <- 10
+  res <- dif_test(resp, dif = ~ gender + lang, person_data = pd,
+                  model = "Rasch")
+  expect_true(all(c(4, 8) %in% res$flagged_items))
+  expect_equal(length(res$dif_terms), 2)
+  # df reflects the multi-factor test: both + 2 columns -> 4 df
+  expect_true(all(res$dif_results$df == 4))
+})
 
-  # Simulate data WITH uniform DIF on item 5
-  theta <- rnorm(n_persons, 0, 1)
-  difficulty <- rnorm(n_items, 0, 1)
+test_that("interaction DIF is detected only with the interaction term", {
+  set.seed(41)
+  n <- 3000; ni <- 12
+  theta <- rnorm(n)
+  pd <- data.frame(gender = factor(sample(c("M", "F"), n, TRUE)),
+                   lang = factor(sample(c("X", "Y"), n, TRUE)))
+  b <- seq(-1.5, 1.5, length.out = ni)
+  resp <- sapply(seq_len(ni), function(j) {
+    eta <- theta - b[j]
+    # Pure intersectional DIF on item 5: only male-Y speakers affected
+    if (j == 5) eta <- eta - 1.0 * (pd$gender == "M") * (pd$lang == "Y")
+    rbinom(n, 1, plogis(eta))
+  })
 
-  group <- rep(c(1, 2), each = n_persons/2)
+  res_int <- dif_test(resp, dif = ~ gender * lang, person_data = pd,
+                      model = "Rasch")
+  expect_true(5 %in% res_int$flagged_items)
+  expect_equal(length(res_int$dif_terms), 3)   # two mains + interaction
+})
 
-  responses <- matrix(NA, n_persons, n_items)
-  for (i in 1:n_persons) {
-    for (j in 1:n_items) {
-      # Add DIF to item 5 for group 2
-      diff_effective <- difficulty[j]
-      if (j == 5 && group[i] == 2) {
-        diff_effective <- diff_effective + 1.5  # Large uniform DIF
-      }
+test_that("purification recovers a contaminated matching criterion", {
+  # 3 of 14 items share same-direction DIF: matching is contaminated but
+  # recoverable
+  set.seed(11)
+  n <- 2000; ni <- 14
+  theta <- rnorm(n); g <- rep(c(0, 1), length.out = n)
+  b <- seq(-1.5, 1.5, length.out = ni)
+  resp <- sapply(seq_len(ni), function(j) {
+    eta <- theta - b[j]
+    if (j <= 3) eta <- eta - 0.8 * g
+    rbinom(n, 1, plogis(eta))
+  })
+  grp <- factor(ifelse(g == 1, "B", "A"))
 
-      p <- plogis(theta[i] - diff_effective)
-      responses[i, j] <- rbinom(1, 1, p)
-    }
+  res_p <- dif_test(resp, dif = grp, model = "Rasch", purify = TRUE)
+  res_np <- dif_test(resp, dif = grp, model = "Rasch", purify = FALSE)
+
+  expect_true(all(1:3 %in% res_p$flagged_items))
+  expect_true(res_p$purification$converged)
+  # Purified analysis should not flag more clean items than unpurified
+  fp_p <- length(setdiff(res_p$flagged_items, 1:3))
+  fp_np <- length(setdiff(res_np$flagged_items, 1:3))
+  expect_lte(fp_p, max(fp_np, 1))
+})
+
+test_that("purification breakdown degrades gracefully", {
+  # A third of the test with strong same-direction DIF: the DIF/impact
+  # decomposition is unidentified and purification spirals; the analysis
+  # must warn and return the last valid round, not crash
+  d <- sim_dif(n = 2500, dif_items = c(1, 2, 3, 4), dif_size = 1.0,
+               seed = 11)
+  expect_warning(
+    res <- dif_test(d$resp, dif = d$group, model = "Rasch",
+                    purify = TRUE),
+    "anchor")
+  expect_s3_class(res, "dif_analysis")
+  expect_false(res$purification$converged)
+  expect_true(all(is.finite(res$dif_results$p_value)))
+})
+
+test_that("score matching reproduces difR::difLogistic flags", {
+  skip_if_not_installed("difR")
+  d <- sim_dif(n = 1200, dif_items = c(3, 7), seed = 19)
+  res <- dif_test(d$resp, dif = d$group, match = "score",
+                  type = "both", purify = TRUE)
+  ref <- difR::difLogistic(as.data.frame(d$resp), group = d$group,
+                           focal.name = "B", type = "both",
+                           purify = TRUE)
+  ref_flagged <- ref$DIFitems
+  if (identical(ref_flagged, "No DIF item detected")) {
+    ref_flagged <- integer(0)
   }
-
-  # Test for DIF
-  dif_result <- dif_test_with_data(responses, group = group, model = "Rasch", alpha = 0.05)
-
-  # Item 5 should be flagged
-  expect_true(5 %in% dif_result$flagged_items)
-
-  # Item 5 should have low p-value
-  item5_pval <- dif_result$dif_results$p_value[dif_result$dif_results$item == 5]
-  expect_lt(item5_pval, 0.05)
+  # Flag agreement and high rank correlation of the statistics
+  expect_setequal(res$flagged_items, ref_flagged)
+  expect_gt(cor(res$dif_results$chisq, ref$Logistik,
+                method = "spearman"), 0.95)
 })
 
-
-test_that("DIF test with 2PL model", {
-  skip_if_not_installed("TMB")
-
-  set.seed(789)
-  n_persons <- 200
-  n_items <- 8
-
-  theta <- rnorm(n_persons, 0, 1)
-  difficulty <- rnorm(n_items, 0, 1)
-  discrimination <- runif(n_items, 0.5, 2)
-
-  group <- rep(c("Male", "Female"), each = n_persons/2)
-
-  responses <- matrix(NA, n_persons, n_items)
-  for (i in 1:n_persons) {
-    for (j in 1:n_items) {
-      p <- plogis(discrimination[j] * (theta[i] - difficulty[j]))
-      responses[i, j] <- rbinom(1, 1, p)
-    }
-  }
-
-  dif_result <- dif_test_with_data(responses, group = group, model = "2PL")
-
-  expect_s3_class(dif_result, "dif_analysis")
-  expect_equal(dif_result$model, "2PL")
-  expect_equal(dif_result$group_labels, c("Male", "Female"))
+test_that("anchors are respected and never tested", {
+  d <- sim_dif(dif_items = 3, seed = 23)
+  res <- dif_test(d$resp, dif = d$group, anchors = c(1, 2),
+                  model = "Rasch")
+  expect_false(any(c(1, 2) %in% res$dif_results$item))
+  expect_true(all(c(1, 2) %in% res$anchor_items))
+  expect_true(3 %in% res$flagged_items)
 })
 
-
-test_that("DIF test validates group variable", {
-  skip_if_not_installed("TMB")
-
-  set.seed(111)
-  n_persons <- 100
-  n_items <- 5
-
-  responses <- matrix(rbinom(n_persons * n_items, 1, 0.5), n_persons, n_items)
-
-  # Invalid: 3 groups
-  group_invalid <- rep(c("A", "B", "C"), length.out = n_persons)
-
-  expect_error(dif_test_with_data(responses, group = group_invalid, model = "Rasch"),
-               "must have exactly 2 unique values")
-
-  # Invalid: wrong length
-  group_wrong_length <- rep(c("A", "B"), each = 25)
-
-  expect_error(dif_test_with_data(responses, group = group_wrong_length, model = "Rasch"),
-               "must match number of persons")
+test_that("polytomous DIF via cumulative-logit regression", {
+  skip_if_not_installed("MASS")
+  set.seed(29)
+  n <- 1500; ni <- 8
+  theta <- rnorm(n)
+  g <- rep(c(0, 1), length.out = n)
+  resp <- sapply(seq_len(ni), function(j) {
+    b0 <- (j - ni / 2) / 2
+    eta <- theta - b0 - if (j == 4) 0.9 * g else 0
+    cuts <- c(-0.8, 0.8)
+    1L + rowSums(outer(eta + rlogis(n), cuts, ">"))
+  })
+  res <- dif_test(resp, dif = factor(g), model = "GRM")
+  expect_true(4 %in% res$flagged_items)
+  expect_lte(length(setdiff(res$flagged_items, 4)), 1)
 })
 
-
-test_that("DIF test with polytomous model (GRM)", {
-  skip_if_not_installed("TMB")
-
-  set.seed(222)
-  n_persons <- 200
-  n_items <- 8
-  n_categories <- 4
-
-  responses <- matrix(sample(1:n_categories, n_persons * n_items, replace = TRUE),
-                      n_persons, n_items)
-
-  group <- rep(c(1, 2), each = n_persons/2)
-
-  dif_result <- dif_test_with_data(responses, group = group, model = "GRM")
-
-  expect_s3_class(dif_result, "dif_analysis")
-  expect_equal(dif_result$model, "GRM")
+test_that("p adjustment, print/summary, and plot work", {
+  d <- sim_dif(dif_items = 3, seed = 37)
+  res <- dif_test(d$resp, dif = d$group, model = "Rasch",
+                  p_adjust = "BH")
+  expect_true(all(res$dif_results$p_adj >= res$dif_results$p_value -
+                    1e-12))
+  out <- capture.output(summary(res))
+  expect_true(any(grepl("delta-R2", out)))
+  pdf(NULL)
+  expect_silent(dif_plot(res, item = 3))
+  dev.off()
 })
 
-
-test_that("DIF print method works", {
-  skip_if_not_installed("TMB")
-
-  set.seed(333)
-  n_persons <- 150
-  n_items <- 8
-
-  responses <- matrix(rbinom(n_persons * n_items, 1, 0.5), n_persons, n_items)
-  group <- rep(c("Control", "Treatment"), each = n_persons/2)
-
-  dif_result <- dif_test_with_data(responses, group = group, model = "Rasch")
-
-  # Print should not error
-  expect_output(print(dif_result), "Differential Item Functioning")
-  expect_output(print(dif_result), "Rasch")
-  expect_output(print(dif_result), "Control vs Treatment")
+test_that("deprecated wrapper still works", {
+  d <- sim_dif(dif_items = 3, seed = 43, n = 800)
+  expect_warning(
+    res <- dif_test_with_data(d$resp, group = d$group, model = "Rasch"),
+    "deprecated")
+  expect_s3_class(res, "dif_analysis")
+  expect_true(3 %in% res$flagged_items)
 })
 
-
-test_that("DIF summary method works", {
-  skip_if_not_installed("TMB")
-
-  set.seed(444)
-  n_persons <- 100
-  n_items <- 6
-
-  responses <- matrix(rbinom(n_persons * n_items, 1, 0.5), n_persons, n_items)
-  group <- rep(c(0, 1), each = n_persons/2)
-
-  dif_result <- dif_test_with_data(responses, group = group, model = "Rasch")
-
-  expect_output(summary(dif_result), "All Items")
-})
-
-
-test_that("DIF plot for dichotomous items", {
-  skip_if_not_installed("TMB")
-
-  set.seed(555)
-  n_persons <- 200
-  n_items <- 8
-
-  theta <- rnorm(n_persons, 0, 1)
-  difficulty <- rnorm(n_items, 0, 1)
-  discrimination <- rep(1.5, n_items)
-
-  group <- rep(c(1, 2), each = n_persons/2)
-
-  # Add DIF to item 3
-  responses <- matrix(NA, n_persons, n_items)
-  for (i in 1:n_persons) {
-    for (j in 1:n_items) {
-      diff_eff <- difficulty[j]
-      if (j == 3 && group[i] == 2) {
-        diff_eff <- diff_eff + 1
-      }
-      p <- plogis(discrimination[j] * (theta[i] - diff_eff))
-      responses[i, j] <- rbinom(1, 1, p)
-    }
-  }
-
-  dif_result <- dif_test_with_data(responses, group = group, model = "2PL")
-
-  # Plot should not error
-  expect_silent(dif_plot(dif_result, item = 3))
-})
-
-
-test_that("DIF effect size computation", {
-  skip_if_not_installed("TMB")
-
-  set.seed(666)
-  n_persons <- 200
-  n_items <- 10
-
-  theta <- rnorm(n_persons, 0, 1)
-  difficulty <- rnorm(n_items, 0, 1)
-
-  group <- rep(c(1, 2), each = n_persons/2)
-
-  # Large DIF on item 7
-  responses <- matrix(NA, n_persons, n_items)
-  for (i in 1:n_persons) {
-    for (j in 1:n_items) {
-      diff_eff <- difficulty[j]
-      if (j == 7 && group[i] == 2) {
-        diff_eff <- diff_eff + 2  # Very large DIF
-      }
-      p <- plogis(theta[i] - diff_eff)
-      responses[i, j] <- rbinom(1, 1, p)
-    }
-  }
-
-  dif_result <- dif_test_with_data(responses, group = group, model = "Rasch")
-
-  # Item 7 should have large effect size
-  item7_effect <- dif_result$dif_results$effect_size[dif_result$dif_results$item == 7]
-  expect_gt(abs(item7_effect), 0.5)
-})
-
-
-test_that("DIF test with no flagged items", {
-  skip_if_not_installed("TMB")
-
-  set.seed(777)
-  n_persons <- 150
-  n_items <- 10
-
-  # Simulate data WITHOUT DIF
-  theta <- rnorm(n_persons, 0, 1)
-  difficulty <- rnorm(n_items, 0, 1)
-
-  group <- rep(c(1, 2), each = n_persons/2)
-
-  responses <- matrix(NA, n_persons, n_items)
-  for (i in 1:n_persons) {
-    for (j in 1:n_items) {
-      p <- plogis(theta[i] - difficulty[j])
-      responses[i, j] <- rbinom(1, 1, p)
-    }
-  }
-
-  dif_result <- dif_test_with_data(responses, group = group, model = "Rasch", alpha = 0.01)
-
-  # With strict alpha, should have few/no flagged items
-  expect_lte(length(dif_result$flagged_items), 2)
-})
-
-
-test_that("DIF test with custom alpha level", {
-  skip_if_not_installed("TMB")
-
-  set.seed(888)
-  n_persons <- 100
-  n_items <- 8
-
-  responses <- matrix(rbinom(n_persons * n_items, 1, 0.5), n_persons, n_items)
-  group <- rep(c(1, 2), each = n_persons/2)
-
-  # Test with different alpha levels
-  dif_result_05 <- dif_test_with_data(responses, group = group, model = "Rasch", alpha = 0.05)
-  dif_result_01 <- dif_test_with_data(responses, group = group, model = "Rasch", alpha = 0.01)
-
-  # Stricter alpha should flag fewer items
-  expect_lte(length(dif_result_01$flagged_items),
-             length(dif_result_05$flagged_items))
+test_that("input validation", {
+  d <- sim_dif(seed = 47, n = 200)
+  expect_error(dif_test(d$resp, dif = d$group[1:10]), "must match")
+  expect_error(dif_test(d$resp, dif = ~ g), "person_data is required")
+  expect_error(dif_test(d$resp, dif = d$group, items = 99), "between")
+  expect_error(dif_test(d$resp, dif = d$group, anchors = 99), "valid item")
 })
