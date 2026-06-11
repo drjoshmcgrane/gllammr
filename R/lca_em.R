@@ -1,11 +1,3 @@
-#' EM estimation for latent class models
-#'
-#' Classic EM for finite mixtures with conditionally independent indicators
-#' (the poLCA algorithm). All M-steps are closed-form (weighted proportions
-#' for binary/categorical indicators, weighted moments for gaussian ones),
-#' so each iteration is one N x K posterior computation plus a handful of
-#' cross-products - the E-step runs on BLAS matrix products.
-#'
 #' Weighted isotonic regression (pool-adjacent-violators)
 #'
 #' Returns the nondecreasing vector minimizing sum(w * (y - x)^2), which is
@@ -33,10 +25,109 @@
 }
 
 
+#' Weighted isotonic regression over a partial order
+#'
+#' Minimizes sum(w * (y - x)^2) subject to x[a] <= x[b] for every row
+#' (a, b) of \code{edges} - the constrained M-step maximizer for binomial
+#' proportions and normal means under a partially ordered classes
+#' restriction. A chain is solved exactly by pool-adjacent-violators;
+#' a general DAG by Dykstra's cyclic projection algorithm (each constraint
+#' set is a half-space whose weighted projection is a two-point pool),
+#' which converges to the exact projection. Problems here are tiny
+#' (length(y) = number of classes), so iteration cost is negligible.
+#'
+#' @keywords internal
+.isotonic_poset <- function(y, w, edges, tol = 1e-12, max_iter = 10000) {
+  K <- length(y)
+  E <- nrow(edges)
+  if (E == 0) return(y)
+  # Chain in canonical form: PAVA is exact and direct
+  if (E == K - 1 && all(edges[, 1] == seq_len(K - 1)) &&
+      all(edges[, 2] == 2:K)) {
+    return(.pava_weighted(y, w))
+  }
+  x <- y
+  # Dykstra increments, one pair per constraint
+  inc_a <- numeric(E)
+  inc_b <- numeric(E)
+  for (it in seq_len(max_iter)) {
+    delta <- 0
+    for (e in seq_len(E)) {
+      a <- edges[e, 1]; b <- edges[e, 2]
+      xa <- x[a] + inc_a[e]
+      xb <- x[b] + inc_b[e]
+      if (xa > xb) {
+        m <- (w[a] * xa + w[b] * xb) / (w[a] + w[b])
+        new_a <- m; new_b <- m
+      } else {
+        new_a <- xa; new_b <- xb
+      }
+      inc_a[e] <- xa - new_a
+      inc_b[e] <- xb - new_b
+      delta <- delta + abs(new_a - x[a]) + abs(new_b - x[b])
+      x[a] <- new_a
+      x[b] <- new_b
+    }
+    if (delta < tol) break
+  }
+  # Guarantee feasibility to numerical precision
+  for (e in seq_len(E)) {
+    a <- edges[e, 1]; b <- edges[e, 2]
+    if (x[a] > x[b]) {
+      m <- (w[a] * x[a] + w[b] * x[b]) / (w[a] + w[b])
+      x[a] <- m; x[b] <- m
+    }
+  }
+  x
+}
+
+
+#' Topological order of classes under a partial order (Kahn's algorithm)
+#'
+#' Returns a permutation of 1:K such that every edge (a, b) has a before b.
+#' Errors if the order specification contains a cycle.
+#'
+#' @keywords internal
+.topological_order <- function(K, edges) {
+  indeg <- integer(K)
+  for (e in seq_len(nrow(edges))) {
+    indeg[edges[e, 2]] <- indeg[edges[e, 2]] + 1L
+  }
+  out <- integer(0)
+  queue <- which(indeg == 0L)
+  while (length(queue)) {
+    v <- queue[1]; queue <- queue[-1]
+    out <- c(out, v)
+    children <- edges[edges[, 1] == v, 2]
+    for (ch in children) {
+      indeg[ch] <- indeg[ch] - 1L
+      if (indeg[ch] == 0L) queue <- c(queue, ch)
+    }
+  }
+  if (length(out) < K) {
+    stop("The class ordering constraints contain a cycle; a partial ",
+         "order must be acyclic")
+  }
+  out
+}
+
+
+#' EM estimation for latent class models
+#'
+#' Classic EM for finite mixtures with conditionally independent indicators
+#' (the poLCA algorithm). All M-steps are closed-form (weighted proportions
+#' for binary/categorical indicators, weighted moments for gaussian ones),
+#' so each iteration is one N x K posterior computation plus a handful of
+#' cross-products - the E-step runs on BLAS matrix products. When
+#' \code{order_edges} is supplied, binary probabilities and gaussian means
+#' are additionally constrained to be nondecreasing along the given class
+#' partial order via isotonic regression in the M-step.
+#'
 #' @keywords internal
 fit_lca_em <- function(Y, nclass, item_type, n_cats, weights = NULL,
                        n_starts = 3, max_iter = 1000, tol = 1e-8,
-                       ordering = FALSE) {
+                       order_edges = NULL) {
+  ordering <- !is.null(order_edges)
   n_obs <- nrow(Y)
   n_items <- ncol(Y)
   K <- nclass
@@ -79,11 +170,14 @@ fit_lca_em <- function(Y, nclass, item_type, n_cats, weights = NULL,
     }
     if (ordering) {
       # Start from a class permutation consistent with the constraint so
-      # the first PAVA M-steps don't collapse classes
+      # the first isotonic M-steps don't collapse classes: classes in a
+      # topological order of the DAG get increasing initial levels
+      topo <- .topological_order(K, order_edges)
       crit <- rep(0, K)
       if (length(bin_idx)) crit <- crit + colMeans(p$bin)
       if (length(gau_idx)) crit <- crit + colMeans(p$mu)
-      ord <- order(crit)
+      ord <- integer(K)
+      ord[topo] <- order(crit)   # topo position i gets i-th smallest start
       if (length(bin_idx)) p$bin <- p$bin[, ord, drop = FALSE]
       if (length(gau_idx)) {
         p$mu <- p$mu[, ord, drop = FALSE]
@@ -196,10 +290,11 @@ fit_lca_em <- function(Y, nclass, item_type, n_cats, weights = NULL,
         den <- pmax(crossprod(Mb, W), 1e-12)
         praw <- num / den
         if (ordering) {
-          # Croon's ordered LCM: the constrained binomial M-step is the
-          # weighted isotonic regression of the raw proportions
+          # Ordered/partially ordered LCM: the constrained binomial M-step
+          # is the weighted isotonic regression of the raw proportions
+          # over the class partial order
           for (jj in seq_len(nrow(praw))) {
-            praw[jj, ] <- .pava_weighted(praw[jj, ], den[jj, ])
+            praw[jj, ] <- .isotonic_poset(praw[jj, ], den[jj, ], order_edges)
           }
         }
         p$bin <- pmin(pmax(praw, 1e-6), 1 - 1e-6)
@@ -224,7 +319,7 @@ fit_lca_em <- function(Y, nclass, item_type, n_cats, weights = NULL,
         den <- pmax(colSums(Wo), 1e-12)
         m1 <- as.numeric(crossprod(Wo, y)) / den
         m2 <- as.numeric(crossprod(Wo, y^2)) / den
-        mu <- if (ordering) .pava_weighted(m1, den) else m1
+        mu <- if (ordering) .isotonic_poset(m1, den, order_edges) else m1
         # E[(y - mu)^2] at the (possibly constrained) mean
         v <- m2 - 2 * mu * m1 + mu^2
         p$mu[jj, ] <- mu
@@ -245,15 +340,18 @@ fit_lca_em <- function(Y, nclass, item_type, n_cats, weights = NULL,
             # Project the extrapolated point back into the constraint set
             # (isotonic projection); the revert safeguard already protects
             # monotone likelihood
+            unit_w <- rep(1, K)
             if (length(bin_idx)) {
               for (jj in seq_len(nrow(p$bin))) {
-                p$bin[jj, ] <- .pava_weighted(p$bin[jj, ], rep(1, K))
+                p$bin[jj, ] <- .isotonic_poset(p$bin[jj, ], unit_w,
+                                               order_edges)
               }
               p$bin <- pmin(pmax(p$bin, 1e-6), 1 - 1e-6)
             }
             if (length(gau_idx)) {
               for (jj in seq_len(nrow(p$mu))) {
-                p$mu[jj, ] <- .pava_weighted(p$mu[jj, ], rep(1, K))
+                p$mu[jj, ] <- .isotonic_poset(p$mu[jj, ], unit_w,
+                                              order_edges)
               }
             }
           }

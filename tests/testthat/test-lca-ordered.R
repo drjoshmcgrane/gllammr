@@ -101,6 +101,85 @@ test_that("ordering validates its requirements", {
                "method")
 })
 
+test_that("isotonic_poset matches PAVA on chains and projects correctly", {
+  set.seed(5)
+  chain <- cbind(1:4, 2:5)
+  for (i in 1:10) {
+    y <- rnorm(5); w <- runif(5, 0.2, 3)
+    expect_equal(.isotonic_poset(y, w, chain), .pava_weighted(y, w),
+                 tolerance = 1e-8)
+  }
+
+  # Diamond: 1 <= {2, 3} <= 4; verify feasibility and (projection)
+  # optimality against randomly sampled feasible points
+  diamond <- rbind(c(1, 2), c(1, 3), c(2, 4), c(3, 4))
+  feasible <- function(x) {
+    all(x[1] <= x[2] + 1e-9, x[1] <= x[3] + 1e-9,
+        x[2] <= x[4] + 1e-9, x[3] <= x[4] + 1e-9)
+  }
+  for (i in 1:10) {
+    y <- rnorm(4, 0, 2); w <- runif(4, 0.2, 3)
+    x <- .isotonic_poset(y, w, diamond)
+    expect_true(feasible(x))
+    obj <- sum(w * (y - x)^2)
+    for (r in 1:200) {
+      lo <- rnorm(1, 0, 2)
+      mid <- lo + rexp(2); hi <- max(mid) + rexp(1)
+      z <- c(lo, mid, hi)
+      expect_gte(sum(w * (y - z)^2), obj - 1e-8)
+    }
+  }
+})
+
+test_that("partially ordered LCA recovers a diamond class structure", {
+  set.seed(61)
+  n <- 1500
+  cls <- sample(1:4, n, TRUE, prob = c(0.3, 0.2, 0.2, 0.3))
+  # Classes: 1 = low, 2/3 = incomparable intermediate profiles, 4 = high.
+  # Items 1-3 load on profile 2, items 4-6 on profile 3: the crossing
+  # probabilities are incompatible with ANY total order.
+  pmat <- rbind(
+    c(0.10, 0.80, 0.15, 0.90), c(0.15, 0.85, 0.20, 0.90),
+    c(0.10, 0.75, 0.10, 0.85), c(0.10, 0.15, 0.80, 0.90),
+    c(0.15, 0.20, 0.85, 0.90), c(0.10, 0.10, 0.75, 0.85))
+  Y <- sapply(1:6, function(j) rbinom(n, 1, pmat[j, cls]))
+  diamond <- list(c(1, 2), c(1, 3), c(2, 4), c(3, 4))
+
+  fit_u <- fit_lca(Y, nclass = 4, control = list(n_starts = 8))
+  fit_d <- fit_lca(Y, nclass = 4, ordering = diamond,
+                   control = list(n_starts = 8))
+  fit_t <- fit_lca(Y, nclass = 4, ordering = "increasing",
+                   control = list(n_starts = 8))
+
+  # Truth satisfies the diamond: restricted optimum ~ unrestricted optimum
+  expect_lt(fit_u$logLik - fit_d$logLik, 1.5)
+  # No total order is compatible: the chain fit is substantively worse
+  expect_gt(fit_d$logLik - fit_t$logLik, 5)
+
+  # Comparable pairs respect the order for every item
+  P <- fit_d$item_probs
+  for (e in list(c(1, 2), c(1, 3), c(2, 4), c(3, 4))) {
+    expect_true(all(P[, e[1]] <= P[, e[2]] + 1e-8))
+  }
+  # The incomparable middle classes genuinely cross (both directions occur)
+  expect_true(any(P[, 2] > P[, 3] + 0.2) && any(P[, 3] > P[, 2] + 0.2))
+})
+
+test_that("partial order specification is validated", {
+  set.seed(71)
+  Y <- sapply(1:4, function(j) rbinom(200, 1, 0.5))
+  expect_error(fit_lca(Y, nclass = 3, ordering = list(c(1, 2), c(2, 1))),
+               "cycle")
+  expect_error(fit_lca(Y, nclass = 3, ordering = list(c(1, 2, 3))),
+               "two class indices")
+  expect_error(fit_lca(Y, nclass = 3, ordering = list(c(1, 5))),
+               "1..nclass")
+  expect_error(fit_lca(Y, nclass = 3, ordering = list(c(2, 2))),
+               "distinct")
+  expect_error(fit_lca(Y, nclass = 3, ordering = TRUE),
+               "ordering must be")
+})
+
 test_that("ordered LCA works with case weights", {
   set.seed(47)
   n <- 500

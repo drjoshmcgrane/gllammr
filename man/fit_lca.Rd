@@ -10,7 +10,7 @@ fit_lca(
   nclass = 2,
   weights = NULL,
   method = c("em", "tmb"),
-  ordering = c("none", "increasing"),
+  ordering = "none",
   start = NULL,
   control = list()
 )
@@ -28,13 +28,28 @@ fit_lca(
 Ramsay acceleration, the poLCA algorithm) or "tmb" (direct
 quasi-Newton on the marginal likelihood via TMB)}
 
-\item{ordering}{Order restriction on the classes: "none" (default) or
-"increasing" for Croon's (1990) ordered latent class model, where the
-classes are constrained so that every binary item probability and
-every gaussian indicator mean is nondecreasing across classes. The
-constrained M-step is a weighted isotonic regression
-(pool-adjacent-violators), so estimation remains closed-form EM.
-Ordering resolves label switching by construction. Requires
+\item{ordering}{Order restriction on the classes. One of:
+\itemize{
+  \item \code{"none"} (default): unrestricted LCA.
+  \item \code{"increasing"}: Croon's (1990) ordered latent class
+    model - a total order, where every binary item probability and
+    every gaussian indicator mean is nondecreasing from class 1 to
+    class K.
+  \item A \emph{partial order}: a list of class index pairs (or a
+    two-column matrix), each pair \code{c(a, b)} constraining class
+    \code{a} \eqn{\preceq} class \code{b} (item probabilities and
+    gaussian means of \code{a} no greater than those of \code{b}).
+    Classes not connected by any chain of pairs are unconstrained
+    relative to each other. Example - a diamond with two incomparable
+    intermediate profiles between a low and a high class:
+    \code{ordering = list(c(1, 2), c(1, 3), c(2, 4), c(3, 4))}.
+}
+The constrained M-step is a weighted isotonic regression over the
+class poset (pool-adjacent-violators on a chain, Dykstra's projection
+algorithm on a general DAG), so estimation remains closed-form EM.
+A total order resolves label switching by construction; a partial
+order resolves it up to the automorphisms of the poset (e.g. the two
+incomparable middle classes of a diamond can swap). Requires
 \code{method = "em"}; not available with categorical (> 2 category)
 indicators. Note that likelihood-ratio tests against the unrestricted
 model have a non-standard (chi-bar-square) null distribution, and

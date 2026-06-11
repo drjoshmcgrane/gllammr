@@ -9,13 +9,28 @@
 #'   Ramsay acceleration, the poLCA algorithm) or "tmb" (direct
 #'   quasi-Newton on the marginal likelihood via TMB)
 #' @param weights Optional vector of case weights (one per observation)
-#' @param ordering Order restriction on the classes: "none" (default) or
-#'   "increasing" for Croon's (1990) ordered latent class model, where the
-#'   classes are constrained so that every binary item probability and
-#'   every gaussian indicator mean is nondecreasing across classes. The
-#'   constrained M-step is a weighted isotonic regression
-#'   (pool-adjacent-violators), so estimation remains closed-form EM.
-#'   Ordering resolves label switching by construction. Requires
+#' @param ordering Order restriction on the classes. One of:
+#'   \itemize{
+#'     \item \code{"none"} (default): unrestricted LCA.
+#'     \item \code{"increasing"}: Croon's (1990) ordered latent class
+#'       model - a total order, where every binary item probability and
+#'       every gaussian indicator mean is nondecreasing from class 1 to
+#'       class K.
+#'     \item A \emph{partial order}: a list of class index pairs (or a
+#'       two-column matrix), each pair \code{c(a, b)} constraining class
+#'       \code{a} \eqn{\preceq} class \code{b} (item probabilities and
+#'       gaussian means of \code{a} no greater than those of \code{b}).
+#'       Classes not connected by any chain of pairs are unconstrained
+#'       relative to each other. Example - a diamond with two incomparable
+#'       intermediate profiles between a low and a high class:
+#'       \code{ordering = list(c(1, 2), c(1, 3), c(2, 4), c(3, 4))}.
+#'   }
+#'   The constrained M-step is a weighted isotonic regression over the
+#'   class poset (pool-adjacent-violators on a chain, Dykstra's projection
+#'   algorithm on a general DAG), so estimation remains closed-form EM.
+#'   A total order resolves label switching by construction; a partial
+#'   order resolves it up to the automorphisms of the poset (e.g. the two
+#'   incomparable middle classes of a diamond can swap). Requires
 #'   \code{method = "em"}; not available with categorical (> 2 category)
 #'   indicators. Note that likelihood-ratio tests against the unrestricted
 #'   model have a non-standard (chi-bar-square) null distribution, and
@@ -54,12 +69,45 @@
 fit_lca <- function(formula, data = NULL, nclass = 2,
                     weights = NULL,
                     method = c("em", "tmb"),
-                    ordering = c("none", "increasing"),
+                    ordering = "none",
                     start = NULL, control = list()) {
 
   method <- match.arg(method)
-  ordering <- match.arg(ordering)
-  ordered_classes <- ordering == "increasing"
+
+  # ---- Normalize the ordering spec to an edge matrix (or NULL) ----
+  order_edges <- NULL
+  if (is.character(ordering) && length(ordering) == 1) {
+    ordering <- match.arg(ordering, c("none", "increasing"))
+    if (ordering == "increasing" && nclass > 1) {
+      order_edges <- cbind(seq_len(nclass - 1), 2:nclass)
+    }
+  } else if (is.list(ordering) || is.matrix(ordering)) {
+    em_edges <- if (is.list(ordering)) {
+      if (!all(vapply(ordering, length, 0L) == 2)) {
+        stop("ordering pairs must each have exactly two class indices")
+      }
+      do.call(rbind, ordering)
+    } else {
+      if (ncol(ordering) != 2) {
+        stop("an ordering matrix must have two columns (a precedes b)")
+      }
+      ordering
+    }
+    storage.mode(em_edges) <- "integer"
+    if (anyNA(em_edges) || any(em_edges < 1) || any(em_edges > nclass)) {
+      stop("ordering class indices must be integers in 1..nclass")
+    }
+    if (any(em_edges[, 1] == em_edges[, 2])) {
+      stop("ordering pairs must relate two distinct classes")
+    }
+    em_edges <- unique(em_edges)
+    .topological_order(nclass, em_edges)   # errors on cycles
+    order_edges <- em_edges
+  } else {
+    stop("ordering must be \"none\", \"increasing\", or a list/matrix ",
+         "of class index pairs")
+  }
+  ordered_classes <- !is.null(order_edges)
 
   # Handle formula or matrix input
   if (is.matrix(formula)) {
@@ -106,11 +154,11 @@ fit_lca <- function(formula, data = NULL, nclass = 2,
 
   if (ordered_classes) {
     if (method != "em" || !is.null(start)) {
-      stop("ordering = \"increasing\" requires method = \"em\" ",
+      stop("class ordering restrictions require method = \"em\" ",
            "(and EM-internal starting values)")
     }
     if (any(item_type == 1L)) {
-      stop("ordering = \"increasing\" supports binary and gaussian ",
+      stop("class ordering restrictions support binary and gaussian ",
            "indicators only; items ", paste(which(item_type == 1L),
            collapse = ", "), " are categorical. Monotone (stochastic) ",
            "ordering for polytomous indicators is not implemented.")
@@ -125,7 +173,7 @@ fit_lca <- function(formula, data = NULL, nclass = 2,
                      n_starts = n_starts,
                      max_iter = control$max_iter %||% 1000,
                      tol = control$tol %||% 1e-8,
-                     ordering = ordered_classes)
+                     order_edges = order_edges)
     pE <- em$params
     item_names <- colnames(Y) %||% paste0("Item", 1:n_items)
 
@@ -167,6 +215,7 @@ fit_lca <- function(formula, data = NULL, nclass = 2,
       nclass = nclass,
       method = "EM",
       ordering = ordering,
+      order_edges = order_edges,
       class_probs = class_probs,
       item_probs = item_probs_matrix,
       cat_probs = cat_probs,
@@ -427,6 +476,10 @@ print.gllamm_lca <- function(x, ...) {
   if (identical(x$ordering, "increasing")) {
     cat("Order-restricted classes (Croon): item probabilities and means\n")
     cat("nondecreasing across classes\n")
+  } else if (!is.null(x$order_edges)) {
+    cat("Partially ordered classes:",
+        paste(apply(x$order_edges, 1, function(e)
+          paste0(e[1], " <= ", e[2])), collapse = ", "), "\n")
   }
   cat("Number of classes:", x$nclass, "\n")
   cat("Number of observations:", x$n_obs, "\n")

@@ -2,20 +2,11 @@
 % Please edit documentation in R/lca_em.R
 \name{.pava_weighted}
 \alias{.pava_weighted}
-\title{EM estimation for latent class models}
+\title{Weighted isotonic regression (pool-adjacent-violators)}
 \usage{
 .pava_weighted(y, w)
 }
 \description{
-Classic EM for finite mixtures with conditionally independent indicators
-(the poLCA algorithm). All M-steps are closed-form (weighted proportions
-for binary/categorical indicators, weighted moments for gaussian ones),
-so each iteration is one N x K posterior computation plus a handful of
-cross-products - the E-step runs on BLAS matrix products.
-}
-\details{
-Weighted isotonic regression (pool-adjacent-violators)
-
 Returns the nondecreasing vector minimizing sum(w * (y - x)^2), which is
 the constrained M-step maximizer for binomial proportions and normal
 means under a monotone-classes restriction (Croon 1990).
