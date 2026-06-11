@@ -91,8 +91,7 @@ delta_pcm <- do.call(rbind, mP$item_parameters$thresholds)
 # delta_im = b_i + s_im, s_i1 = step_param[i,1], s_i2 = -s_i1
 calc_steps <- function(m) {
   pf <- m$tmb_obj$env$last.par.best
-  sp <- matrix(pf[names(pf) == "step_param"], nrow = 24)
-  s1 <- sp[, 1]
+  s1 <- m$tmb_obj$env$parList(par = pf)$step_param[, 1]
   b  <- m$item_parameters$difficulty
   cbind(b + s1, b - s1)
 }
@@ -104,7 +103,7 @@ cat(sprintf("cor(PCM steps, MFRM+OIE calculated) : %.3f  (K&W: 0.99)\n",
 
 # Step deviations vs K&W tau_i1 (Table 6, MFRM column)
 pfA <- mA$tmb_obj$env$last.par.best
-tauA <- matrix(pfA[names(pfA) == "step_param"], nrow = 24)[, 1]
+tauA <- mA$tmb_obj$env$parList(par = pfA)$step_param[, 1]
 kw_tau <- c(-0.22, 0.00, -0.35, -0.47, -0.11, -0.11, -0.52, -0.29, -0.18,
             -0.62, -0.25, -0.19, -0.34, -0.25, -0.03, -0.17, -0.17, 0.30,
             -0.48, 0.01, 0.63, -0.60, -0.56, -0.02)

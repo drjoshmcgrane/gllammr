@@ -659,7 +659,7 @@ gllammr_validate <- function(cases = "all", scale = c("standard", "large", "all"
   pcm <- fit_irt(resp3, model = "PCM")
   delta_pcm <- do.call(rbind, pcm$item_parameters$thresholds)
   pf <- fit$tmb_obj$env$last.par.best
-  s1 <- matrix(pf[names(pf) == "step_param"], nrow = ncol(resp3))[, 1]
+  s1 <- fit$tmb_obj$env$parList(par = pf)$step_param[, 1]
   b <- fit$item_parameters$difficulty
   step_cor <- stats::cor(as.vector(delta_pcm), as.vector(cbind(b + s1, b - s1)))
 

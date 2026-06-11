@@ -243,13 +243,23 @@ Type gllamm_eirt(objective_function<Type>* obj)
       // b_i provides item location, step_param provides spacing
       // ====================================================================
       if (poly_model_type == 1) {
-        // Build ordered thresholds:
-        //   tau_1 = b_i + step_param(item, 0)
-        //   tau_k = tau_{k-1} + exp(step_param(item, k-1))  for k >= 2
-        vector<Type> ordered_threshold(K - 1);
-        ordered_threshold(0) = difficulty(item) + step_param(item, 0);
+        // Build ordered thresholds as sum-to-zero deviations around the
+        // item location b_i (so the difficulty regression is identified;
+        // a free first threshold per item would absorb any gamma change):
+        //   u_1 = 0, u_m = u_{m-1} + exp(step_param(item, m-2)), m >= 2
+        //   tau_m = b_i + (u_m - mean(u))
+        // Uses K-2 free spacing parameters per item, like PCM/GPCM.
+        vector<Type> u(K - 1);
+        u(0) = Type(0.0);
+        Type u_sum = Type(0.0);
         for (int k = 1; k < K - 1; k++) {
-          ordered_threshold(k) = ordered_threshold(k-1) + exp(step_param(item, k));
+          u(k) = u(k-1) + exp(step_param(item, k - 1));
+          u_sum += u(k);
+        }
+        Type u_mean = u_sum / Type(K - 1);
+        vector<Type> ordered_threshold(K - 1);
+        for (int k = 0; k < K - 1; k++) {
+          ordered_threshold(k) = difficulty(item) + (u(k) - u_mean);
         }
 
         Type a = discrimination(item);

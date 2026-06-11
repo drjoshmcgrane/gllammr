@@ -14,8 +14,8 @@ List of per-item threshold vectors on the absolute scale
 }
 \description{
 Mirrors the threshold construction in the TMB template (gllamm_eirt.hpp):
-GRM uses the first-offset + log-spacing parameterization, PCM/GPCM use
-sum-to-zero step deviations around the item location, LPCM uses the
-threshold regression plus step residuals.
+GRM uses ordered sum-to-zero deviations around the item location,
+PCM/GPCM use sum-to-zero step deviations around the item location,
+LPCM uses the threshold regression plus step residuals.
 }
 \keyword{internal}

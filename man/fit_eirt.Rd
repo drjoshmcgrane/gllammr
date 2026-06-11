@@ -69,8 +69,9 @@ threshold-level predictors via threshold_formula.
 - **2PL**: P(Y=1) = logit^(-1)(a_i * (theta - b_i)), where log(a_i) = W_disc \%*\% delta [+ epsilon_a]
 
 **Polytomous models (Kim & Wilson 2019; De Boeck & Wilson 2004 framework):**
-- **GRM**: Cumulative logit with ordered thresholds. b_i provides item location;
-  step_param provides threshold spacing. Supports discrimination_formula.
+- **GRM**: Cumulative logit with ordered thresholds expressed as
+  sum-to-zero deviations around the item location b_i (so the difficulty
+  regression is identified). Supports discrimination_formula.
 - **PCM**: Adjacent-categories logit, two-fold parameterization (MFRM approach):
   delta_im = b_i + s_im, where sum(s_im) = 0 across steps for each item.
   When threshold_formula is specified, uses threshold regression:

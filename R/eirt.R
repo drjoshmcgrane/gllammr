@@ -34,8 +34,9 @@
 #' - **2PL**: P(Y=1) = logit^(-1)(a_i * (theta - b_i)), where log(a_i) = W_disc \%*\% delta [+ epsilon_a]
 #'
 #' **Polytomous models (Kim & Wilson 2019; De Boeck & Wilson 2004 framework):**
-#' - **GRM**: Cumulative logit with ordered thresholds. b_i provides item location;
-#'   step_param provides threshold spacing. Supports discrimination_formula.
+#' - **GRM**: Cumulative logit with ordered thresholds expressed as
+#'   sum-to-zero deviations around the item location b_i (so the difficulty
+#'   regression is identified). Supports discrimination_formula.
 #' - **PCM**: Adjacent-categories logit, two-fold parameterization (MFRM approach):
 #'   delta_im = b_i + s_im, where sum(s_im) = 0 across steps for each item.
 #'   When threshold_formula is specified, uses threshold regression:
@@ -288,14 +289,10 @@ fit_eirt <- function(response_matrix,
 
   # Initialize parameters
   if (is.null(start)) {
+    # All polytomous models parameterize steps as log-spacings / deviations
+    # around the item location; zero starts give unit spacing (GRM) and
+    # equal steps (PCM/GPCM)
     step_param_init <- matrix(0, n_items, n_step_cols)
-    if (model == "GRM" && max_categories > 2) {
-      # Evenly-spaced initial thresholds around item location
-      step_param_init[, 1] <- 0
-      for (k in seq(2, n_step_cols)) {
-        step_param_init[, k] <- log(2)
-      }
-    }
 
     # For GPCM, start with tighter discrimination variance to avoid instability
     init_log_sigma_a <- if (model == "GPCM") log(0.2) else log(0.5)
@@ -338,6 +335,21 @@ fit_eirt <- function(response_matrix,
     map_list$log_sigma_e_step <- factor(NA)
     if (!is_polytomous) {
       map_list$step_param <- factor(rep(NA, n_items * n_step_cols))
+    } else {
+      # GRM/PCM/GPCM read only the first K_j - 2 step columns of item j
+      # (ordered / sum-to-zero spacings around the item location); the
+      # remaining cells are dead and must be fixed or the Hessian is
+      # singular
+      step_map <- matrix(NA_integer_, n_items, n_step_cols)
+      n_free <- pmax(n_categories_per_item - 2L, 0L)
+      idx <- 0L
+      for (j in seq_len(n_items)) {
+        if (n_free[j] > 0L) {
+          step_map[j, seq_len(n_free[j])] <- idx + seq_len(n_free[j])
+          idx <- idx + n_free[j]
+        }
+      }
+      map_list$step_param <- factor(step_map)
     }
   }
 
@@ -347,6 +359,12 @@ fit_eirt <- function(response_matrix,
     map_list$delta <- factor(rep(NA, p_disc))
     map_list$epsilon_a <- factor(rep(NA, n_items))
     map_list$log_sigma_epsilon_a <- factor(NA)
+  } else {
+    # Identification: with an estimated discrimination level, sigma_theta
+    # and the discrimination intercept trade off (a * sigma invariance).
+    # Fix sigma_theta = 1 (the fit_irt convention); the latent scale is
+    # carried by the discrimination parameters.
+    map_list$log_sigma_theta <- factor(NA)
   }
 
   # Item residuals off: epsilon parameters unused

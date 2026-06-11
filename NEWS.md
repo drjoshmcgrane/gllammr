@@ -2,6 +2,19 @@
 
 ## Post-1.2.0 development
 
+* `fit_eirt()` identification fixes: the explanatory GRM now expresses its
+  ordered thresholds as sum-to-zero deviations around the item location
+  (previously a free first threshold per item silently absorbed the
+  difficulty regression, and collided with the item residuals under
+  `item_residuals = TRUE`); `sigma_theta` is fixed at 1 whenever a
+  discrimination level is estimated (2PL/GRM/GPCM - the `fit_irt`
+  convention; the two traded off on a flat ridge); unused `step_param`
+  cells are mapped off (previously left free, giving singular Hessians
+  and NaN standard errors in polytomous EIRT models).
+* New validation cases on the verbal aggression data: `eirt_verbagg`
+  (De Boeck & Wilson LLTM+error vs the lme4 crossed-effects GLMM) and
+  `eirt_verbagg_pcm` (location-explanatory PCM with random item effects
+  vs Kim & Wilson 2019 published estimates).
 * `fit_irt()` gains a Bock-Aitkin MML-EM estimation path
   (`method = "em"`), now the **default for single-level models**:
   20-50x faster than the Laplace path, matches mirt to correlation 1.0,

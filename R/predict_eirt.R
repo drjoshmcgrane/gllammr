@@ -1,9 +1,9 @@
 #' Reconstruct per-item threshold parameters from a fitted polytomous EIRT model
 #'
 #' Mirrors the threshold construction in the TMB template (gllamm_eirt.hpp):
-#' GRM uses the first-offset + log-spacing parameterization, PCM/GPCM use
-#' sum-to-zero step deviations around the item location, LPCM uses the
-#' threshold regression plus step residuals.
+#' GRM uses ordered sum-to-zero deviations around the item location,
+#' PCM/GPCM use sum-to-zero step deviations around the item location,
+#' LPCM uses the threshold regression plus step residuals.
 #'
 #' @param object Fitted gllamm_eirt model (polytomous)
 #' @return List of per-item threshold vectors on the absolute scale
@@ -19,20 +19,21 @@ eirt_item_thresholds <- function(object) {
   thresholds <- vector("list", n_items)
 
   if (pmt %in% c(1L, 2L, 3L)) {
-    sp <- matrix(par_full[names(par_full) == "step_param"],
-                 n_items, n_step_cols)
+    # parList restores the full matrix shape including map-fixed dead cells
+    sp <- object$tmb_obj$env$parList(par = par_full)$step_param
 
     for (j in seq_len(n_items)) {
       K <- K_vec[j]
       if (pmt == 1L) {
-        # GRM: tau_1 = b + sp_1, tau_k = tau_{k-1} + exp(sp_k)
-        tau <- numeric(K - 1)
-        tau[1] <- b[j] + sp[j, 1]
+        # GRM: ordered sum-to-zero deviations around the item location:
+        # u_1 = 0, u_k = u_{k-1} + exp(sp[j, k-1]); tau = b + u - mean(u)
+        u <- numeric(K - 1)
         if (K > 2) {
           for (k in 2:(K - 1)) {
-            tau[k] <- tau[k - 1] + exp(sp[j, k])
+            u[k] <- u[k - 1] + exp(sp[j, k - 1])
           }
         }
+        tau <- b[j] + u - mean(u)
       } else {
         # PCM/GPCM: delta_m = b + s_m with sum-to-zero step deviations
         if (K > 2) {
