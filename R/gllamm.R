@@ -217,13 +217,20 @@ gllamm <- function(formula,
   }
 
   if (inherits(family, "binomial_family")) {
-    # Binomial regression models with custom link (logit, probit, cloglog)
-    return(fit_binomial(formula = formula,
-                       data = data,
-                       link = family$link,
-                       weights = weights,
-                       start = start,
-                       control = control))
+    # Binomial regression models with custom link (logit, probit, cloglog).
+    # fit_binomial handles the single-random-term case; crossed/multiple
+    # random-effects terms route through the general multi-term engine
+    # (glmm_multi), which supports all three binomial links.
+    n_re <- length(parse_formula(formula, data)$random_terms)
+    if (n_re <= 1) {
+      return(fit_binomial(formula = formula,
+                          data = data,
+                          link = family$link,
+                          weights = weights,
+                          start = start,
+                          control = control))
+    }
+    family <- stats::binomial(link = family$link)
   }
 
   # Parse formula
