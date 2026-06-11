@@ -2,6 +2,16 @@
 
 ## Post-1.2.0 development
 
+* New `fit_cdm()`: cognitive diagnosis models for binary responses with
+  a Q-matrix - saturated G-DINA (default), DINA, and DINO - with
+  monotonicity in the attributes enforced by isotonic regression over
+  the reduced-profile lattice (`monotone = TRUE`, the default) and
+  optional attribute hierarchies (prerequisite relations prune the
+  profile space). Closed-form accelerated EM; returns per-item kernel
+  probabilities (guess/slip for DINA/DINO), profile prevalences, and
+  per-person marginal attribute-mastery posteriors. Validated against
+  CDM::din and CDM::gdina (logLik to ~1e-4 on simulated G-DINA; classic
+  fraction-subtraction DINA matched on logLik and guess/slip).
 * `fit_lca()` gains order-restricted latent class models. Total orders
   (`ordering = "increasing"`; Croon's 1990 ordered LCM) constrain every
   binary item probability and gaussian indicator mean to be nondecreasing

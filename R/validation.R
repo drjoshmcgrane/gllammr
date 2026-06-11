@@ -15,7 +15,7 @@
 #'   "lca_carcinoma", "grm_science", "gamma_simulated",
 #'   "survival_exponential", "sem_lavaan", "lca_polytomous",
 #'   "npml_binomial", "aghq_binomial", "twopl_lsat_em", "eirt_verbagg",
-#'   "eirt_verbagg_pcm".
+#'   "eirt_verbagg_pcm", "cdm_fraction_dina".
 #' @param scale "standard" (default) runs the canonical-dataset cases;
 #'   "large" runs the large-scale tier (n in the tens of thousands, long
 #'   item batteries - sizes where quadrature grids and tolerances can fail
@@ -42,7 +42,8 @@ gllammr_validate <- function(cases = "all", scale = c("standard", "large", "all"
                  "twopl_simulated", "lca_carcinoma", "grm_science",
                  "gamma_simulated", "survival_exponential", "sem_lavaan",
                  "lca_polytomous", "npml_binomial", "aghq_binomial",
-                 "twopl_lsat_em", "eirt_verbagg", "eirt_verbagg_pcm")
+                 "twopl_lsat_em", "eirt_verbagg", "eirt_verbagg_pcm",
+                 "cdm_fraction_dina")
   # Large-scale tier: numerical behavior at sizes where quadrature grids,
   # tolerances, and interpreted-loop costs can fail silently
   large_cases <- c("large_glmm_binomial", "large_grm_battery",
@@ -678,6 +679,42 @@ gllammr_validate <- function(cases = "all", scale = c("standard", "large", "all"
              unname(fit$ability_sd), 0.97, 0.05, relative = FALSE),
     .val_row("eirt_verbagg_pcm", "step_difficulty_cor_vs_pcm",
              step_cor, 0.99, 0.01, relative = FALSE)
+  )
+}
+
+
+#' @keywords internal
+.validate_cdm_fraction_dina <- function() {
+  if (!requireNamespace("CDM", quietly = TRUE)) {
+    return(NULL)
+  }
+  # de la Torre (2009) fraction-subtraction data: 536 persons, 20 items,
+  # 8 attributes (256 profiles). CDM::din is the standard DINA EM.
+  # The profile-prevalence surface is near-flat (many more profiles than
+  # the items can separate), so compare the identified quantities: logLik
+  # and item guess/slip.
+  data("fraction.subtraction.data", package = "CDM", envir = environment())
+  data("fraction.subtraction.qmatrix", package = "CDM",
+       envir = environment())
+  Y <- as.matrix(fraction.subtraction.data)
+  Q <- as.matrix(fraction.subtraction.qmatrix)
+
+  fit <- fit_cdm(Y, Q, model = "dina", control = list(n_starts = 2))
+  ref <- CDM::din(Y, q.matrix = Q, rule = "DINA", progress = FALSE)
+
+  ghat <- vapply(fit$item_params, function(e) e$guess, 0)
+  shat <- vapply(fit$item_params, function(e) e$slip, 0)
+
+  rbind(
+    .val_row("cdm_fraction_dina", "logLik",
+             fit$logLik, ref$loglike, 0.5, relative = FALSE),
+    .val_row("cdm_fraction_dina", "mean_abs_guess_diff",
+             mean(abs(ghat - ref$guess$est)), 0, 0.01, relative = FALSE),
+    .val_row("cdm_fraction_dina", "mean_abs_slip_diff",
+             mean(abs(shat - ref$slip$est)), 0, 0.01, relative = FALSE),
+    .val_row("cdm_fraction_dina", "guess_item1",
+             unname(ghat[1]), unname(ref$guess$est[1]), 0.02,
+             relative = FALSE)
   )
 }
 
