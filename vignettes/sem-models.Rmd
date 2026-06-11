@@ -1,0 +1,152 @@
+---
+title: "Structural Equation Models"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Structural Equation Models}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+## Overview
+
+`fit_sem()` (equivalently `gllamm(d, family = sem(...))`) fits
+structural equation models with continuous indicators: confirmatory
+factor analysis, recursive path models among latent variables, MIMIC
+models (latent variables regressed on observed covariates), and
+full-information maximum likelihood for missing data — with the standard
+fit-index battery and lavaan-matching results (the validation suite pins
+log-likelihoods, estimates, standard errors, and CFI/TLI/RMSEA/SRMR
+against lavaan).
+
+Estimation is Wishart maximum likelihood on the sample covariance matrix
+for complete data — cost independent of sample size — and a casewise
+(missing-pattern) likelihood under FIML.
+
+## Confirmatory factor analysis
+
+Two correlated factors, three indicators each. The first indicator of
+each factor is the marker (loading fixed at 1); exogenous factors covary
+freely, as in lavaan.
+
+```{r cfa}
+library(GLLAMMR)
+set.seed(2026)
+n <- 500
+f1 <- rnorm(n)
+f2 <- 0.6 * f1 + sqrt(1 - 0.36) * rnorm(n)   # factor correlation 0.6
+d <- data.frame(
+  x1 = f1 + rnorm(n, 0, .6),  x2 = 0.8 * f1 + rnorm(n, 0, .6),
+  x3 = 1.2 * f1 + rnorm(n, 0, .6),
+  y1 = f2 + rnorm(n, 0, .5),  y2 = 0.9 * f2 + rnorm(n, 0, .5),
+  y3 = 1.1 * f2 + rnorm(n, 0, .5))
+
+cfa <- fit_sem(
+  measurement = list(verbal = ~ x1 + x2 + x3,
+                     quant  = ~ y1 + y2 + y3),
+  data = d)
+print(cfa)
+```
+
+The header reports the global fit: a non-significant chi-square, CFI/TLI
+near 1, RMSEA near 0 (with its 90% interval), and a small SRMR all
+indicate the two-factor structure reproduces the observed covariances.
+`summary()` adds the full parameter table — estimates, standard errors,
+z statistics, and the standardized (std.all) solution, where loadings
+become indicator-factor correlations and `verbal~~quant` the factor
+correlation:
+
+```{r cfa-summary}
+summary(cfa)
+```
+
+## Structural and MIMIC models
+
+Regressions among latent variables, and of latent variables on observed
+covariates, go in `structural`. Mixing the two is the MIMIC model:
+
+```{r mimic}
+d$ses <- rnorm(n)
+f2b <- 0.5 * f1 + 0.3 * d$ses + rnorm(n, 0, .75)   # quant depends on ses
+d$y1 <- f2b + rnorm(n, 0, .5)
+d$y2 <- 0.9 * f2b + rnorm(n, 0, .5)
+d$y3 <- 1.1 * f2b + rnorm(n, 0, .5)
+
+mimic <- fit_sem(
+  measurement = list(verbal = ~ x1 + x2 + x3,
+                     quant  = ~ y1 + y2 + y3),
+  structural = list(quant ~ verbal + ses),
+  data = d)
+mimic$param_table[grepl("~", mimic$param_table$label) &
+                    !grepl("~~|=~", mimic$param_table$label), ]
+```
+
+Observed covariates are handled in the joint-normal formulation, so the
+results are likelihood-equivalent to lavaan with `fixed.x = FALSE`.
+
+## Missing data: FIML
+
+The default is listwise deletion (with a warning). With
+`missing = "fiml"` every observed value contributes through the
+missing-pattern likelihood — the assumption is missing at random:
+
+```{r fiml}
+d_na <- d
+set.seed(1)
+d_na$x1[sample(n, 60)] <- NA
+d_na$y2[sample(n, 60)] <- NA
+
+fiml <- fit_sem(
+  measurement = list(verbal = ~ x1 + x2 + x3,
+                     quant  = ~ y1 + y2 + y3),
+  structural = list(quant ~ verbal),
+  data = d_na, missing = "fiml")
+c(n_used = fiml$n_obs, converged = fiml$convergence$converged)
+fiml$fit_measures[c("chisq", "df", "cfi", "rmsea")]
+```
+
+All 500 rows are retained, factor scores are computed casewise from each
+person's observed variables, and the fit indices use an EM-estimated
+saturated model. (One convention note: under FIML our SRMR uses the
+EM-saturated covariance, which can differ from lavaan's in the third
+decimal; everything else matches exactly.)
+
+## Reading the fit measures
+
+```{r fitm}
+round(cfa$fit_measures, 4)
+```
+
+- `chisq`/`df`/`pvalue`: exact-fit test against the saturated model.
+- `cfi`, `tli`: incremental fit vs the independence baseline (rules of
+  thumb: > 0.95 good).
+- `rmsea` with 90% CI: misfit per degree of freedom (< 0.06 good).
+- `srmr`: average standardized covariance residual (< 0.08 good).
+
+Inequality-free SEMs here are standard likelihood territory, so AIC/BIC
+comparisons across non-nested structures are also reported.
+
+## Notes on scope
+
+Indicators are continuous; binary/ordinal measurement models belong to
+the IRT side of the package (`vignette("irt-models")`), and joint models
+mixing indicator types share latent variables through
+`mixed_response()`. The structural model must be recursive (no feedback
+loops). The legacy full-data Laplace path (`method = "laplace"`) remains
+for latent-only models but treats exogenous factors as uncorrelated and
+is no longer the default.
+
+## References
+
+- Bollen, K. A. (1989). *Structural Equations with Latent Variables*.
+  Wiley.
+- Skrondal, A., & Rabe-Hesketh, S. (2004). *Generalized Latent Variable
+  Modeling*. Chapman & Hall/CRC.
+- Rosseel, Y. (2012). lavaan: an R package for structural equation
+  modeling. *Journal of Statistical Software*, 48(2).

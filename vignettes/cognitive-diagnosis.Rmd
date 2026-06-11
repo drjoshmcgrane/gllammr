@@ -1,0 +1,158 @@
+---
+title: "Cognitive Diagnosis Models"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Cognitive Diagnosis Models}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 6,
+  fig.height = 4
+)
+```
+
+## From a continuous trait to attribute profiles
+
+IRT summarizes a person with one number. Cognitive diagnosis models
+(CDMs) replace that with a *profile* of binary skills: can this student
+subtract fractions, find common denominators, simplify? The latent
+classes are the $2^A$ attribute profiles, and a **Q-matrix** declares
+which skills each item requires. The payoff is diagnostic: instead of a
+score, each person gets a posterior probability of mastering each skill.
+
+`fit_cdm()` (equivalently `gllamm(Y, family = cdm(Q, ...))`) implements
+the saturated **G-DINA** family with **DINA** and **DINO** as special
+cases, estimated by a compiled, accelerated EM and validated against the
+CDM package (de la Torre's fraction-subtraction data: identical item
+parameters; simulated G-DINA: log-likelihoods equal to 1e-4).
+
+## Simulating a diagnostic assessment
+
+Three skills, 15 items: single-skill items plus items requiring two or
+all three skills (conjunctively — the DINA rule).
+
+```{r simulate}
+library(GLLAMMR)
+set.seed(2026)
+A <- 3
+Q <- rbind(diag(3), diag(3), diag(3),
+           c(1, 1, 0), c(0, 1, 1), c(1, 0, 1),
+           c(1, 1, 0), c(0, 1, 1), c(1, 1, 1))
+colnames(Q) <- c("subtract", "denominator", "simplify")
+n <- 1000
+alpha <- matrix(rbinom(n * A, 1, 0.55), n, A)   # true skill profiles
+guess <- runif(nrow(Q), 0.05, 0.20)
+slip  <- runif(nrow(Q), 0.05, 0.20)
+eta <- sapply(seq_len(nrow(Q)), function(j) {
+  as.integer(rowSums(alpha[, Q[j, ] == 1, drop = FALSE]) == sum(Q[j, ]))
+})
+Y <- sapply(seq_len(nrow(Q)), function(j) {
+  rbinom(n, 1, ifelse(eta[, j] == 1, 1 - slip[j], guess[j]))
+})
+```
+
+## Fitting the DINA model
+
+DINA is conjunctive: you answer correctly (beyond guessing) only if you
+master *every* required skill. Each item gets a guessing and a slip
+parameter.
+
+```{r dina}
+fit <- fit_cdm(Y, Q, model = "dina")
+print(fit)
+```
+
+Parameter recovery is direct to check here:
+
+```{r recovery}
+ghat <- sapply(fit$item_params, function(e) e$guess)
+shat <- sapply(fit$item_params, function(e) e$slip)
+round(rbind(guess_error = max(abs(ghat - guess)),
+            slip_error = max(abs(shat - slip))), 3)
+mean(fit$modal_attributes == alpha)   # per-skill classification accuracy
+```
+
+## The diagnostic output
+
+The clinically useful quantity is the person-by-skill mastery posterior:
+
+```{r posteriors}
+head(round(fit$attribute_posteriors, 3))
+```
+
+Each row is one student; each entry is P(mastered that skill | their
+responses). Profile prevalences (`fit$profile_probs`) describe the
+population.
+
+## G-DINA: when conjunction is too strict
+
+The saturated G-DINA (the default, `model = "gdina"`) frees one response
+probability per *combination* of required skills — partial mastery can
+partially help. Because DINA is nested in G-DINA, a likelihood-ratio
+comparison asks whether the conjunctive restriction holds:
+
+```{r gdina}
+fit_g <- fit_cdm(Y, Q, model = "gdina")
+c(dina = fit$logLik, gdina = fit_g$logLik,
+  lr = 2 * (fit_g$logLik - fit$logLik))
+```
+
+A small statistic relative to the extra parameters (here the data are
+truly DINA) supports the simpler model. `model = "dino"` gives the
+disjunctive counterpart (any one skill suffices).
+
+Item kernels under G-DINA read directly as P(correct) per reduced skill
+pattern — for a two-skill item, four probabilities:
+
+```{r kernel}
+fit_g$item_params[[10]]
+```
+
+## Monotonicity
+
+By default (`monotone = TRUE`) mastering more of an item's skills can
+never *lower* the success probability — enforced by isotonic regression
+over the skill lattice in the M-step, the same machinery behind
+GLLAMMR's order-restricted latent class models. Set `monotone = FALSE`
+for the unconstrained saturated model; the constrained fit can never
+beat it on likelihood, and a large gap flags items whose kernels violate
+the ordering.
+
+## Attribute hierarchies
+
+If skills have prerequisites — you cannot simplify fractions before you
+can subtract them — the profile space shrinks. Declare prerequisite
+pairs and impossible profiles are removed:
+
+```{r hierarchy}
+fit_h <- fit_cdm(Y, Q, model = "dina",
+                 hierarchy = list(c("subtract", "simplify")))
+fit_h$profile_labels    # profiles with simplify-but-not-subtract are gone
+```
+
+Linear, convergent, and divergent hierarchies are all expressible as
+pair lists; cycles are rejected.
+
+## Connection to the GLLAMM framework
+
+A CDM is a structured latent class model: with one attribute, the
+unconstrained G-DINA *is* a two-class LCA (GLLAMMR's test suite verifies
+the log-likelihoods agree to 1e-11). The Q-matrix supplies the equality
+structure (items depend only on their measured skills) and monotonicity
+the order structure — both restrictions of the GLLAMM parameter space,
+not departures from it. See `vignette("latent-class")` for the
+unstructured and order-restricted latent class models this builds on.
+
+## References
+
+- de la Torre, J. (2011). The generalized DINA model framework.
+  *Psychometrika*, 76, 179–199.
+- Junker, B. W., & Sijtsma, K. (2001). Cognitive assessment models with
+  few assumptions. *Applied Psychological Measurement*, 25, 258–272.
+- Rupp, A. A., Templin, J., & Henson, R. A. (2010). *Diagnostic
+  Measurement: Theory, Methods, and Applications*. Guilford.

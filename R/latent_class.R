@@ -74,6 +74,12 @@ fit_lca <- function(formula, data = NULL, nclass = 2,
 
   method <- match.arg(method)
 
+  if (!is.numeric(nclass) || length(nclass) != 1 || nclass < 2) {
+    stop("nclass must be a single integer >= 2 (a 1-class model is the ",
+         "independence model; fit it with glm/colMeans directly)")
+  }
+  nclass <- as.integer(nclass)
+
   # ---- Normalize the ordering spec to an edge matrix (or NULL) ----
   order_edges <- NULL
   if (is.character(ordering) && length(ordering) == 1) {

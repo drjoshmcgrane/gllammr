@@ -2,6 +2,20 @@
 
 ## Post-1.2.0 development
 
+* Vignette suite completed: four new evaluated vignettes -
+  `explanatory-irt` (De Boeck & Wilson on the verbal aggression data,
+  with the GLMM cross-walk and the Kim & Wilson polytomous extension),
+  `cognitive-diagnosis` (Q-matrices, DINA/DINO/G-DINA, monotonicity,
+  hierarchies), `sem-models` (CFA, fit indices, MIMIC, FIML,
+  standardized solution), and `dif-analysis` (the two-stage
+  screen-then-confirm DIF workflow). `latent-class` rewritten with
+  evaluated code covering ordered and partially ordered classes;
+  `advanced-features` rewritten with evaluated examples of mixed
+  responses, frailty survival, rankings, NPML, AGHQ, and sandwich
+  standard errors through the unified interface; `getting-started`
+  gains the complete model-space table. All thirteen vignettes build
+  in under two minutes. `fit_lca()` now rejects `nclass = 1` with an
+  informative message.
 * The unified `gllamm()` interface now reaches every model class: new
   family constructors `eirt()`, `sem()`, `mixed_response()`,
   `survival_family()`, and `ranking()`, plus `integration = npml(k)` for

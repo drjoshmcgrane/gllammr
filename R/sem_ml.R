@@ -363,7 +363,7 @@ fit_sem_ml <- function(Y, lambda_pattern, beta_pattern, theta_zero = NULL,
 }
 
 
-#' 90% RMSEA confidence interval (noncentral chi-square inversion)
+#' RMSEA 90 percent confidence interval (noncentral chi-square inversion)
 #' @keywords internal
 .rmsea_ci <- function(chisq, df, n, level = 0.90) {
   alpha <- (1 - level) / 2

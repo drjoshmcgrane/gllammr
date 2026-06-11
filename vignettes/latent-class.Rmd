@@ -1,7 +1,5 @@
 ---
 title: "Latent Class Analysis with GLLAMMR"
-author: "GLLAMMR Team"
-date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{Latent Class Analysis with GLLAMMR}
@@ -13,414 +11,173 @@ vignette: >
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
-  eval = FALSE
+  fig.width = 6,
+  fig.height = 4
 )
 ```
 
-## Introduction to Latent Class Analysis
+## Overview
 
-Note: the code in this vignette is illustrative and is not evaluated when the vignette is built.
+Latent class analysis (LCA) explains associations among categorical
+indicators through membership in a small number of unobserved classes.
+In the GLLAMM framework it is the discrete-latent-variable member of the
+family: replace the normal latent trait with K mass points and the model
+is an LCA.
 
-Latent Class Analysis (LCA) is a statistical method for identifying unobserved subgroups (latent classes) within a population based on responses to categorical variables.
+`fit_lca()` (equivalently `gllamm(Y, family = lca(...))`) handles
+binary, polytomous, and continuous (gaussian) indicators in any mix,
+missing responses under MAR, case weights, and — beyond standard LCA —
+**order-restricted** and **partially ordered** class structures.
+Estimation is accelerated closed-form EM, validated against poLCA
+(identical log-likelihoods on the classic carcinoma data and 20,000-case
+simulations, at 2–3x poLCA's speed).
 
-### Key Concepts
+## A basic two-class model
 
-- **Latent classes**: Unobserved subgroups in the population
-- **Manifest variables**: Observed categorical indicators
-- **Class membership probabilities**: Proportion of population in each class
-- **Item response probabilities**: Probability of each response given class membership
-- **Local independence**: Within classes, responses are independent
-
-## Basic LCA Model
-
-The LCA model for binary items:
-
-$$P(Y_i = y) = \sum_{k=1}^K \pi_k \prod_{j=1}^J \rho_{jk}^{y_{ij}} (1-\rho_{jk})^{1-y_{ij}}$$
-
-where:
-- $K$ is the number of latent classes
-- $\pi_k$ is the probability of class $k$
-- $\rho_{jk}$ is the probability of endorsing item $j$ in class $k$
-
-## Simulating LCA Data
-
-```{r simulate-lca}
+```{r simulate}
 library(GLLAMMR)
+set.seed(2026)
+n <- 800
+true_class <- rbinom(n, 1, 0.4) + 1
+p_yes <- rbind(c(.80, .70, .85, .75, .65),   # class 1: high endorsers
+               c(.20, .25, .15, .30, .25))   # class 2: low endorsers
+Y <- sapply(1:5, function(j) rbinom(n, 1, p_yes[true_class, j]))
+colnames(Y) <- paste0("sym", 1:5)
 
-set.seed(123)
-n <- 500
-n_items <- 6
-
-# Two latent classes with distinct response patterns
-# Class 1: "High endorsers" - frequently say yes
-class1_probs <- c(0.85, 0.75, 0.90, 0.80, 0.85, 0.70)
-
-# Class 2: "Low endorsers" - infrequently say yes
-class2_probs <- c(0.15, 0.25, 0.10, 0.20, 0.15, 0.30)
-
-# 60% in class 1, 40% in class 2
-true_class <- sample(1:2, n, replace = TRUE, prob = c(0.6, 0.4))
-
-# Generate item responses
-data <- matrix(NA, n, n_items)
-for (i in 1:n) {
-  probs <- if (true_class[i] == 1) class1_probs else class2_probs
-  data[i, ] <- rbinom(n_items, 1, probs)
-}
-
-colnames(data) <- paste0("Item", 1:n_items)
-head(data)
+fit2 <- fit_lca(Y, nclass = 2)
+print(fit2)
 ```
 
-## Fitting a 2-Class Model
-
-```{r fit-2class}
-fit_2class <- fit_lca(data, nclass = 2)
-
-print(fit_2class)
-```
-
-The output shows:
-- Class probabilities (proportion in each class)
-- Item response probabilities for each class
-- Model fit statistics (AIC, BIC, log-likelihood)
-
-## Examining Results
-
-### Class Sizes
-
-```{r class-sizes}
-# Modal class assignment
-table(fit_2class$modal_class)
-
-# Compare to true classes
-if (exists("true_class")) {
-  # Confusion matrix (may need to relabel)
-  table(True = true_class, Estimated = fit_2class$modal_class)
-
-  # Classification accuracy (best of two label permutations)
-  acc1 <- mean(fit_2class$modal_class == true_class)
-  acc2 <- mean(fit_2class$modal_class == (3 - true_class))
-  cat("Classification accuracy:", max(acc1, acc2), "\n")
-}
-```
-
-### Item Response Probabilities
-
-```{r item-probs}
-# Item probabilities by class
-print(round(fit_2class$item_probs, 3))
-
-# Visualize item profiles
-barplot(t(fit_2class$item_probs),
-        beside = TRUE,
-        legend.text = paste("Class", 1:2),
-        xlab = "Item",
-        ylab = "P(Endorse)",
-        main = "Item Response Profiles by Class",
-        col = c("lightblue", "lightcoral"))
-```
-
-### Posterior Probabilities
+Class-membership posteriors and modal assignments support downstream
+profiling; entropy summarizes how cleanly the classes separate:
 
 ```{r posterior}
-# First few individuals' posterior class probabilities
-head(fit_2class$posterior)
-
-# How certain are we about class membership?
-# High max posterior = high certainty
-max_posterior <- apply(fit_2class$posterior, 1, max)
-
-hist(max_posterior,
-     main = "Distribution of Maximum Posterior Probabilities",
-     xlab = "Max Posterior Probability",
-     col = "lightgreen",
-     breaks = 20)
-
-# Individuals with uncertain classification
-uncertain <- which(max_posterior < 0.7)
-cat("Number of uncertain classifications:", length(uncertain), "\n")
+post <- fit2$posterior
+entropy <- 1 - sum(-post * log(pmax(post, 1e-12))) /
+  (nrow(post) * log(fit2$nclass))
+round(c(entropy = entropy,
+        accuracy = max(mean(fit2$modal_class == true_class),
+                       mean(fit2$modal_class == 3 - true_class))), 3)
 ```
 
-## Determining the Number of Classes
+## How many classes?
 
-A key question in LCA is how many classes exist. Use information criteria and interpretability.
+Fit a sequence and compare information criteria (BIC is the usual
+default for LCA):
 
-```{r model-selection}
-# Fit models with different numbers of classes
-fit_1class <- fit_lca(data, nclass = 1)  # Null model
-fit_2class <- fit_lca(data, nclass = 2)
-fit_3class <- fit_lca(data, nclass = 3)
-fit_4class <- fit_lca(data, nclass = 4)
-
-# Compare fit statistics
-model_comparison <- data.frame(
-  nclass = 1:4,
-  LogLik = c(fit_1class$logLik, fit_2class$logLik,
-             fit_3class$logLik, fit_4class$logLik),
-  AIC = c(fit_1class$AIC, fit_2class$AIC,
-          fit_3class$AIC, fit_4class$AIC),
-  BIC = c(fit_1class$BIC, fit_2class$BIC,
-          fit_3class$BIC, fit_4class$BIC)
-)
-
-print(model_comparison)
-
-# Plot BIC by number of classes
-plot(model_comparison$nclass, model_comparison$BIC,
-     type = "b", lwd = 2, pch = 19,
-     xlab = "Number of Classes",
-     ylab = "BIC",
-     main = "Model Selection via BIC")
-
-# Lowest BIC is preferred
-best_model <- which.min(model_comparison$BIC)
-cat("Best model (by BIC):", best_model, "classes\n")
+```{r enumeration}
+fits <- lapply(2:4, function(k) fit_lca(Y, nclass = k,
+                                        control = list(n_starts = 5)))
+data.frame(classes = 2:4,
+           logLik = sapply(fits, `[[`, "logLik"),
+           BIC = sapply(fits, `[[`, "BIC"))
 ```
 
-## Interpreting Classes
+BIC correctly favours the two-class structure that generated the data.
 
-### Naming Classes
+## Ordered latent classes
 
-Based on item profiles, assign meaningful names:
+When classes represent *grades* of a single phenomenon — severity,
+proficiency, engagement — an unrestricted LCA leaves their ordering to
+chance and label switching. `ordering = "increasing"` fits Croon's
+ordered latent class model: every item probability (and every gaussian
+indicator mean) is constrained nondecreasing from class 1 to class K.
+The constrained M-step is a weighted isotonic regression, so estimation
+stays closed-form.
 
-```{r interpret}
-# Example: Assuming fit_2class is the best model
-class_profiles <- fit_2class$item_probs
+```{r ordered}
+set.seed(7)
+cls3 <- sample(1:3, 900, TRUE, prob = c(.4, .35, .25))
+pmat <- rbind(c(.10, .50, .90), c(.20, .40, .80), c(.15, .55, .85),
+              c(.30, .50, .70), c(.05, .45, .90), c(.25, .60, .95))
+Y3 <- sapply(1:6, function(j) rbinom(900, 1, pmat[j, cls3]))
 
-# Class 1: High on all items -> "High Symptom" group
-# Class 2: Low on all items -> "Low Symptom" group
-
-class_names <- c("High Symptom", "Low Symptom")
-
-# Or for more nuanced patterns:
-# Class 1: High on items 1-3, low on 4-6 -> "Anxious" subtype
-# Class 2: Low on items 1-3, high on 4-6 -> "Depressed" subtype
+ord <- fit_lca(Y3, nclass = 3, ordering = "increasing")
+round(ord$item_probs, 3)
 ```
 
-### Profiling Classes
+Every row increases left to right by construction: class labels are
+pinned, and the model is the formal statement of "these classes are
+ordered". Comparing its log-likelihood with the unrestricted fit tests
+whether the ordering story is tenable (note the likelihood-ratio null is
+chi-bar-square, so use the comparison descriptively):
 
-```{r profiling, eval=FALSE}
-# If you have additional covariates (not used in LCA)
-# you can profile the classes
-
-# Example: Are classes related to age or gender?
-# (Assuming we have these variables)
-
-# age_by_class <- tapply(age, fit_2class$modal_class, mean)
-# gender_by_class <- table(gender, fit_2class$modal_class)
+```{r ordered-compare}
+unr <- fit_lca(Y3, nclass = 3, control = list(n_starts = 5))
+c(unrestricted = unr$logLik, ordered = ord$logLik)
 ```
 
-## Practical Applications
+A negligible gap (as here, where the truth is ordered) supports the
+restriction.
 
-### Clinical Psychology: Depression Subtypes
+## Partially ordered classes
 
-```{r depression-example, eval=FALSE}
-# Simulate depression symptom data
-set.seed(456)
-n_patients <- 600
-symptoms <- c("Sad", "Tired", "Insomnia", "Appetite", "Guilt",
-              "Concentration", "Psychomotor", "Suicidal", "Anhedonia")
-n_symptoms <- length(symptoms)
+Sometimes classes are ordered but not *linearly* — two intermediate
+profiles may each dominate a low class and be dominated by a high class
+while being incomparable with each other (mastered skill A vs mastered
+skill B). Pass the comparable pairs:
 
-# Three classes:
-# 1. Severe (high on all)
-# 2. Moderate (medium on most)
-# 3. Mild (low on most)
+```{r poset}
+set.seed(61)
+cls4 <- sample(1:4, 1200, TRUE)
+# items 1-3 respond to profile 2; items 4-6 to profile 3
+pmat4 <- rbind(
+  c(.10, .80, .15, .90), c(.15, .85, .20, .90), c(.10, .75, .10, .85),
+  c(.10, .15, .80, .90), c(.15, .20, .85, .90), c(.10, .10, .75, .85))
+Y4 <- sapply(1:6, function(j) rbinom(1200, 1, pmat4[j, cls4]))
 
-severe_probs <- rep(0.85, n_symptoms)
-moderate_probs <- rep(0.50, n_symptoms)
-mild_probs <- rep(0.15, n_symptoms)
+diamond <- fit_lca(Y4, nclass = 4,
+                   ordering = list(c(1, 2), c(1, 3), c(2, 4), c(3, 4)))
+round(diamond$item_probs, 3)
 
-true_severity <- sample(1:3, n_patients, replace = TRUE,
-                        prob = c(0.2, 0.5, 0.3))
-
-depression_data <- matrix(NA, n_patients, n_symptoms)
-for (i in 1:n_patients) {
-  probs <- switch(true_severity[i],
-                  severe_probs,
-                  moderate_probs,
-                  mild_probs)
-  depression_data[i, ] <- rbinom(n_symptoms, 1, probs)
-}
-
-colnames(depression_data) <- symptoms
-
-# Fit 3-class model
-fit_depression <- fit_lca(depression_data, nclass = 3)
-
-print(fit_depression)
-
-# Examine class profiles
-print(round(fit_depression$item_probs, 2))
+chain <- fit_lca(Y4, nclass = 4, ordering = "increasing",
+                 control = list(n_starts = 5))
+c(diamond = diamond$logLik, total_order = chain$logLik)
 ```
 
-### Education: Learning Strategies
+The diamond fits essentially as well as an unrestricted model, while
+*no* total order can accommodate the crossing intermediate profiles —
+which is precisely the diagnostic logic: if `"increasing"` costs a lot
+but your hypothesized lattice does not, the classes are ordered but not
+linearly. Fully Q-matrix-structured class spaces are the next step up:
+see `vignette("cognitive-diagnosis")`.
 
-```{r learning-strategies, eval=FALSE}
-# Simulate data on study strategies
-set.seed(789)
-n_students <- 400
-strategies <- c("Highlighting", "Summarizing", "Practice_Testing",
-                "Distributed", "Interleaved", "Elaboration")
-n_strategies <- length(strategies)
+## Mixed indicator types and missing data
 
-# Two classes:
-# 1. "Deep learners" - use effective strategies
-# 2. "Surface learners" - use ineffective strategies
+Indicators are auto-detected: 0/1 columns are binary, integer 1..K
+columns categorical, anything else gaussian. Missing responses are
+handled by the EM under MAR — each person contributes whatever they
+answered:
 
-deep_probs <- c(0.3, 0.8, 0.9, 0.85, 0.7, 0.8)  # High on good strategies
-surface_probs <- c(0.9, 0.3, 0.2, 0.15, 0.2, 0.3)  # High on highlighting only
-
-true_type <- sample(1:2, n_students, replace = TRUE, prob = c(0.4, 0.6))
-
-strategy_data <- matrix(NA, n_students, n_strategies)
-for (i in 1:n_students) {
-  probs <- if (true_type[i] == 1) deep_probs else surface_probs
-  strategy_data[i, ] <- rbinom(n_strategies, 1, probs)
-}
-
-colnames(strategy_data) <- strategies
-
-# Fit model
-fit_strategies <- fit_lca(strategy_data, nclass = 2)
-
-print(fit_strategies)
-
-# Interpret classes
-print(round(fit_strategies$item_probs, 2))
-
-# Deep learners should show high use of:
-# - Practice testing
-# - Distributed practice
-# - Interleaving
-# - Elaboration
+```{r mixed}
+Ym <- cbind(Y3[, 1:4],
+            score = rnorm(900, mean = c(-1, 0, 1)[cls3], sd = .8))
+Ym[sample(length(Ym), 300)] <- NA
+mix <- fit_lca(Ym, nclass = 3, ordering = "increasing")
+round(mix$gaussian_params$means, 2)
 ```
 
-### Marketing: Customer Segmentation
+The ordering restriction applies to the gaussian means as well — the
+class with the higher symptom probabilities also has the higher mean
+score, by construction.
 
-```{r marketing, eval=FALSE}
-# Simulate customer purchase patterns
-set.seed(111)
-n_customers <- 800
-products <- c("Premium", "Budget", "Frequent", "Bulk",
-              "Online", "Loyalty", "Reviews")
-n_products <- length(products)
+## Practical guidance
 
-# Three customer segments:
-# 1. "Premium shoppers"
-# 2. "Budget hunters"
-# 3. "Occasional buyers"
-
-premium_probs <- c(0.9, 0.1, 0.8, 0.3, 0.9, 0.8, 0.7)
-budget_probs <- c(0.1, 0.9, 0.6, 0.8, 0.5, 0.4, 0.8)
-occasional_probs <- c(0.3, 0.5, 0.2, 0.1, 0.4, 0.2, 0.3)
-
-true_segment <- sample(1:3, n_customers, replace = TRUE,
-                       prob = c(0.25, 0.45, 0.30))
-
-customer_data <- matrix(NA, n_customers, n_products)
-for (i in 1:n_customers) {
-  probs <- switch(true_segment[i],
-                  premium_probs,
-                  budget_probs,
-                  occasional_probs)
-  customer_data[i, ] <- rbinom(n_products, 1, probs)
-}
-
-colnames(customer_data) <- products
-
-# Fit model
-fit_customers <- fit_lca(customer_data, nclass = 3)
-
-print(fit_customers)
-
-# Target marketing strategies based on segments
-print(round(fit_customers$item_probs, 2))
-```
-
-## Model Diagnostics
-
-### Local Independence
-
-Check if items are independent within classes (LCA assumption):
-
-```{r local-indep, eval=FALSE}
-# Compare observed and expected cell frequencies
-# High residuals suggest local dependence
-
-# This would require additional functionality:
-# check_local_independence(fit_2class)
-```
-
-### Classification Diagnostics
-
-```{r classification-diag}
-# Entropy: measure of classification uncertainty
-# Ranges from 0 (complete uncertainty) to 1 (perfect certainty)
-
-compute_entropy <- function(posterior) {
-  # Avoid log(0)
-  posterior[posterior == 0] <- 1e-10
-
-  # Entropy formula
-  entropy_i <- -rowSums(posterior * log(posterior))
-  max_entropy <- log(ncol(posterior))
-
-  # Relative entropy (0 to 1)
-  rel_entropy <- 1 - mean(entropy_i) / max_entropy
-
-  return(rel_entropy)
-}
-
-entropy <- compute_entropy(fit_2class$posterior)
-cat("Entropy:", round(entropy, 3), "\n")
-
-# Entropy > 0.8 is considered good separation
-```
-
-## Advanced Topics
-
-### Latent Class Regression
-
-```{r lcr, eval=FALSE}
-# Future feature: Include covariates predicting class membership
-# fit_lcr <- fit_lca(data, nclass = 2, formula = ~ age + gender)
-```
-
-### Growth Mixture Models
-
-```{r gmm, eval=FALSE}
-# Future feature: Combine LCA with growth curves
-# fit_gmm <- fit_growth_mixture(y ~ time | id, nclass = 3)
-```
-
-### Latent Class IRT
-
-```{r lc-irt, eval=FALSE}
-# Future feature: IRT models with discrete ability distribution
-# fit_lc_irt <- fit_irt(responses, nclass = 3)
-```
-
-## Tips for Applied Researchers
-
-1. **Start simple**: Begin with 2 classes, then increase
-2. **Use multiple criteria**: Don't rely on fit statistics alone
-3. **Check interpretability**: Classes should make substantive sense
-4. **Validate**: Use holdout samples or cross-validation
-5. **Report uncertainty**: Include entropy and posterior probabilities
-6. **Consider alternatives**: Mixture models, hierarchical clustering
+- Use several random starts (`control = list(n_starts = ...)`) for
+  unrestricted models; ordering reduces the label-switching part of the
+  multimodality problem but not the rest.
+- Profile classes against external variables using `posterior` weights
+  rather than modal assignment when entropy is modest.
+- Inequality-restricted models report AIC/BIC with the nominal parameter
+  count; treat comparisons against unrestricted models as descriptive.
 
 ## References
 
-- Lazarsfeld, P. F., & Henry, N. W. (1968). Latent Structure Analysis.
-- McCutcheon, A. L. (1987). Latent Class Analysis.
-- Hagenaars, J. A., & McCutcheon, A. L. (2002). Applied Latent Class Analysis.
-- Collins, L. M., & Lanza, S. T. (2010). Latent Class and Latent Transition Analysis.
-- Nylund-Gibson, K., & Choi, A. Y. (2018). Ten frequently asked questions about latent class analysis.
-
-## See Also
-
-- `vignette("irt-models")` - Item response theory
-- `vignette("factor-analysis")` - Continuous latent variables
-- `vignette("mixed-response")` - Multiple outcome types
+- Croon, M. (1990). Latent class analysis with ordered latent classes.
+  *British Journal of Mathematical and Statistical Psychology*, 43,
+  171–192.
+- Linzer, D. A., & Lewis, J. B. (2011). poLCA: an R package for
+  polytomous variable latent class analysis. *Journal of Statistical
+  Software*, 42(10).
+- Skrondal, A., & Rabe-Hesketh, S. (2004). *Generalized Latent Variable
+  Modeling*. Chapman & Hall/CRC.

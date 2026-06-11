@@ -2,11 +2,11 @@
 % Please edit documentation in R/sem_ml.R
 \name{.rmsea_ci}
 \alias{.rmsea_ci}
-\title{90% RMSEA confidence interval (noncentral chi-square inversion)}
+\title{RMSEA 90 percent confidence interval (noncentral chi-square inversion)}
 \usage{
 .rmsea_ci(chisq, df, n, level = 0.9)
 }
 \description{
-90% RMSEA confidence interval (noncentral chi-square inversion)
+RMSEA 90 percent confidence interval (noncentral chi-square inversion)
 }
 \keyword{internal}
