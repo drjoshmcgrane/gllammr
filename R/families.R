@@ -240,22 +240,60 @@ irt <- function(model = c("Rasch", "2PL", "3PL", "GRM", "PCM", "GPCM", "NRM"),
 #' variables passed as the first argument of \code{gllamm()}.
 #'
 #' @param nclass Number of latent classes (default 2)
+#' @param ordering Class order restriction passed to \code{\link{fit_lca}}:
+#'   "none" (default), "increasing", or a list/matrix of class pairs
+#'   defining a partial order
 #'
 #' @return A family object of class \code{lca_family}
 #'
 #' @examples
 #' \dontrun{
 #' fit <- gllamm(indicator_matrix, family = lca(nclass = 3))
+#' fit_ord <- gllamm(indicator_matrix,
+#'                   family = lca(nclass = 3, ordering = "increasing"))
 #' }
 #'
 #' @export
-lca <- function(nclass = 2) {
+lca <- function(nclass = 2, ordering = "none") {
   if (!is.numeric(nclass) || length(nclass) != 1 || nclass < 2) {
     stop("nclass must be a single integer >= 2")
   }
   structure(
-    list(family = "lca", nclass = as.integer(nclass)),
+    list(family = "lca", nclass = as.integer(nclass), ordering = ordering),
     class = c("lca_family", "family")
+  )
+}
+
+
+#' Cognitive Diagnosis Family for Q-Matrix Models
+#'
+#' Create a family object for fitting cognitive diagnosis models through
+#' the unified \code{gllamm()} interface. The response is a persons x items
+#' binary matrix passed as the first argument of \code{gllamm()}; the
+#' Q-matrix and model options are carried by the family object. See
+#' \code{\link{fit_cdm}} for details of the models and arguments.
+#'
+#' @param Q Binary Q-matrix (items x attributes)
+#' @param model "gdina" (default), "dina", or "dino"
+#' @param hierarchy Optional attribute hierarchy (list of prerequisite
+#'   pairs)
+#' @param monotone Enforce monotonicity in the attributes (default TRUE)
+#'
+#' @return An object of class \code{cdm_family}
+#'
+#' @examples
+#' \dontrun{
+#' fit <- gllamm(Y, family = cdm(Q, model = "dina"))
+#' }
+#'
+#' @export
+cdm <- function(Q, model = c("gdina", "dina", "dino"),
+                hierarchy = NULL, monotone = TRUE) {
+  model <- match.arg(model)
+  structure(
+    list(family = "cdm", Q = Q, model = model,
+         hierarchy = hierarchy, monotone = monotone),
+    class = c("cdm_family", "family")
   )
 }
 

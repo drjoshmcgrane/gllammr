@@ -4,10 +4,14 @@
 \alias{lca}
 \title{Latent Class Family for Finite Mixture Models}
 \usage{
-lca(nclass = 2)
+lca(nclass = 2, ordering = "none")
 }
 \arguments{
 \item{nclass}{Number of latent classes (default 2)}
+
+\item{ordering}{Class order restriction passed to \code{\link{fit_lca}}:
+"none" (default), "increasing", or a list/matrix of class pairs
+defining a partial order}
 }
 \value{
 A family object of class \code{lca_family}
@@ -20,6 +24,8 @@ variables passed as the first argument of \code{gllamm()}.
 \examples{
 \dontrun{
 fit <- gllamm(indicator_matrix, family = lca(nclass = 3))
+fit_ord <- gllamm(indicator_matrix,
+                  family = lca(nclass = 3, ordering = "increasing"))
 }
 
 }

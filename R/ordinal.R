@@ -103,9 +103,20 @@ fit_ordinal <- function(formula, data, link = c("logit", "probit", "acl",
     stop("Ordinal responses must start at 1")
   }
 
-  # Only handle single random effect term for now
+  # Crossed/multiple random-effects terms route through the multi-term
+  # template (links 1-5; PPO has threshold-specific fixed effects and
+  # remains single-term)
   if (model_data$n_random_terms != 1) {
-    stop("Currently only single random effects term supported")
+    if (link == "ppo") {
+      stop("The partial proportional odds link supports a single random ",
+           "effects term")
+    }
+    return(fit_ordinal_multi(formula = formula, data = data, link = link,
+                             link_code = link_code, parsed = parsed,
+                             model_data = model_data, y_numeric = y_numeric,
+                             n_categories = n_categories,
+                             category_labels = category_labels,
+                             weights = weights, control = control))
   }
 
   n_random <- model_data$n_random_coefs[1]
@@ -328,6 +339,200 @@ fit_ordinal <- function(formula, data, link = c("logit", "probit", "acl",
 }
 
 
+#' Ordinal model with multiple random-effects terms
+#'
+#' Internal engine behind fit_ordinal for crossed/multiple random-effects
+#' terms (links logit, probit, acl, crl_forward, crl_backward). The
+#' random-effects layout mirrors fit_tmb_gllamm_multi: one combined
+#' sparse Z, term-major u, per-term (possibly correlated) covariance.
+#'
+#' @keywords internal
+fit_ordinal_multi <- function(formula, data, link, link_code, parsed,
+                              model_data, y_numeric, n_categories,
+                              category_labels, weights, control) {
+  n_terms <- model_data$n_random_terms
+  n_obs <- model_data$n_obs
+  term_n_random <- as.integer(model_data$n_random_coefs)
+  term_n_groups <- as.integer(model_data$n_groups)
+  term_correlated <- vapply(seq_len(n_terms), function(t) {
+    nr <- term_n_random[t]
+    as.integer(nr > 1 && !isTRUE(parsed$random_terms[[t]]$uncorrelated))
+  }, integer(1))
+
+  # ---- Combined sparse Z: column block per term, group-major within ----
+  q_per_term <- term_n_groups * term_n_random
+  offsets <- c(0L, cumsum(q_per_term))
+  q_total <- offsets[n_terms + 1]
+  ii <- integer(0); jj <- integer(0); xx <- numeric(0)
+  for (t in seq_len(n_terms)) {
+    Z_t <- model_data$Z[[t]]
+    g_t <- model_data$groups[[t]]
+    nr <- term_n_random[t]
+    for (k in seq_len(nr)) {
+      ii <- c(ii, seq_len(n_obs))
+      jj <- c(jj, offsets[t] + g_t * nr + k)
+      xx <- c(xx, Z_t[, k])
+    }
+  }
+  Z_combined <- Matrix::sparseMatrix(i = ii, j = jj, x = xx,
+                                     dims = c(n_obs, q_total))
+
+  # Thresholds carry the location: drop the intercept
+  X_fixed <- drop_intercept_column(as.matrix(model_data$X))
+  n_fixed <- ncol(X_fixed)
+  weights_vec <- if (is.null(weights)) rep(1.0, n_obs) else as.numeric(weights)
+
+  tmb_data <- list(
+    y = as.integer(y_numeric),
+    X = X_fixed,
+    Z = Z_combined,
+    n_obs = as.integer(n_obs),
+    n_terms = as.integer(n_terms),
+    term_n_random = term_n_random,
+    term_n_groups = term_n_groups,
+    term_correlated = term_correlated,
+    n_categories = as.integer(n_categories),
+    link = as.integer(link_code),
+    weights = weights_vec,
+    model_name = "ordinal_multi"
+  )
+
+  threshold_init <- seq(-1, 1, length.out = n_categories - 1)
+  if (n_categories > 2) {
+    for (k in 2:(n_categories - 1)) {
+      threshold_init[k] <- log(threshold_init[k] - threshold_init[k - 1])
+    }
+  }
+
+  n_theta_per_term <- ifelse(term_correlated == 1L,
+                             term_n_random * (term_n_random - 1) / 2, 0L)
+  n_theta <- sum(n_theta_per_term)
+
+  tmb_params <- list(
+    beta = rep(0, n_fixed),
+    u = rep(0, q_total),
+    threshold = threshold_init,
+    log_sigma_u = rep(log(0.5), sum(term_n_random)),
+    theta = rep(0, max(n_theta, 1L))
+  )
+  tmb_map <- list()
+  if (n_theta == 0) {
+    tmb_map$theta <- factor(rep(NA, length(tmb_params$theta)))
+  }
+
+  obj <- TMB::MakeADFun(
+    data = tmb_data,
+    parameters = tmb_params,
+    random = "u",
+    map = tmb_map,
+    DLL = "GLLAMMR",
+    silent = TRUE
+  )
+
+  control_defaults <- list(eval.max = 2000, iter.max = 1000, trace = 0)
+  control$optimizer <- NULL
+  control <- modifyList(control_defaults, control)
+
+  par_names_opt <- names(obj$par)
+  lower <- rep(-Inf, length(obj$par))
+  upper <- rep(Inf, length(obj$par))
+  lower[par_names_opt == "beta"] <- -30
+  upper[par_names_opt == "beta"] <- 30
+  upper[par_names_opt == "threshold"] <- 15
+  lower[par_names_opt == "log_sigma_u"] <- -10
+  upper[par_names_opt == "log_sigma_u"] <- 10
+
+  opt <- nlminb(obj$par, obj$fn, obj$gr,
+                lower = lower, upper = upper, control = control)
+
+  sdr <- try(TMB::sdreport(obj), silent = TRUE)
+  par_full <- obj$env$last.par.best
+
+  beta_hat <- par_full[names(par_full) == "beta"]
+  names(beta_hat) <- colnames(X_fixed)
+
+  threshold_hat <- par_full[names(par_full) == "threshold"]
+  ordered_threshold <- numeric(n_categories - 1)
+  ordered_threshold[1] <- threshold_hat[1]
+  for (k in seq_len(n_categories - 1)[-1]) {
+    ordered_threshold[k] <- ordered_threshold[k - 1] + exp(threshold_hat[k])
+  }
+  names(ordered_threshold) <- paste0("tau", seq_len(n_categories - 1))
+
+  # ---- Per-term variance components (as in fit_tmb_gllamm_multi) ----
+  log_sigma_u_hat <- par_full[names(par_full) == "log_sigma_u"]
+  theta_hat <- par_full[names(par_full) == "theta"]
+  sd_offsets <- c(0L, cumsum(term_n_random))
+  th_offsets <- c(0L, cumsum(n_theta_per_term))
+  Sigma_list <- vector("list", n_terms)
+  for (t in seq_len(n_terms)) {
+    nr <- term_n_random[t]
+    sds <- exp(log_sigma_u_hat[(sd_offsets[t] + 1):sd_offsets[t + 1]])
+    if (term_correlated[t] == 1L && nr > 1) {
+      th <- theta_hat[(th_offsets[t] + 1):th_offsets[t + 1]]
+      L <- diag(nr)
+      idx <- 1
+      for (i in 2:nr) {
+        for (j in 1:(i - 1)) {
+          L[i, j] <- th[idx]
+          idx <- idx + 1
+        }
+      }
+      R <- L %*% t(L)
+      R <- R / sqrt(diag(R) %o% diag(R))
+      Sigma_list[[t]] <- outer(sds, sds) * R
+    } else {
+      Sigma_list[[t]] <- diag(sds^2, nrow = nr)
+    }
+    dimnames(Sigma_list[[t]]) <- list(colnames(model_data$Z[[t]]),
+                                      colnames(model_data$Z[[t]]))
+  }
+  names(Sigma_list) <- vapply(parsed$random_terms,
+                              function(rt) paste(rt$grouping, collapse = ":"),
+                              character(1))
+
+  u_hat <- par_full[names(par_full) == "u"]
+  random_effects <- vector("list", n_terms)
+  for (t in seq_len(n_terms)) {
+    nr <- term_n_random[t]
+    block <- u_hat[(offsets[t] + 1):offsets[t + 1]]
+    random_effects[[t]] <- matrix(block, ncol = nr, byrow = TRUE,
+                                  dimnames = list(NULL,
+                                                  colnames(model_data$Z[[t]])))
+  }
+  names(random_effects) <- names(Sigma_list)
+
+  result <- list(
+    coefficients = list(
+      thresholds = ordered_threshold,
+      fixed = beta_hat,
+      random_var = Sigma_list
+    ),
+    random_effects = random_effects,
+    n_random_terms = n_terms,
+    link = link,
+    n_categories = n_categories,
+    category_labels = category_labels,
+    logLik = -opt$objective,
+    AIC = 2 * opt$objective + 2 * length(obj$par),
+    BIC = 2 * opt$objective + log(n_obs) * length(obj$par),
+    convergence = list(
+      converged = (opt$convergence == 0),
+      message = opt$message
+    ),
+    n_obs = n_obs,
+    formula = formula,
+    data = data,
+    X = model_data$X,
+    tmb_obj = obj,
+    tmb_opt = opt,
+    tmb_sdr = sdr
+  )
+  class(result) <- c("gllamm_ordinal", "gllamm")
+  result
+}
+
+
 #' @export
 print.gllamm_ordinal <- function(x, ...) {
   cat("Ordinal Regression Model\n")
@@ -347,7 +552,16 @@ print.gllamm_ordinal <- function(x, ...) {
   cat("\nThreshold parameters:\n")
   print(round(x$coefficients$thresholds, 3))
 
-  cat("\nRandom effects variance:", round(x$coefficients$random_var, 3), "\n")
+  if (is.list(x$coefficients$random_var)) {
+    cat("\nRandom effects variances (per term):\n")
+    for (nm in names(x$coefficients$random_var)) {
+      cat("  ", nm, ":\n", sep = "")
+      print(round(x$coefficients$random_var[[nm]], 4))
+    }
+  } else {
+    cat("\nRandom effects variance:",
+        round(x$coefficients$random_var, 3), "\n")
+  }
 
   cat("\nLog-likelihood:", round(x$logLik, 2), "\n")
   cat("AIC:", round(x$AIC, 2), "\n")
@@ -424,9 +638,16 @@ fit_multinomial <- function(formula, data, reference = NULL,
   # Recode so reference is category 0
   y_numeric <- as.integer(y_response) - 1
 
-  # Only handle single random effect term for now
+  # Crossed/multiple random-effects terms route through the multi-term
+  # template
   if (model_data$n_random_terms != 1) {
-    stop("Currently only single random effects term supported")
+    return(fit_multinomial_multi(formula = formula, data = data,
+                                 reference = reference, parsed = parsed,
+                                 model_data = model_data,
+                                 y_numeric = y_numeric,
+                                 n_categories = n_categories,
+                                 category_labels = category_labels,
+                                 control = control))
   }
 
   n_random <- model_data$n_random_coefs[1]
@@ -545,6 +766,156 @@ fit_multinomial <- function(formula, data, reference = NULL,
 }
 
 
+#' Multinomial model with multiple random-effects terms
+#'
+#' Internal engine behind fit_multinomial for crossed/multiple random
+#' effects. Layout mirrors fit_ordinal_multi / fit_tmb_gllamm_multi; as in
+#' the single-term template, the random effects act as a common shifter on
+#' every non-reference category.
+#'
+#' @keywords internal
+fit_multinomial_multi <- function(formula, data, reference, parsed,
+                                  model_data, y_numeric, n_categories,
+                                  category_labels, control) {
+  n_terms <- model_data$n_random_terms
+  n_obs <- model_data$n_obs
+  term_n_random <- as.integer(model_data$n_random_coefs)
+  term_n_groups <- as.integer(model_data$n_groups)
+  term_correlated <- vapply(seq_len(n_terms), function(t) {
+    nr <- term_n_random[t]
+    as.integer(nr > 1 && !isTRUE(parsed$random_terms[[t]]$uncorrelated))
+  }, integer(1))
+
+  q_per_term <- term_n_groups * term_n_random
+  offsets <- c(0L, cumsum(q_per_term))
+  q_total <- offsets[n_terms + 1]
+  ii <- integer(0); jj <- integer(0); xx <- numeric(0)
+  for (t in seq_len(n_terms)) {
+    Z_t <- model_data$Z[[t]]
+    g_t <- model_data$groups[[t]]
+    nr <- term_n_random[t]
+    for (k in seq_len(nr)) {
+      ii <- c(ii, seq_len(n_obs))
+      jj <- c(jj, offsets[t] + g_t * nr + k)
+      xx <- c(xx, Z_t[, k])
+    }
+  }
+  Z_combined <- Matrix::sparseMatrix(i = ii, j = jj, x = xx,
+                                     dims = c(n_obs, q_total))
+
+  tmb_data <- list(
+    y = as.integer(y_numeric),
+    X = as.matrix(model_data$X),
+    Z = Z_combined,
+    n_obs = as.integer(n_obs),
+    n_terms = as.integer(n_terms),
+    term_n_random = term_n_random,
+    term_n_groups = term_n_groups,
+    term_correlated = term_correlated,
+    n_fixed = as.integer(model_data$n_fixed),
+    n_categories = as.integer(n_categories),
+    weights = rep(1.0, n_obs),
+    model_name = "multinomial_multi"
+  )
+
+  n_theta_per_term <- ifelse(term_correlated == 1L,
+                             term_n_random * (term_n_random - 1) / 2, 0L)
+  n_theta <- sum(n_theta_per_term)
+
+  tmb_params <- list(
+    beta = matrix(0, n_categories - 1, model_data$n_fixed),
+    u = rep(0, q_total),
+    log_sigma_u = rep(log(0.5), sum(term_n_random)),
+    theta = rep(0, max(n_theta, 1L))
+  )
+  tmb_map <- list()
+  if (n_theta == 0) {
+    tmb_map$theta <- factor(rep(NA, length(tmb_params$theta)))
+  }
+
+  obj <- TMB::MakeADFun(
+    data = tmb_data,
+    parameters = tmb_params,
+    random = "u",
+    map = tmb_map,
+    DLL = "GLLAMMR",
+    silent = TRUE
+  )
+
+  control_defaults <- list(eval.max = 2000, iter.max = 1000, trace = 0)
+  control$optimizer <- NULL
+  control <- modifyList(control_defaults, control)
+  opt <- nlminb(obj$par, obj$fn, obj$gr, control = control)
+
+  sdr <- try(TMB::sdreport(obj), silent = TRUE)
+  par_full <- obj$env$last.par.best
+
+  beta_hat <- matrix(par_full[names(par_full) == "beta"],
+                     nrow = n_categories - 1,
+                     ncol = model_data$n_fixed)
+  rownames(beta_hat) <- category_labels[-1]
+  colnames(beta_hat) <- colnames(model_data$X)
+
+  log_sigma_u_hat <- par_full[names(par_full) == "log_sigma_u"]
+  theta_hat <- par_full[names(par_full) == "theta"]
+  sd_offsets <- c(0L, cumsum(term_n_random))
+  th_offsets <- c(0L, cumsum(n_theta_per_term))
+  Sigma_list <- vector("list", n_terms)
+  for (t in seq_len(n_terms)) {
+    nr <- term_n_random[t]
+    sds <- exp(log_sigma_u_hat[(sd_offsets[t] + 1):sd_offsets[t + 1]])
+    if (term_correlated[t] == 1L && nr > 1) {
+      th <- theta_hat[(th_offsets[t] + 1):th_offsets[t + 1]]
+      L <- diag(nr)
+      idx <- 1
+      for (i in 2:nr) {
+        for (j in 1:(i - 1)) {
+          L[i, j] <- th[idx]
+          idx <- idx + 1
+        }
+      }
+      R <- L %*% t(L)
+      R <- R / sqrt(diag(R) %o% diag(R))
+      Sigma_list[[t]] <- outer(sds, sds) * R
+    } else {
+      Sigma_list[[t]] <- diag(sds^2, nrow = nr)
+    }
+    dimnames(Sigma_list[[t]]) <- list(colnames(model_data$Z[[t]]),
+                                      colnames(model_data$Z[[t]]))
+  }
+  names(Sigma_list) <- vapply(parsed$random_terms,
+                              function(rt) paste(rt$grouping, collapse = ":"),
+                              character(1))
+
+  result <- list(
+    coefficients = list(
+      beta = beta_hat,
+      random_var = Sigma_list
+    ),
+    n_random_terms = n_terms,
+    reference = reference,
+    categories = category_labels,
+    n_categories = n_categories,
+    logLik = -opt$objective,
+    AIC = 2 * opt$objective + 2 * length(obj$par),
+    BIC = 2 * opt$objective + log(n_obs) * length(obj$par),
+    convergence = list(
+      converged = (opt$convergence == 0),
+      message = opt$message
+    ),
+    n_obs = n_obs,
+    formula = formula,
+    data = data,
+    X = as.matrix(model_data$X),
+    tmb_obj = obj,
+    tmb_opt = opt,
+    tmb_sdr = sdr
+  )
+  class(result) <- c("gllamm_multinomial", "gllamm")
+  result
+}
+
+
 #' @export
 print.gllamm_multinomial <- function(x, ...) {
   cat("Multinomial Regression Model\n")
@@ -556,7 +927,16 @@ print.gllamm_multinomial <- function(x, ...) {
   cat("Coefficients (reference =", x$reference, "):\n")
   print(round(x$coefficients$beta, 3))
 
-  cat("\nRandom effects variance:", round(x$coefficients$random_var, 3), "\n")
+  if (is.list(x$coefficients$random_var)) {
+    cat("\nRandom effects variances (per term):\n")
+    for (nm in names(x$coefficients$random_var)) {
+      cat("  ", nm, ":\n", sep = "")
+      print(round(x$coefficients$random_var[[nm]], 4))
+    }
+  } else {
+    cat("\nRandom effects variance:",
+        round(x$coefficients$random_var, 3), "\n")
+  }
 
   cat("\nLog-likelihood:", round(x$logLik, 2), "\n")
   cat("AIC:", round(x$AIC, 2), "\n")

@@ -162,8 +162,23 @@ gllamm <- function(formula,
     }
     return(fit_lca(as.matrix(formula),
                    nclass = family$nclass,
+                   ordering = family$ordering %||% "none",
                    weights = weights,
                    start = start,
+                   control = control))
+  }
+
+  if (inherits(family, "cdm_family")) {
+    if (!is.matrix(formula) && !is.data.frame(formula)) {
+      stop("For family = cdm(), the first argument must be the persons x ",
+           "items binary response matrix")
+    }
+    return(fit_cdm(as.matrix(formula),
+                   Q = family$Q,
+                   model = family$model,
+                   hierarchy = family$hierarchy,
+                   monotone = family$monotone,
+                   weights = weights,
                    control = control))
   }
 

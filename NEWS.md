@@ -2,6 +2,17 @@
 
 ## Post-1.2.0 development
 
+* Multiple (crossed/nested) random-effects terms for ordinal and
+  multinomial models: `fit_ordinal(y ~ x + (1 | rater) + (1 | item))`
+  works for the logit, probit, adjacent-category, and continuation-ratio
+  links (PPO remains single-term), matching `ordinal::clmm` with the
+  same crossed structure to 1e-4; `fit_multinomial()` gains the same
+  layout with the random effects acting as a common shifter across
+  non-reference categories. The same `(1 | g1) + (1 | g2)` formulas now
+  also work for `family = binomial()` through `gllamm()`.
+* New `cdm()` family constructor and `lca(ordering = ...)` pass-through:
+  cognitive diagnosis models and order-restricted latent class models
+  are now reachable through the unified `gllamm()` interface.
 * New `fit_cdm()`: cognitive diagnosis models for binary responses with
   a Q-matrix - saturated G-DINA (default), DINA, and DINO - with
   monotonicity in the attributes enforced by isotonic regression over

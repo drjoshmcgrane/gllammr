@@ -15,7 +15,7 @@
 #'   "lca_carcinoma", "grm_science", "gamma_simulated",
 #'   "survival_exponential", "sem_lavaan", "lca_polytomous",
 #'   "npml_binomial", "aghq_binomial", "twopl_lsat_em", "eirt_verbagg",
-#'   "eirt_verbagg_pcm", "cdm_fraction_dina".
+#'   "eirt_verbagg_pcm", "cdm_fraction_dina", "ordinal_crossed".
 #' @param scale "standard" (default) runs the canonical-dataset cases;
 #'   "large" runs the large-scale tier (n in the tens of thousands, long
 #'   item batteries - sizes where quadrature grids and tolerances can fail
@@ -43,7 +43,7 @@ gllammr_validate <- function(cases = "all", scale = c("standard", "large", "all"
                  "gamma_simulated", "survival_exponential", "sem_lavaan",
                  "lca_polytomous", "npml_binomial", "aghq_binomial",
                  "twopl_lsat_em", "eirt_verbagg", "eirt_verbagg_pcm",
-                 "cdm_fraction_dina")
+                 "cdm_fraction_dina", "ordinal_crossed")
   # Large-scale tier: numerical behavior at sizes where quadrature grids,
   # tolerances, and interpreted-loop costs can fail silently
   large_cases <- c("large_glmm_binomial", "large_grm_battery",
@@ -679,6 +679,38 @@ gllammr_validate <- function(cases = "all", scale = c("standard", "large", "all"
              unname(fit$ability_sd), 0.97, 0.05, relative = FALSE),
     .val_row("eirt_verbagg_pcm", "step_difficulty_cor_vs_pcm",
              step_cor, 0.99, 0.01, relative = FALSE)
+  )
+}
+
+
+#' @keywords internal
+.validate_ordinal_crossed <- function() {
+  if (!requireNamespace("ordinal", quietly = TRUE)) {
+    return(NULL)
+  }
+  # Crossed random effects in a cumulative-logit model: judge and bottle
+  # effects on the wine ratings. ordinal::clmm uses the same Laplace
+  # approximation, so agreement is tight.
+  data("wine", package = "ordinal", envir = environment())
+  wine$rating_num <- as.integer(wine$rating)
+
+  fit <- fit_ordinal(rating_num ~ temp + (1 | judge) + (1 | bottle),
+                     data = wine, link = "logit")
+  ref <- ordinal::clmm(rating ~ temp + (1 | judge) + (1 | bottle),
+                       data = wine, link = "logit")
+
+  rbind(
+    .val_row("ordinal_crossed", "beta_temp",
+             unname(fit$coefficients$fixed["tempwarm"]),
+             unname(coef(ref)["tempwarm"]), 1e-2),
+    .val_row("ordinal_crossed", "sigma_judge",
+             unname(sqrt(fit$coefficients$random_var$judge[1, 1])),
+             unname(attr(ordinal::VarCorr(ref)$judge, "stddev")), 2e-2),
+    .val_row("ordinal_crossed", "sigma_bottle",
+             unname(sqrt(fit$coefficients$random_var$bottle[1, 1])),
+             unname(attr(ordinal::VarCorr(ref)$bottle, "stddev")), 5e-2),
+    .val_row("ordinal_crossed", "logLik",
+             fit$logLik, as.numeric(logLik(ref)), 0.05, relative = FALSE)
   )
 }
 

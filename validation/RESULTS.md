@@ -8,7 +8,7 @@ Reference packages using the same Laplace approximation (lme4 nAGQ=1,
 ordinal::clmm) agree to numerical precision; packages using different
 integration (mirt, ltm) agree within stated tolerances.
 
-**Overall: 78 / 78 checks pass.**
+**Overall: 82 / 82 checks pass.**
 
 | Case | Statistic | GLLAMMR | Reference | Rel. diff | Tolerance | Pass |
 |---|---|---|---|---|---|---|
@@ -78,9 +78,13 @@ integration (mirt, ltm) agree within stated tolerances.
 | eirt_verbagg_pcm | sigma_theta | 0.9593 |  0.97 | 0.0111 | 0.05 | yes |
 | eirt_verbagg_pcm | step_difficulty_cor_vs_pcm | 0.9934 |  0.99 | 0.00344 | 0.01 | yes |
 | cdm_fraction_dina | logLik | -4402 | -4402 | 1.51e-05 |  0.5 | yes |
-| cdm_fraction_dina | mean_abs_guess_diff | 0.002769 |     0 | 1.25e+13 | 0.01 | yes |
-| cdm_fraction_dina | mean_abs_slip_diff | 0.0002299 |     0 | 1.04e+12 | 0.01 | yes |
-| cdm_fraction_dina | guess_item1 | 0.02978 | 0.0298 | 0.000436 | 0.02 | yes |
+| cdm_fraction_dina | mean_abs_guess_diff | 0.002803 |     0 | 1.26e+13 | 0.01 | yes |
+| cdm_fraction_dina | mean_abs_slip_diff | 0.0002323 |     0 | 1.05e+12 | 0.01 | yes |
+| cdm_fraction_dina | guess_item1 | 0.02978 | 0.0298 | 0.000433 | 0.02 | yes |
+| ordinal_crossed | beta_temp | 2.928 | 2.928 | 3.98e-07 | 0.01 | yes |
+| ordinal_crossed | sigma_judge | 1.072 | 1.072 | 1.06e-06 | 0.02 | yes |
+| ordinal_crossed | sigma_bottle | 0.7209 | 0.7209 | 1.97e-06 | 0.05 | yes |
+| ordinal_crossed | logLik | -87.4 | -87.4 | 4.21e-10 | 0.05 | yes |
 | large_glmm_binomial | beta_x | 0.4915 | 0.4915 | 1.95e-06 | 0.001 | yes |
 | large_glmm_binomial | sigma_u | 0.7882 | 0.7882 | 2.05e-05 | 0.001 | yes |
 | large_glmm_binomial | logLik | -6.154e+04 | -6.154e+04 | 3.35e-10 |  0.5 | yes |

@@ -44,6 +44,16 @@
 #' - **GPCM**: As PCM with item-specific discrimination a_i.
 #'   Supports both discrimination_formula and threshold_formula.
 #'
+#' **Relation to the GLLAMM framework:** difficulties enter the linear
+#' predictor linearly, exactly as in the canonical GLLAMM formulation.
+#' Discriminations are GLLAMM factor loadings; the discrimination
+#' regression models them on the log scale (a_i = exp(W \%*\% delta
+#' [+ epsilon_a])), a reparameterization that keeps loadings positive and
+#' makes covariate effects multiplicative. A model with
+#' discrimination_formula = ~ 1 and item_residuals = FALSE has constant
+#' loadings and is GLLAMM-canonical; covariate-structured or random
+#' loadings are a (standard, benign) nonlinear extension.
+#'
 #' **Item residuals:** When item_residuals = TRUE (default), item parameters include
 #' residual terms epsilon_b and epsilon_a (LLTM + error). When FALSE, uses pure LLTM
 #' where parameters are exactly determined by covariates.
