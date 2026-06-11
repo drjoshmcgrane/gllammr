@@ -11,6 +11,7 @@ fit_irt(
   random = NULL,
   weights = NULL,
   mc_items = NULL,
+  se = FALSE,
   start = NULL,
   control = list()
 )
@@ -39,6 +40,10 @@ Requires person_data to contain the grouping variables.}
 \item{mc_items}{For 3PL model only: which items have guessing parameters.
 Can be: NULL (default, all items have guessing), logical vector (length = n_items),
 or integer vector (indices of MC items). Non-MC items use 2PL likelihood (no guessing).}
+
+\item{se}{Compute parameter standard errors via TMB::sdreport (default
+FALSE, matching the default behavior of mirt; SE computation roughly
+doubles the fitting time for large person samples)}
 
 \item{start}{Optional starting values}
 

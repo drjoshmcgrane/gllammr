@@ -18,6 +18,9 @@
 #'   \code{~ (1 | student) + (1 | time)}.
 #'   Requires person_data to contain the grouping variables.
 #' @param weights Optional vector of case weights. Length must equal number of persons.
+#' @param se Compute parameter standard errors via TMB::sdreport (default
+#'   FALSE, matching the default behavior of mirt; SE computation roughly
+#'   doubles the fitting time for large person samples)
 #' @param mc_items For 3PL model only: which items have guessing parameters.
 #'   Can be: NULL (default, all items have guessing), logical vector (length = n_items),
 #'   or integer vector (indices of MC items). Non-MC items use 2PL likelihood (no guessing).
@@ -89,6 +92,7 @@ fit_irt <- function(response_matrix,
                     random = NULL,
                     weights = NULL,
                     mc_items = NULL,
+                    se = FALSE,
                     start = NULL, control = list()) {
 
   model <- match.arg(model)
@@ -161,16 +165,16 @@ fit_irt <- function(response_matrix,
     if (!is.null(mc_items)) {
       warning("mc_items parameter is not applicable to polytomous models. Ignoring.")
     }
-    return(fit_irt_polytomous(response_matrix, model, weights, re_info, start, control))
+    return(fit_irt_polytomous(response_matrix, model, weights, re_info, se, start, control))
   } else {
-    return(fit_irt_dichotomous(response_matrix, model, weights, mc_items, re_info, start, control))
+    return(fit_irt_dichotomous(response_matrix, model, weights, mc_items, re_info, se, start, control))
   }
 }
 
 
 #' Internal function for dichotomous IRT models
 #' @keywords internal
-fit_irt_dichotomous <- function(response_matrix, model, weights, mc_items, re_info, start, control) {
+fit_irt_dichotomous <- function(response_matrix, model, weights, mc_items, re_info, se, start, control) {
 
   model_code <- switch(model, Rasch = 1L, "2PL" = 2L, "3PL" = 3L)
   n_items <- ncol(response_matrix)
@@ -373,8 +377,8 @@ fit_irt_dichotomous <- function(response_matrix, model, weights, mc_items, re_in
     control = control
   )
 
-  # Get standard errors
-  sdr <- try(TMB::sdreport(obj), silent = TRUE)
+  # Standard errors on request only (sdreport roughly doubles fit time)
+  sdr <- if (se) try(TMB::sdreport(obj), silent = TRUE) else NULL
 
   # Extract parameters
   par_full <- obj$env$last.par.best
@@ -584,7 +588,7 @@ summary.gllamm_irt <- function(object, ...) {
 
 #' Internal function for polytomous IRT models
 #' @keywords internal
-fit_irt_polytomous <- function(response_matrix, model, weights, re_info, start, control) {
+fit_irt_polytomous <- function(response_matrix, model, weights, re_info, se, start, control) {
 
   # Model codes for polytomous IRT
   model_code <- switch(model,
@@ -859,8 +863,8 @@ fit_irt_polytomous <- function(response_matrix, model, weights, re_info, start, 
     control = control
   )
 
-  # Get standard errors
-  sdr <- try(TMB::sdreport(obj), silent = TRUE)
+  # Standard errors on request only (sdreport roughly doubles fit time)
+  sdr <- if (se) try(TMB::sdreport(obj), silent = TRUE) else NULL
 
   # Extract parameters
   par_full <- obj$env$last.par.best

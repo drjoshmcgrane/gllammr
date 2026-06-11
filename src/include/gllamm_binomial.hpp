@@ -86,60 +86,31 @@ Type gllamm_binomial(objective_function<Type>* obj)
       (Type(n_random) * log(2.0 * M_PI) + log_det_Sigma_u + quad_form);
   }
 
-  // Likelihood for observations
+  // Likelihood: single pass over observations (fitted values reuse the
+  // same eta - a second loop would double the AD tape)
+  vector<Type> eta_vec = X * beta;
+  vector<Type> fitted(n_obs);
   for (int i = 0; i < n_obs; i++) {
-    // Linear predictor
-    Type eta = 0.0;
-
-    // Fixed effects
-    for (int j = 0; j < n_fixed; j++) {
-      eta += X(i, j) * beta(j);
-    }
-
-    // Random effects
     int g = groups(i);
+    Type eta = eta_vec(i);
     for (int k = 0; k < n_random; k++) {
       eta += Z.coeff(i, k) * u(g * n_random + k);
     }
 
-    // Apply link function to get probability
     Type p;
     if (link == 1) {
-      // Logit link
       p = invlogit(eta);
     } else if (link == 2) {
-      // Probit link
       p = pnorm(eta);
     } else {
-      // Complementary log-log
       p = Type(1.0) - exp(-exp(eta));
     }
 
-    // Binomial log-likelihood (weighted)
-    Type w_i = weights(i) * group_weights(g);  // Observation weight
-    Type ll_i = y(i) * log(p + Type(1e-10)) + (Type(1.0) - y(i)) * log(Type(1.0) - p + Type(1e-10));
-    nll -= w_i * ll_i;  // Weight the likelihood contribution
-  }
-
-  // Report
-  vector<Type> fitted(n_obs);
-  for (int i = 0; i < n_obs; i++) {
-    Type eta = 0.0;
-    for (int j = 0; j < n_fixed; j++) {
-      eta += X(i, j) * beta(j);
-    }
-    int g = groups(i);
-    for (int k = 0; k < n_random; k++) {
-      eta += Z.coeff(i, k) * u(g * n_random + k);
-    }
-
-    if (link == 1) {
-      fitted(i) = invlogit(eta);
-    } else if (link == 2) {
-      fitted(i) = pnorm(eta);
-    } else {
-      fitted(i) = Type(1.0) - exp(-exp(eta));
-    }
+    Type w_i = weights(i) * group_weights(g);
+    Type ll_i = y(i) * log(p + Type(1e-10)) +
+                (Type(1.0) - y(i)) * log(Type(1.0) - p + Type(1e-10));
+    nll -= w_i * ll_i;
+    fitted(i) = p;
   }
 
   REPORT(fitted);

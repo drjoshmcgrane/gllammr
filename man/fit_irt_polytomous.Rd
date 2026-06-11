@@ -4,7 +4,15 @@
 \alias{fit_irt_polytomous}
 \title{Internal function for polytomous IRT models}
 \usage{
-fit_irt_polytomous(response_matrix, model, weights, re_info, start, control)
+fit_irt_polytomous(
+  response_matrix,
+  model,
+  weights,
+  re_info,
+  se,
+  start,
+  control
+)
 }
 \description{
 Internal function for polytomous IRT models

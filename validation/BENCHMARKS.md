@@ -4,10 +4,13 @@ Generated 2026-06-11 | R 4.5.1 | GLLAMMR 1.2.0 | macOS Apple Silicon
 (single-threaded: Apple clang has no OpenMP; Linux/CRAN builds parallelize
 the likelihood via parallel_accumulator)
 
+All timings are medians of 3 warm runs (single fits, one core).
+
 | Model class | Data size | GLLAMMR | Comparator | Ratio |
 |---|---|---|---|---|
-| Gaussian GLMM | n=10k, 100 grp | 0.84s | lmer 0.04s / glmmTMB 0.34s | 21x / 2.5x |
-| Binomial GLMM | n=10k, 100 grp | 0.83s | glmer 0.34s / glmmTMB 0.42s | 2.4x / 2.0x |
+| Gaussian GLMM | n=10k, 100 grp | 0.37s | glmmTMB 0.35s / lmer 0.03s | **1.06x** / 12x |
+| Binomial GLMM | n=10k, 100 grp | 0.69s | glmmTMB 0.54s / glmer 0.37s | 1.3x / 1.9x |
+| Poisson GLMM | n=10k, 100 grp | 0.42s | glmmTMB 0.28s | 1.5x |
 | Random slopes (gaussian) | n=10k, 100 grp | 0.60s | lmer 0.07s | 8.6x |
 | Crossed REs (gaussian) | n=2k, 50x30 grp | 0.11s | lmer 0.41s | **0.27x (faster)** |
 | Gamma GLMM | n=2k, 50 grp | 0.33s | glmmTMB 0.38s | **0.87x (faster)** |
@@ -17,8 +20,9 @@ the likelihood via parallel_accumulator)
 | Weibull frailty survival | n=1.5k, 50 grp | 0.21s | survreg (no frailty) 0.04s | n/a* |
 | SEM (2 factors + path) | n=800, 6 ind. | 0.40s | lavaan::sem 0.21s | 1.9x |
 | LCA (3 classes, 3 restarts) | n=1k, 8 items | 2.23s | poLCA (nrep=3) 0.42s | 5.3x |
-| Rasch IRT | 1000 x 40 | 9.18s | mirt 0.15s / TAM 0.04s | 61x / 230x |
-| GRM (4 categories) | 1000 x 20 | 16.71s | mirt graded 0.17s | 98x |
+| Rasch IRT (se=FALSE default) | 1000 x 40 | 3.3s | mirt 0.10s (SE=FALSE default) | 33x |
+| Rasch IRT (se=TRUE) | 1000 x 40 | 7.8s | mirt SE=TRUE 0.45s | 17x |
+| GRM (4 categories) | 1000 x 20 | 9.8s | mirt graded 0.25s | 39x |
 
 *no frailty-capable parametric survival comparator installed; survreg fits
 the fixed-effects model only.
@@ -32,8 +36,10 @@ the fixed-effects model only.
 - **IRT is the one slow class**: mirt/TAM use EM with fixed quadrature -
   per iteration they evaluate a small grid, while the Laplace path
   re-solves a 1000-dimensional inner problem per gradient evaluation.
-  The estimates agree (validated to <1e-2); the gap is algorithmic, not a
-  defect. OpenMP (Linux/CRAN) roughly divides the IRT times by the core
-  count; EM-style fitting for IRT is the natural future optimization.
+  fit_irt(se = FALSE) is now the default (as in mirt): standard errors
+  cost as much as the fit itself and are computed on request. The
+  estimates agree (validated to <1e-2); the residual gap is algorithmic,
+  not a defect. OpenMP (Linux/CRAN) divides the IRT times by roughly the
+  core count; EM-style fitting for IRT is the natural future optimization.
 - All timings single fits on one core; estimates cross-validated in
   validation/RESULTS.md (49/49).

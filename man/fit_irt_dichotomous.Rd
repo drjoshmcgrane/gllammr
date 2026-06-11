@@ -10,6 +10,7 @@ fit_irt_dichotomous(
   weights,
   mc_items,
   re_info,
+  se,
   start,
   control
 )

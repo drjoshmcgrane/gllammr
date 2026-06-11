@@ -85,42 +85,19 @@ Type gllamm_poisson(objective_function<Type>* obj)
       (Type(n_random) * log(2.0 * M_PI) + log_det_Sigma_u + quad_form);
   }
 
-  // Likelihood for observations
-  for (int i = 0; i < n_obs; i++) {
-    // Linear predictor
-    Type eta = 0.0;
-
-    // Fixed effects
-    for (int j = 0; j < n_fixed; j++) {
-      eta += X(i, j) * beta(j);
-    }
-
-    // Random effects
-    int g = groups(i);
-    for (int k = 0; k < n_random; k++) {
-      eta += Z.coeff(i, k) * u(g * n_random + k);
-    }
-
-    // Log link: lambda = exp(eta)
-    Type lambda = exp(eta);
-
-    // Poisson log-likelihood (weighted)
-    Type w_i = weights(i) * group_weights(g);
-    nll -= w_i * dpois(y(i), lambda, true);
-  }
-
-  // Report
+  // Likelihood: single pass (fitted values reuse the same eta)
+  vector<Type> eta_vec = X * beta;
   vector<Type> fitted(n_obs);
   for (int i = 0; i < n_obs; i++) {
-    Type eta = 0.0;
-    for (int j = 0; j < n_fixed; j++) {
-      eta += X(i, j) * beta(j);
-    }
     int g = groups(i);
+    Type eta = eta_vec(i);
     for (int k = 0; k < n_random; k++) {
       eta += Z.coeff(i, k) * u(g * n_random + k);
     }
-    fitted(i) = exp(eta);
+    Type lambda = exp(eta);
+    Type w_i = weights(i) * group_weights(g);
+    nll -= w_i * dpois(y(i), lambda, true);
+    fitted(i) = lambda;
   }
 
   REPORT(fitted);

@@ -45,40 +45,19 @@ Type gllamm_gaussian(objective_function<Type>* obj)
     }
   }
 
-  // Likelihood for observations
-  for (int i = 0; i < n_obs; i++) {
-    // Linear predictor: fixed effects + random effects
-    Type eta = 0.0;
-
-    // Add fixed effects
-    for (int j = 0; j < n_fixed; j++) {
-      eta += X(i, j) * beta[j];
-    }
-
-    // Add random effects
-    int g = groups[i];  // Group for this observation
-    for (int k = 0; k < n_random; k++) {
-      int u_idx = g * n_random + k;
-      eta += Z(i, k) * u[u_idx];
-    }
-
-    // Gaussian likelihood: y ~ N(eta, sigma^2), weighted at both levels
-    Type w_i = weights[i] * group_weights(g);
-    nll -= w_i * dnorm(y[i], eta, sigma, true);
-  }
-
-  // Report fitted values
+  // Likelihood: single pass over observations (fitted values reuse the
+  // same eta - a second loop would double the AD tape)
+  vector<Type> eta_vec = X * beta;
   vector<Type> fitted(n_obs);
   for (int i = 0; i < n_obs; i++) {
-    Type eta = 0.0;
-    for (int j = 0; j < n_fixed; j++) {
-      eta += X(i, j) * beta[j];
-    }
     int g = groups[i];
+    Type eta = eta_vec(i);
     for (int k = 0; k < n_random; k++) {
-      int u_idx = g * n_random + k;
-      eta += Z(i, k) * u[u_idx];
+      eta += Z(i, k) * u[g * n_random + k];
     }
+
+    Type w_i = weights[i] * group_weights(g);
+    nll -= w_i * dnorm(y[i], eta, sigma, true);
     fitted[i] = eta;
   }
 
