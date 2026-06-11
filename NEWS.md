@@ -1,5 +1,16 @@
 # GLLAMMR 1.2.0
 
+## Post-1.2.0 development
+
+* `fit_irt()` gains a Bock-Aitkin MML-EM estimation path
+  (`method = "em"`), now the **default for single-level models**:
+  20-50x faster than the Laplace path, matches mirt to correlation 1.0,
+  and handles short tests where joint-Laplace 2PL diverges. The Laplace
+  path remains the default whenever multi-level structure (`random`) or
+  standard errors (`se = TRUE`) require it. EM abilities are EAP scores.
+* `fit_irt(se = FALSE)` is the default (as in mirt); request SEs explicitly.
+* Single-pass AD tapes in the gaussian/binomial/poisson templates.
+
 ## Build and infrastructure
 
 * All TMB C++ templates are now compiled at install time into a single

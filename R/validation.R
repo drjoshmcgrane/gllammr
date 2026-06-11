@@ -207,7 +207,9 @@ gllammr_validate <- function(cases = "all", verbose = TRUE) {
   data("LSAT", package = "ltm", envir = environment())
   resp <- as.matrix(LSAT)
 
-  fit <- fit_irt(resp, model = "Rasch")
+  # Pin the Laplace path: this case validates exact agreement with the
+  # identical approximation in glmer (nAGQ = 1)
+  fit <- fit_irt(resp, model = "Rasch", method = "laplace")
 
   # De Boeck-style Rasch as a GLMM: same model, same Laplace approximation
   long <- data.frame(

@@ -36,8 +36,11 @@ fit_irt_em <- function(response_matrix, model, weights = NULL,
   Q <- quad_points
 
   if (is_poly) {
-    K_per_item <- apply(Y, 2, function(v) length(unique(v[!is.na(v)])))
-    max_K <- max(K_per_item)
+    vp <- validate_poly_responses(Y)
+    Y <- vp$response_matrix
+    obs_mask <- !is.na(Y)
+    K_per_item <- vp$n_categories_per_item
+    max_K <- vp$max_categories
   }
 
   # ---- Item probability matrices at the quadrature nodes ----

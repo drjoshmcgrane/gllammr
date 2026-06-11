@@ -18,12 +18,15 @@
 #'   \code{~ (1 | student) + (1 | time)}.
 #'   Requires person_data to contain the grouping variables.
 #' @param weights Optional vector of case weights. Length must equal number of persons.
-#' @param method Estimation method: "laplace" (default; TMB Laplace
-#'   approximation, required for multi-level models) or "em" (Bock-Aitkin
-#'   marginal maximum likelihood with fixed Gauss-Hermite quadrature - the
-#'   algorithm used by mirt/TAM, typically 10-50x faster for standard
-#'   single-level IRT). Estimates agree closely; EM person abilities are
-#'   EAP scores rather than posterior modes.
+#' @param method Estimation method. "auto" (default) uses "em" for
+#'   single-level models and "laplace" whenever multi-level structure
+#'   (\code{random}) or standard errors (\code{se = TRUE}) require it.
+#'   "em" is Bock-Aitkin marginal maximum likelihood with fixed
+#'   Gauss-Hermite quadrature (the mirt/TAM algorithm; typically 20-50x
+#'   faster and evaluates the marginal likelihood more exactly than the
+#'   Laplace approximation). "laplace" is the TMB path, required for
+#'   multi-level models. EM person abilities are EAP scores; Laplace
+#'   abilities are posterior modes.
 #' @param quad_points Number of quadrature nodes for method = "em"
 #'   (default 61)
 #' @param se Compute parameter standard errors via TMB::sdreport (default
@@ -100,7 +103,7 @@ fit_irt <- function(response_matrix,
                     random = NULL,
                     weights = NULL,
                     mc_items = NULL,
-                    method = c("laplace", "em"),
+                    method = c("auto", "em", "laplace"),
                     quad_points = 61,
                     se = FALSE,
                     start = NULL, control = list()) {
@@ -108,18 +111,16 @@ fit_irt <- function(response_matrix,
   model <- match.arg(model)
   method <- match.arg(method)
 
-  if (method == "em") {
-    if (!is.null(random)) {
-      stop("method = \"em\" supports single-level models; ",
-           "use method = \"laplace\" for multi-level IRT")
-    }
-    if (!is.null(mc_items) && model != "3PL") {
-      warning("mc_items parameter is only used for 3PL model. Ignoring.")
-      mc_items <- NULL
-    }
-    return(fit_irt_em(response_matrix, model = model, weights = weights,
-                      mc_items = mc_items, quad_points = quad_points,
-                      control = control))
+  if (method == "auto") {
+    method <- if (!is.null(random) || isTRUE(se)) "laplace" else "em"
+  }
+  if (method == "em" && !is.null(random)) {
+    stop("method = \"em\" supports single-level models; ",
+         "use method = \"laplace\" for multi-level IRT")
+  }
+  if (method == "em" && isTRUE(se)) {
+    warning("Standard errors are not yet available under method = \"em\"; ",
+            "ignoring se = TRUE. Use method = \"laplace\" for SEs.")
   }
 
   # Validate multi-level parameters
@@ -190,8 +191,17 @@ fit_irt <- function(response_matrix,
     if (!is.null(mc_items)) {
       warning("mc_items parameter is not applicable to polytomous models. Ignoring.")
     }
+    if (method == "em") {
+      return(fit_irt_em(response_matrix, model = model, weights = weights,
+                        quad_points = quad_points, control = control))
+    }
     return(fit_irt_polytomous(response_matrix, model, weights, re_info, se, start, control))
   } else {
+    if (method == "em") {
+      return(fit_irt_em(response_matrix, model = model, weights = weights,
+                        mc_items = mc_items, quad_points = quad_points,
+                        control = control))
+    }
     return(fit_irt_dichotomous(response_matrix, model, weights, mc_items, re_info, se, start, control))
   }
 }
@@ -611,21 +621,13 @@ summary.gllamm_irt <- function(object, ...) {
 }
 
 
-#' Internal function for polytomous IRT models
+#' Validate and auto-recode polytomous response matrices (shared by the
+#' Laplace and EM estimation paths)
+#'
+#' @return list(response_matrix, n_categories_per_item, max_categories)
 #' @keywords internal
-fit_irt_polytomous <- function(response_matrix, model, weights, re_info, se, start, control) {
-
-  # Model codes for polytomous IRT
-  model_code <- switch(model,
-                       GRM = 1L,   # Graded Response Model
-                       PCM = 2L,   # Partial Credit Model
-                       GPCM = 3L,  # Generalized Partial Credit Model
-                       NRM = 4L)   # Nominal Response Model
-
-  # Dimensions
-  n_persons <- nrow(response_matrix)
+validate_poly_responses <- function(response_matrix) {
   n_items <- ncol(response_matrix)
-
   # Determine number of categories per item
   n_categories_per_item <- apply(response_matrix, 2, function(x) {
     length(unique(x[!is.na(x)]))
@@ -701,6 +703,32 @@ fit_irt_polytomous <- function(response_matrix, model, weights, re_info, se, sta
     n_categories_per_item[j] <- as.integer(max(response_matrix[, j], na.rm = TRUE))
   }
   max_categories <- max(n_categories_per_item)
+
+  list(response_matrix = response_matrix,
+       n_categories_per_item = n_categories_per_item,
+       max_categories = max_categories)
+}
+
+
+#' Internal function for polytomous IRT models
+#' @keywords internal
+fit_irt_polytomous <- function(response_matrix, model, weights, re_info, se, start, control) {
+
+  # Model codes for polytomous IRT
+  model_code <- switch(model,
+                       GRM = 1L,   # Graded Response Model
+                       PCM = 2L,   # Partial Credit Model
+                       GPCM = 3L,  # Generalized Partial Credit Model
+                       NRM = 4L)   # Nominal Response Model
+
+  # Dimensions
+  n_persons <- nrow(response_matrix)
+  n_items <- ncol(response_matrix)
+
+  vp <- validate_poly_responses(response_matrix)
+  response_matrix <- vp$response_matrix
+  n_categories_per_item <- vp$n_categories_per_item
+  max_categories <- vp$max_categories
 
   # Convert to long format
   y_long <- as.vector(t(response_matrix))

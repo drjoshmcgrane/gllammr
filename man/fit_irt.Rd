@@ -11,7 +11,7 @@ fit_irt(
   random = NULL,
   weights = NULL,
   mc_items = NULL,
-  method = c("laplace", "em"),
+  method = c("auto", "em", "laplace"),
   quad_points = 61,
   se = FALSE,
   start = NULL,
@@ -43,12 +43,15 @@ Requires person_data to contain the grouping variables.}
 Can be: NULL (default, all items have guessing), logical vector (length = n_items),
 or integer vector (indices of MC items). Non-MC items use 2PL likelihood (no guessing).}
 
-\item{method}{Estimation method: "laplace" (default; TMB Laplace
-approximation, required for multi-level models) or "em" (Bock-Aitkin
-marginal maximum likelihood with fixed Gauss-Hermite quadrature - the
-algorithm used by mirt/TAM, typically 10-50x faster for standard
-single-level IRT). Estimates agree closely; EM person abilities are
-EAP scores rather than posterior modes.}
+\item{method}{Estimation method. "auto" (default) uses "em" for
+single-level models and "laplace" whenever multi-level structure
+(\code{random}) or standard errors (\code{se = TRUE}) require it.
+"em" is Bock-Aitkin marginal maximum likelihood with fixed
+Gauss-Hermite quadrature (the mirt/TAM algorithm; typically 20-50x
+faster and evaluates the marginal likelihood more exactly than the
+Laplace approximation). "laplace" is the TMB path, required for
+multi-level models. EM person abilities are EAP scores; Laplace
+abilities are posterior modes.}
 
 \item{quad_points}{Number of quadrature nodes for method = "em"
 (default 61)}
