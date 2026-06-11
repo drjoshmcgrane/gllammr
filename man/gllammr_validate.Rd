@@ -16,7 +16,8 @@ Available: "gaussian_sleepstudy", "binomial_toenail",
 "poisson_grouseticks", "ordinal_wine", "rasch_lsat", "twopl_simulated",
 "lca_carcinoma", "grm_science", "gamma_simulated",
 "survival_exponential", "sem_lavaan", "lca_polytomous",
-"npml_binomial", "aghq_binomial", "twopl_lsat_em".}
+"npml_binomial", "aghq_binomial", "twopl_lsat_em", "eirt_verbagg",
+"eirt_verbagg_pcm".}
 
 \item{scale}{"standard" (default) runs the canonical-dataset cases;
 "large" runs the large-scale tier (n in the tens of thousands, long

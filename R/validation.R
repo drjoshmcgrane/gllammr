@@ -14,7 +14,8 @@
 #'   "poisson_grouseticks", "ordinal_wine", "rasch_lsat", "twopl_simulated",
 #'   "lca_carcinoma", "grm_science", "gamma_simulated",
 #'   "survival_exponential", "sem_lavaan", "lca_polytomous",
-#'   "npml_binomial", "aghq_binomial", "twopl_lsat_em".
+#'   "npml_binomial", "aghq_binomial", "twopl_lsat_em", "eirt_verbagg",
+#'   "eirt_verbagg_pcm".
 #' @param scale "standard" (default) runs the canonical-dataset cases;
 #'   "large" runs the large-scale tier (n in the tens of thousands, long
 #'   item batteries - sizes where quadrature grids and tolerances can fail
@@ -41,7 +42,7 @@ gllammr_validate <- function(cases = "all", scale = c("standard", "large", "all"
                  "twopl_simulated", "lca_carcinoma", "grm_science",
                  "gamma_simulated", "survival_exponential", "sem_lavaan",
                  "lca_polytomous", "npml_binomial", "aghq_binomial",
-                 "twopl_lsat_em")
+                 "twopl_lsat_em", "eirt_verbagg", "eirt_verbagg_pcm")
   # Large-scale tier: numerical behavior at sizes where quadrature grids,
   # tolerances, and interpreted-loop costs can fail silently
   large_cases <- c("large_glmm_binomial", "large_grm_battery",
@@ -570,6 +571,113 @@ gllammr_validate <- function(cases = "all", scale = c("standard", "large", "all"
     .val_row("twopl_lsat_em", "difficulty_mean",
              mean(fit$item_parameters$difficulty),
              mean(ref_coef[, "Dffclt"]), 0.02)
+  )
+}
+
+
+#' @keywords internal
+.validate_eirt_verbagg <- function() {
+  if (!requireNamespace("lme4", quietly = TRUE)) {
+    return(NULL)
+  }
+  # De Boeck & Wilson (2004): LLTM + error on the verbal aggression data.
+  # The same model as glmer(r2 ~ btype + situ + mode + (1|id) + (1|item))
+  # under the same Laplace approximation, so agreement is tight. fit_eirt
+  # models difficulty (theta - b), glmer models easiness: gamma = -beta.
+  data("VerbAgg", package = "lme4", envir = environment())
+  VerbAgg$y <- as.integer(VerbAgg$r2 == "Y")
+  resp <- with(VerbAgg, tapply(y, list(id, item), identity))
+  resp <- matrix(as.integer(resp), nrow = nrow(resp),
+                 dimnames = dimnames(resp))
+  item_info <- unique(VerbAgg[, c("item", "btype", "situ", "mode")])
+  item_info <- item_info[match(colnames(resp), as.character(item_info$item)), ]
+  item_data <- data.frame(btype = factor(item_info$btype, ordered = FALSE),
+                          situ = factor(item_info$situ, ordered = FALSE),
+                          mode = factor(item_info$mode, ordered = FALSE))
+
+  fit <- fit_eirt(resp, item_data,
+                  difficulty_formula = ~ btype + situ + mode,
+                  model = "Rasch", item_residuals = TRUE)
+  ref <- lme4::glmer(r2 ~ btype + situ + mode + (1 | id) + (1 | item),
+                     data = VerbAgg, family = stats::binomial(), nAGQ = 1)
+  beta_ref <- lme4::fixef(ref)
+  gamma <- fit$regression_coefficients$difficulty
+
+  rbind(
+    .val_row("eirt_verbagg", "gamma_btype_shout",
+             unname(gamma["btypeshout"]), -unname(beta_ref["btypeshout"]),
+             1e-2),
+    .val_row("eirt_verbagg", "gamma_situ_self",
+             unname(gamma["situself"]), -unname(beta_ref["situself"]), 1e-2),
+    .val_row("eirt_verbagg", "gamma_mode_do",
+             unname(gamma["modedo"]), -unname(beta_ref["modedo"]), 1e-2),
+    .val_row("eirt_verbagg", "sigma_theta",
+             unname(fit$ability_sd),
+             unname(attr(lme4::VarCorr(ref)$id, "stddev")), 1e-2),
+    .val_row("eirt_verbagg", "sigma_item_residual",
+             unname(fit$residual_sd$difficulty),
+             unname(attr(lme4::VarCorr(ref)$item, "stddev")), 1e-2),
+    .val_row("eirt_verbagg", "logLik",
+             fit$logLik, as.numeric(logLik(ref)), 0.1, relative = FALSE)
+  )
+}
+
+
+#' @keywords internal
+.validate_eirt_verbagg_pcm <- function() {
+  if (!requireNamespace("lme4", quietly = TRUE)) {
+    return(NULL)
+  }
+  # Kim & Wilson (2019, Measurement 151:107062): polytomous item explanatory
+  # models on the 3-category verbal aggression responses. References are
+  # their published Stan posterior means (Tables 5-6), so tolerances allow
+  # for Bayesian-vs-ML differences. Their dummy coding: references Want
+  # (mode), Self-to-blame (situ), Shout (btype).
+  data("VerbAgg", package = "lme4", envir = environment())
+  VerbAgg$y3 <- as.integer(VerbAgg$resp)
+  resp3 <- with(VerbAgg, tapply(y3, list(id, item), identity))
+  resp3 <- matrix(as.integer(resp3), nrow = nrow(resp3),
+                  dimnames = dimnames(resp3))
+  item_info <- unique(VerbAgg[, c("item", "btype", "situ", "mode")])
+  item_info <- item_info[match(colnames(resp3),
+                               as.character(item_info$item)), ]
+  item_data <- data.frame(
+    btype = stats::relevel(factor(item_info$btype, ordered = FALSE),
+                           ref = "shout"),
+    situ = stats::relevel(factor(item_info$situ, ordered = FALSE),
+                          ref = "self"),
+    mode = factor(item_info$mode, ordered = FALSE))
+
+  # Their "MFRM + OIE": location-explanatory PCM with random item errors
+  fit <- fit_eirt(resp3, item_data,
+                  difficulty_formula = ~ mode + situ + btype,
+                  model = "PCM", item_residuals = TRUE)
+  gamma <- fit$regression_coefficients$difficulty
+
+  # Their Table 5 agreement check: step difficulties calculated from the
+  # explanatory model vs the directly estimated (descriptive) PCM
+  pcm <- fit_irt(resp3, model = "PCM")
+  delta_pcm <- do.call(rbind, pcm$item_parameters$thresholds)
+  pf <- fit$tmb_obj$env$last.par.best
+  s1 <- matrix(pf[names(pf) == "step_param"], nrow = ncol(resp3))[, 1]
+  b <- fit$item_parameters$difficulty
+  step_cor <- stats::cor(as.vector(delta_pcm), as.vector(cbind(b + s1, b - s1)))
+
+  rbind(
+    .val_row("eirt_verbagg_pcm", "gamma_intercept",
+             unname(gamma["(Intercept)"]), 1.69, 0.05, relative = FALSE),
+    .val_row("eirt_verbagg_pcm", "gamma_mode_do",
+             unname(gamma["modedo"]), 0.49, 0.05, relative = FALSE),
+    .val_row("eirt_verbagg_pcm", "gamma_situ_other",
+             unname(gamma["situother"]), -0.89, 0.05, relative = FALSE),
+    .val_row("eirt_verbagg_pcm", "gamma_btype_curse",
+             unname(gamma["btypecurse"]), -1.38, 0.05, relative = FALSE),
+    .val_row("eirt_verbagg_pcm", "gamma_btype_scold",
+             unname(gamma["btypescold"]), -0.70, 0.05, relative = FALSE),
+    .val_row("eirt_verbagg_pcm", "sigma_theta",
+             unname(fit$ability_sd), 0.97, 0.05, relative = FALSE),
+    .val_row("eirt_verbagg_pcm", "step_difficulty_cor_vs_pcm",
+             step_cor, 0.99, 0.01, relative = FALSE)
   )
 }
 

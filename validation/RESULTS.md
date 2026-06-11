@@ -8,7 +8,7 @@ Reference packages using the same Laplace approximation (lme4 nAGQ=1,
 ordinal::clmm) agree to numerical precision; packages using different
 integration (mirt, ltm) agree within stated tolerances.
 
-**Overall: 61 / 61 checks pass.**
+**Overall: 74 / 74 checks pass.**
 
 | Case | Statistic | GLLAMMR | Reference | Rel. diff | Tolerance | Pass |
 |---|---|---|---|---|---|---|
@@ -64,6 +64,19 @@ integration (mirt, ltm) agree within stated tolerances.
 | twopl_lsat_em | difficulty_item1 | -3.363 | -3.36 | 0.000925 | 0.02 | yes |
 | twopl_lsat_em | discrimination_item1 | 0.8244 | 0.8254 | 0.00112 | 0.03 | yes |
 | twopl_lsat_em | difficulty_mean | -1.997 |    -2 | 0.00118 | 0.02 | yes |
+| eirt_verbagg | gamma_btype_shout | 2.104 | 2.103 | 0.000261 | 0.01 | yes |
+| eirt_verbagg | gamma_situ_self | 1.054 | 1.054 | 0.000329 | 0.01 | yes |
+| eirt_verbagg | gamma_mode_do | 0.707 | 0.7068 | 0.000293 | 0.01 | yes |
+| eirt_verbagg | sigma_theta | 1.372 | 1.372 | 0.000171 | 0.01 | yes |
+| eirt_verbagg | sigma_item_residual | 0.3424 | 0.3423 | 0.000129 | 0.01 | yes |
+| eirt_verbagg | logLik | -4075 | -4075 | 2.35e-07 |  0.1 | yes |
+| eirt_verbagg_pcm | gamma_intercept | 1.674 |  1.69 | 0.00921 | 0.05 | yes |
+| eirt_verbagg_pcm | gamma_mode_do | 0.4778 |  0.49 | 0.0249 | 0.05 | yes |
+| eirt_verbagg_pcm | gamma_situ_other | -0.8735 | -0.89 | 0.0185 | 0.05 | yes |
+| eirt_verbagg_pcm | gamma_btype_curse | -1.369 | -1.38 | 0.00814 | 0.05 | yes |
+| eirt_verbagg_pcm | gamma_btype_scold | -0.6891 |  -0.7 | 0.0155 | 0.05 | yes |
+| eirt_verbagg_pcm | sigma_theta | 0.9593 |  0.97 | 0.0111 | 0.05 | yes |
+| eirt_verbagg_pcm | step_difficulty_cor_vs_pcm | 0.9934 |  0.99 | 0.00344 | 0.01 | yes |
 | large_glmm_binomial | beta_x | 0.4915 | 0.4915 | 1.95e-06 | 0.001 | yes |
 | large_glmm_binomial | sigma_u | 0.7882 | 0.7882 | 2.05e-05 | 0.001 | yes |
 | large_glmm_binomial | logLik | -6.154e+04 | -6.154e+04 | 3.35e-10 |  0.5 | yes |
