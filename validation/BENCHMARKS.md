@@ -20,9 +20,9 @@ All timings are medians of 3 warm runs (single fits, one core).
 | Weibull frailty survival | n=1.5k, 50 grp | 0.21s | survreg (no frailty) 0.04s | n/a* |
 | SEM (2 factors + path) | n=800, 6 ind. | 0.40s | lavaan::sem 0.21s | 1.9x |
 | LCA (3 classes, 3 restarts) | n=1k, 8 items | 2.23s | poLCA (nrep=3) 0.42s | 5.3x |
-| Rasch IRT (method="em") | 1000 x 40 | 0.15s | mirt 0.09s | 1.7x |
-| 2PL IRT (method="em") | 1000 x 20 | 0.15s | mirt 0.19s | **0.8x (faster)** |
-| GRM (method="em") | 1000 x 15 | 0.44s | mirt graded 0.12s | 3.7x |
+| Rasch IRT (em, default) | 1000 x 40 | 0.15s | mirt 0.09s | 1.7x |
+| 2PL IRT (em, default) | 1000 x 20 | 0.15s | mirt 0.19s | **0.8x (faster)** |
+| **Large GRM battery (em)** | **5000 x 100, 5 cat** | **3.0s** | **mirt graded 9.9s** | **0.3x (3.3x faster)** |
 | Rasch IRT (method="laplace") | 1000 x 40 | 3.3s | mirt 0.09s | 37x |
 | GRM (method="laplace") | 1000 x 20 | 9.8s | mirt graded 0.25s | 39x |
 
@@ -35,13 +35,13 @@ the fixed-effects model only.
   NPML are faster than their comparators; lmer's pure-gaussian speed
   (profiled deviance on sparse matrices) is structurally out of reach for
   general-purpose marginal-likelihood machinery.
-- **IRT now has two estimation paths**: fit_irt(method = "em") runs
-  Bock-Aitkin MML-EM (the mirt/TAM algorithm class) at mirt-comparable
-  speed - estimates match mirt to correlation 1.0 and logLik to 1e-4, and
-  the quadrature likelihood is more exact than Laplace (EM logLik >=
-  Laplace logLik on every test). EM also handles short tests where joint
-  Laplace 2PL diverges (5-item LSAT now validates against ltm). The
-  Laplace path (default) remains for consistency with the multi-level
-  machinery, which EM does not cover.
+- **IRT defaults to MML-EM for single-level fits** (Laplace engages
+  automatically for multi-level models or se = TRUE). The polytomous EM
+  core is compiled C++ (E-step posteriors, expected counts, per-item
+  damped-Newton M-steps, safeguarded Ramsay acceleration) on a
+  Bock-Aitkin rectangular quadrature grid; on a 5000-person, 100-item,
+  5-category GRM battery it converges to mirt's logLik to the decimal
+  (cor(a) = 1.000000) in 3.0s vs mirt's 9.9s. EM also handles short tests
+  where joint-Laplace 2PL diverges (5-item LSAT validates against ltm).
 - All timings single fits on one core; estimates cross-validated in
   validation/RESULTS.md (49/49).

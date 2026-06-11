@@ -97,3 +97,26 @@ test_that("EM rejects multi-level specifications clearly", {
                        person_data = pd, random = ~ (1 | g)),
                "single-level")
 })
+
+
+test_that("C++ EM matches mirt exactly on a large polytomous battery", {
+  skip_if_not_installed("mirt")
+  skip_on_cran()   # ~15s with the mirt reference fit
+  set.seed(9)
+  np <- 2000; ni <- 60
+  theta <- rnorm(np)
+  a <- runif(ni, 0.7, 1.8)
+  taus <- t(sapply(rnorm(ni), function(b0) b0 + c(-1.5, -0.5, 0.5, 1.5)))
+  resp <- sapply(1:ni, function(j) {
+    cum <- sapply(1:4, function(k) plogis(a[j] * (theta - taus[j, k])))
+    1L + rowSums(matrix(runif(np), np, 4) < cum)
+  })
+
+  fit <- fit_irt(resp, model = "GRM")        # default: C++ EM
+  ref <- mirt::mirt(as.data.frame(resp), 1, itemtype = "graded",
+                    verbose = FALSE)
+  co <- mirt::coef(ref, simplify = TRUE)$items
+
+  expect_gt(cor(fit$item_parameters$discrimination, co[, "a1"]), 0.99999)
+  expect_equal(fit$logLik, mirt::extract.mirt(ref, "logLik"), tolerance = 1e-6)
+})

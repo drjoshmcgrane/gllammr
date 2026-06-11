@@ -52,3 +52,26 @@ Type objective_function<Type>::operator() ()
 
   return Type(0);
 }
+
+// ---- Routine registration -------------------------------------------------
+// We provide our own R_init (instead of -DTMB_LIB_INIT) so the plain C++
+// EM core registers alongside TMB's routines in the same shared object.
+extern "C" {
+
+SEXP C_em_poly(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+
+static const R_CallMethodDef CallEntries[] = {
+  TMB_CALLDEFS,
+  {"C_em_poly", (DL_FUNC) &C_em_poly, 9},
+  {NULL, NULL, 0}
+};
+
+void R_init_GLLAMMR(DllInfo *dll) {
+  R_registerRoutines(dll, NULL, CallEntries, NULL, NULL);
+  R_useDynamicSymbols(dll, FALSE);
+#ifdef TMB_CCALLABLES
+  TMB_CCALLABLES("GLLAMMR");
+#endif
+}
+
+} // extern "C"

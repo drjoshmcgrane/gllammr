@@ -34,14 +34,14 @@ integration (mirt, ltm) agree within stated tolerances.
 | rasch_lsat | difficulty_item3 | -0.2374 | -0.2374 | 1.37e-05 | 0.01 | yes |
 | rasch_lsat | sigma_theta | 0.7085 | 0.7085 | 1.33e-05 | 0.01 | yes |
 | rasch_lsat | logLik | -2469 | -2469 | 1.07e-09 |  0.5 | yes |
-| twopl_simulated | discrimination_cor |     1 |     1 | 5.25e-07 | 0.005 | yes |
-| twopl_simulated | difficulty_cor |     1 |     1 | 4.12e-08 | 0.005 | yes |
-| twopl_simulated | mean_abs_a_diff | 0.0003103 |     0 | 1.4e+12 | 0.05 | yes |
-| twopl_simulated | mean_abs_b_diff | 0.006818 |     0 | 3.07e+13 | 0.05 | yes |
+| twopl_simulated | discrimination_cor |     1 |     1 | 1.01e-07 | 0.005 | yes |
+| twopl_simulated | difficulty_cor |     1 |     1 | 5.92e-09 | 0.005 | yes |
+| twopl_simulated | mean_abs_a_diff | 0.0001076 |     0 | 4.84e+11 | 0.05 | yes |
+| twopl_simulated | mean_abs_b_diff | 0.0006587 |     0 | 2.97e+12 | 0.05 | yes |
 | lca_carcinoma | logLik | -317.3 | -317.3 | 9.38e-11 |  0.1 | yes |
 | lca_carcinoma | max_class_proportion | 0.501 | 0.5012 | 0.000499 | 0.02 | yes |
-| grm_science | threshold1_item1_std | -4.644 | -4.669 | 0.00544 |  0.1 | yes |
-| grm_science | discrimination_item1_std | 1.049 | 1.042 | 0.00704 | 0.15 | yes |
+| grm_science | threshold1_item1_std | -4.666 | -4.669 | 0.000613 |  0.1 | yes |
+| grm_science | discrimination_item1_std | 1.043 | 1.042 | 0.000724 | 0.15 | yes |
 | gamma_simulated | beta_x | 0.2929 | 0.2929 | 2.64e-07 | 0.001 | yes |
 | gamma_simulated | logLik | -2595 | -2595 | 1.84e-13 |  0.1 | yes |
 | gamma_simulated | sigma_u | 0.4697 | 0.4697 | 2.87e-07 | 0.01 | yes |
@@ -61,9 +61,9 @@ integration (mirt, ltm) agree within stated tolerances.
 | aghq_binomial | beta_x | 0.7828 | 0.7832 | 0.000582 | 0.002 | yes |
 | aghq_binomial | sigma_u | 1.929 | 1.932 | 0.00142 | 0.005 | yes |
 | aghq_binomial | logLik | -342.2 | -342.2 | 1.91e-05 | 0.05 | yes |
-| twopl_lsat_em | difficulty_item1 | -3.389 | -3.36 | 0.00862 | 0.02 | yes |
-| twopl_lsat_em | discrimination_item1 | 0.8167 | 0.8254 | 0.0105 | 0.03 | yes |
-| twopl_lsat_em | difficulty_mean | -1.989 |    -2 | 0.00531 | 0.02 | yes |
+| twopl_lsat_em | difficulty_item1 | -3.363 | -3.36 | 0.000925 | 0.02 | yes |
+| twopl_lsat_em | discrimination_item1 | 0.8244 | 0.8254 | 0.00112 | 0.03 | yes |
+| twopl_lsat_em | difficulty_mean | -1.997 |    -2 | 0.00118 | 0.02 | yes |
 
 ## Known limitations
 

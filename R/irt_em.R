@@ -14,7 +14,7 @@
 #' @keywords internal
 fit_irt_em <- function(response_matrix, model, weights = NULL,
                        mc_items = NULL, quad_points = 61,
-                       max_iter = 500, tol = 1e-6, control = list()) {
+                       max_iter = 500, tol = 1e-4, control = list()) {
 
   n_persons <- nrow(response_matrix)
   n_items <- ncol(response_matrix)
@@ -29,10 +29,14 @@ fit_irt_em <- function(response_matrix, model, weights = NULL,
 
   w_person <- if (is.null(weights)) rep(1, n_persons) else as.numeric(weights)
 
-  # ---- Quadrature for integral against the standard normal ----
-  gh <- gauss_hermite(quad_points)
-  nodes <- sqrt(2) * gh$nodes                  # z_q
-  log_A <- log(gh$weights) - 0.5 * log(pi)     # A_q: sum(A) = 1
+  # ---- Quadrature against the standard normal ----
+  # Equally-spaced rectangular grid with normal-density weights (the
+  # classical Bock-Aitkin / mirt scheme). For long tests the person
+  # posteriors are very sharp; a uniform grid keeps resolution where the
+  # data lives, whereas Gauss-Hermite nodes spread far into the tails.
+  nodes <- seq(-6, 6, length.out = quad_points)
+  log_A <- dnorm(nodes, log = TRUE)
+  log_A <- log_A - log(sum(exp(log_A)))        # normalize: sum(A) = 1
   Q <- quad_points
 
   if (is_poly) {
@@ -41,6 +45,61 @@ fit_irt_em <- function(response_matrix, model, weights = NULL,
     obs_mask <- !is.na(Y)
     K_per_item <- vp$n_categories_per_item
     max_K <- vp$max_categories
+
+    # The entire polytomous EM loop runs in compiled C++ (E-step posteriors,
+    # expected counts, per-item damped-Newton M-steps, common-slope update)
+    model_code <- switch(model, GRM = 1L, PCM = 3L, GPCM = 3L, NRM = 4L)
+    res <- .Call(C_em_poly,
+                 matrix(as.integer(Y), n_persons, n_items),
+                 as.integer(K_per_item),
+                 as.numeric(w_person),
+                 as.numeric(nodes),
+                 as.numeric(log_A),
+                 model_code,
+                 as.integer(free_sigma),
+                 as.integer(max_iter),
+                 as.numeric(tol))
+
+    sigma_hat <- if (free_sigma) res$a[1] else 1
+    thresholds <- if (free_sigma) {
+      lapply(res$thresholds, function(tr) tr * sigma_hat)
+    } else res$thresholds
+    names(thresholds) <- paste0("Item", 1:n_items)
+    discrimination <- if (free_sigma) rep(1, n_items) else res$a
+    names(discrimination) <- paste0("Item", 1:n_items)
+
+    theta_hat <- res$theta * sigma_hat
+    names(theta_hat) <- paste0("Person", seq_len(n_persons))
+
+    n_par <- sum(K_per_item - 1) +
+      (if (model %in% c("GRM", "GPCM", "NRM")) n_items else 0) +
+      as.integer(free_sigma)
+
+    result <- list(
+      model = model,
+      method = "EM",
+      item_parameters = list(
+        thresholds = thresholds,
+        discrimination = discrimination
+      ),
+      person_abilities = theta_hat,
+      ability_sd = sigma_hat,
+      logLik = res$logLik,
+      AIC = -2 * res$logLik + 2 * n_par,
+      BIC = -2 * res$logLik + log(n_persons) * n_par,
+      convergence = list(
+        converged = res$converged,
+        message = if (res$converged) "EM converged" else "Maximum EM iterations reached",
+        iterations = res$iterations
+      ),
+      n_persons = n_persons,
+      n_items = n_items,
+      n_categories_per_item = K_per_item,
+      max_categories = max_K,
+      quad_points = quad_points
+    )
+    class(result) <- c("gllamm_irt_poly", "gllamm_irt", "gllamm")
+    return(result)
   }
 
   # ---- Item probability matrices at the quadrature nodes ----
@@ -217,7 +276,7 @@ fit_irt_em <- function(response_matrix, model, weights = NULL,
     loglik <- sum(w_person * (m_row + log(row_sums)))
     W <- (W / row_sums) * w_person              # weighted posteriors
 
-    if (abs(loglik - loglik_old) < tol * (abs(loglik_old) + 1)) {
+    if (abs(loglik - loglik_old) < tol) {   # absolute, mirt-style
       converged <- TRUE
       break
     }
