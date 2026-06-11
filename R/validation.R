@@ -438,6 +438,21 @@ gllammr_validate <- function(cases = "all", scale = c("standard", "large", "all"
                      data = d)
   pe <- lavaan::parameterEstimates(lav)
 
+  # FIML under MCAR missingness, vs lavaan missing = "fiml"
+  d_na <- d
+  set.seed(72)
+  for (v in c("x1", "y2")) d_na[[v]][sample(nrow(d), 80)] <- NA
+  fit_f <- fit_sem(measurement = list(f1 = ~ x1 + x2 + x3,
+                                      f2 = ~ y1 + y2 + y3),
+                   structural = list(f2 ~ f1), data = d_na,
+                   missing = "fiml")
+  lav_f <- lavaan::sem("f1 =~ x1 + x2 + x3\nf2 =~ y1 + y2 + y3\nf2 ~ f1",
+                       data = d_na, missing = "fiml", fixed.x = FALSE)
+  pe_f <- lavaan::parameterEstimates(lav_f)
+
+  i_se <- fit$param_table$label == "f2~f1"
+  j_se <- pe$lhs == "f2" & pe$op == "~" & pe$rhs == "f1"
+
   rbind(
     .val_row("sem_lavaan", "loading_x2",
              fit$loadings["x2", "f1"],
@@ -446,7 +461,23 @@ gllammr_validate <- function(cases = "all", scale = c("standard", "large", "all"
              fit$loadings["y3", "f2"],
              pe$est[pe$lhs == "f2" & pe$op == "=~" & pe$rhs == "y3"], 5e-3),
     .val_row("sem_lavaan", "structural_f2_f1",
-             fit$structural["f2", "f1"], pe$est[pe$op == "~"], 5e-3)
+             fit$structural["f2", "f1"],
+             pe$est[pe$op == "~"], 5e-3),
+    .val_row("sem_lavaan", "se_structural_f2_f1",
+             fit$param_table$se[i_se], pe$se[j_se], 2e-2),
+    .val_row("sem_lavaan", "cfi",
+             unname(fit$fit_measures["cfi"]),
+             as.numeric(lavaan::fitMeasures(lav, "cfi")), 1e-3),
+    .val_row("sem_lavaan", "rmsea",
+             unname(fit$fit_measures["rmsea"]),
+             as.numeric(lavaan::fitMeasures(lav, "rmsea")), 0.01,
+             relative = FALSE),
+    .val_row("sem_lavaan", "fiml_logLik",
+             fit_f$logLik, as.numeric(lavaan::fitMeasures(lav_f, "logl")),
+             0.01, relative = FALSE),
+    .val_row("sem_lavaan", "fiml_structural_f2_f1",
+             fit_f$structural["f2", "f1"],
+             pe_f$est[pe_f$lhs == "f2" & pe_f$op == "~"], 5e-3)
   )
 }
 

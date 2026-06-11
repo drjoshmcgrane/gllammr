@@ -49,6 +49,18 @@ fit_mixed <- function(formulas, random, data, start = NULL, control = list()) {
   if (!identical(deparse(rt$formula), "~1")) {
     stop("Only a shared random intercept (1 | group) is currently supported")
   }
+
+  # Listwise deletion over all model variables (the joint likelihood
+  # currently shares one row index across outcomes)
+  used_vars <- unique(c(unlist(lapply(formulas, all.vars)), rt$grouping))
+  used_vars <- intersect(used_vars, names(data))
+  keep <- stats::complete.cases(data[, used_vars, drop = FALSE])
+  if (!all(keep)) {
+    warning("Removing ", sum(!keep),
+            " rows with missing values in model variables (listwise)")
+    data <- data[keep, , drop = FALSE]
+  }
+
   group_factor <- factor(data[[rt$grouping[1]]])
   groups <- as.integer(group_factor) - 1L
   n_groups <- nlevels(group_factor)

@@ -169,6 +169,27 @@ make_model_matrices <- function(parsed_formula, data) {
   resp_vars <- all.vars(ff[[2L]])
   has_response <- length(resp_vars) == 0 || all(resp_vars %in% names(data))
 
+  # ---- Listwise deletion over ALL formula variables, up front ----
+  # model.frame()/model.matrix() drop NA rows for X and y on their own,
+  # but the random-effects design and grouping factor are built from
+  # `data` directly: filtering once here keeps every piece aligned.
+  used_vars <- if (has_response) all.vars(ff) else all.vars(ff[[3L]])
+  for (rt in parsed_formula$random_terms) {
+    used_vars <- union(used_vars, all.vars(rt$formula))
+    used_vars <- union(used_vars, rt$grouping_vars %||% rt$grouping)
+  }
+  used_vars <- intersect(used_vars, names(data))
+  n_original <- nrow(data)
+  complete_idx <- which(stats::complete.cases(data[, used_vars,
+                                                   drop = FALSE]))
+  if (length(complete_idx) < nrow(data)) {
+    if (has_response) {
+      warning("Removing ", nrow(data) - length(complete_idx),
+              " rows with missing values in model variables (listwise)")
+    }
+    data <- data[complete_idx, , drop = FALSE]
+  }
+
   if (has_response) {
     # Fixed effects design matrix
     X <- model.matrix(ff, data = data)
@@ -220,8 +241,28 @@ make_model_matrices <- function(parsed_formula, data) {
     n_fixed = ncol(X),
     n_random_terms = length(Z_list),
     n_random_coefs = n_random_coefs,
-    n_groups = sapply(groups_list, function(g) length(unique(g)))
+    n_groups = sapply(groups_list, function(g) length(unique(g))),
+    complete_idx = complete_idx,
+    n_original = n_original
   )
+}
+
+
+#' Align observation weights with listwise-deleted model data
+#'
+#' make_model_matrices() drops rows with missing values in any model
+#' variable; user-supplied weights validated against the original data
+#' length must be subset to the retained rows. Level-specific weight
+#' lists are passed through untouched (they reference data columns and
+#' are resolved downstream).
+#'
+#' @keywords internal
+align_weights <- function(weights, model_data) {
+  if (is.null(weights) || is.list(weights)) return(weights)
+  if (length(weights) > model_data$n_obs) {
+    return(weights[model_data$complete_idx])
+  }
+  weights
 }
 
 

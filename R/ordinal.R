@@ -129,7 +129,7 @@ fit_ordinal <- function(formula, data, link = c("logit", "probit", "acl",
   if (is.null(weights)) {
     weights_vec <- rep(1.0, model_data$n_obs)
   } else {
-    weights_vec <- as.numeric(weights)
+    weights_vec <- as.numeric(align_weights(weights, model_data))
   }
 
   # Cumulative-link models: the thresholds carry the location, so the
@@ -380,7 +380,8 @@ fit_ordinal_multi <- function(formula, data, link, link_code, parsed,
   # Thresholds carry the location: drop the intercept
   X_fixed <- drop_intercept_column(as.matrix(model_data$X))
   n_fixed <- ncol(X_fixed)
-  weights_vec <- if (is.null(weights)) rep(1.0, n_obs) else as.numeric(weights)
+  weights_vec <- if (is.null(weights)) rep(1.0, n_obs)
+                 else as.numeric(align_weights(weights, model_data))
 
   tmb_data <- list(
     y = as.integer(y_numeric),

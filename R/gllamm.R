@@ -41,6 +41,18 @@
 #'   approximation).
 #' @param ... Additional arguments (reserved for future use).
 #'
+#' @section Missing data:
+#' Formula-based models (GLMMs, ordinal, multinomial, survival, NPML,
+#' mixed responses) listwise-delete rows with missing values in any model
+#' variable, with a warning; supplied weights are aligned automatically.
+#' Matrix-response latent variable models (\code{irt()}, \code{lca()},
+#' \code{cdm()}, and the corresponding \code{fit_*} functions) use all
+#' observed responses - item-level missingness is handled under the MAR
+#' assumption by the marginal likelihood itself. \code{fit_sem} offers
+#' full-information maximum likelihood via \code{missing = "fiml"}.
+#' \code{fit_rank} treats missing ranks as deliberately unranked
+#' alternatives (partial rankings), not as missing data.
+#'
 #' @return An object of class \code{gllamm} with components:
 #'   \item{coefficients}{List with \code{fixed} (fixed effects coefficients)
 #'     and \code{random_var} (random effects variance components)}

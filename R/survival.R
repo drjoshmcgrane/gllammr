@@ -52,13 +52,13 @@ fit_survival <- function(formula, data,
     stop("Variables '", time_var, "' and '", event_var,
          "' must be present in data")
   }
-  time <- as.numeric(data[[time_var]])
-  event <- as.integer(data[[event_var]])
-  if (any(time <= 0, na.rm = TRUE)) {
-    stop("Survival times must be positive")
-  }
-  if (!all(event %in% c(0L, 1L))) {
-    stop("Event indicator must be 0 (censored) or 1 (event)")
+  # The event indicator is not part of the design formula, so listwise-
+  # delete rows missing it up front; the remaining model variables are
+  # handled inside make_model_matrices
+  if (anyNA(data[[event_var]])) {
+    warning("Removing ", sum(is.na(data[[event_var]])),
+            " rows with a missing event indicator (listwise)")
+    data <- data[!is.na(data[[event_var]]), , drop = FALSE]
   }
 
   # Rebuild a formula with the time variable as response so the standard
@@ -73,6 +73,16 @@ fit_survival <- function(formula, data,
   }
   model_data <- make_model_matrices(parsed, data)
 
+  # Extract time/event aligned with the (possibly listwise-deleted) rows
+  time <- as.numeric(data[[time_var]])[model_data$complete_idx]
+  event <- as.integer(data[[event_var]])[model_data$complete_idx]
+  if (any(time <= 0)) {
+    stop("Survival times must be positive")
+  }
+  if (!all(event %in% c(0L, 1L))) {
+    stop("Event indicator must be 0 (censored) or 1 (event)")
+  }
+
   if (model_data$n_random_terms != 1) {
     stop("Currently only a single random-effects term is supported for ",
          "survival models")
@@ -85,10 +95,10 @@ fit_survival <- function(formula, data,
   if (is.null(weights)) {
     weights_vec <- rep(1.0, model_data$n_obs)
   } else {
-    if (length(weights) != model_data$n_obs) {
+    weights_vec <- as.numeric(align_weights(weights, model_data))
+    if (length(weights_vec) != model_data$n_obs) {
       stop("weights length must match the number of observations")
     }
-    weights_vec <- as.numeric(weights)
   }
 
   tmb_data <- list(

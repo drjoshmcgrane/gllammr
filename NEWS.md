@@ -2,6 +2,27 @@
 
 ## Post-1.2.0 development
 
+* SEM overhaul (`fit_sem`): exogenous latent variables now covary freely
+  (previously silently orthogonal - a plain two-factor CFA was
+  misspecified); MIMIC models (structural regressions on observed
+  covariates, likelihood-equivalent to lavaan with `fixed.x = FALSE`);
+  standard errors for every parameter (numerical observed information +
+  delta method); the standard fit-index battery (chisq, CFI, TLI, RMSEA
+  with 90% CI, SRMR - matching lavaan to 4 decimals); full-information
+  maximum likelihood for missing data (`missing = "fiml"`, pattern-based,
+  with an EM-estimated saturated model for fit indices); a standardized
+  (std.all) solution; and a real `summary()` method. The legacy Laplace
+  path warns that it treats exogenous factors as orthogonal.
+* Package-wide missing-data policy, audited and tested: formula-based
+  fitters (GLMM, ordinal, multinomial, survival, NPML, mixed responses)
+  now listwise-delete rows with missing values in any model variable -
+  with a warning and automatic weight alignment. Previously the response
+  and fixed-effect design dropped NA rows while the random-effects
+  design and grouping factor kept them, silently misaligning ordinal,
+  survival, and NPML fits. Matrix-response latent variable models
+  (IRT/EIRT/LCA/CDM) already used all observed responses (MAR) and are
+  unchanged; `fit_rank` keeps its partial-ranking semantics for missing
+  ranks.
 * Multiple (crossed/nested) random-effects terms for ordinal and
   multinomial models: `fit_ordinal(y ~ x + (1 | rater) + (1 | item))`
   works for the logit, probit, adjacent-category, and continuation-ratio

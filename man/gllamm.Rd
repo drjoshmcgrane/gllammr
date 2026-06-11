@@ -100,6 +100,20 @@ The formula syntax follows lme4 conventions:
   \item \code{(1 | group1) + (1 | group2)} - Crossed random effects
 }
 }
+\section{Missing data}{
+
+Formula-based models (GLMMs, ordinal, multinomial, survival, NPML,
+mixed responses) listwise-delete rows with missing values in any model
+variable, with a warning; supplied weights are aligned automatically.
+Matrix-response latent variable models (\code{irt()}, \code{lca()},
+\code{cdm()}, and the corresponding \code{fit_*} functions) use all
+observed responses - item-level missingness is handled under the MAR
+assumption by the marginal likelihood itself. \code{fit_sem} offers
+full-information maximum likelihood via \code{missing = "fiml"}.
+\code{fit_rank} treats missing ranks as deliberately unranked
+alternatives (partial rankings), not as missing data.
+}
+
 \examples{
 \dontrun{
 # Basic random intercept model

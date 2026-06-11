@@ -9,6 +9,8 @@ fit_sem(
   structural = NULL,
   data,
   method = c("ml", "laplace"),
+  missing = c("listwise", "fiml"),
+  se = TRUE,
   start = NULL,
   control = list()
 )
@@ -18,36 +20,61 @@ fit_sem(
 variable, e.g. \code{list(ability = ~ y1 + y2 + y3,
 motivation = ~ y4 + y5 + y6)}.}
 
-\item{structural}{Optional list of formulas among latent variables, e.g.
-\code{list(motivation ~ ability)}. Must be recursive (no cycles).}
+\item{structural}{Optional list of formulas regressing latent variables
+on other latent variables and/or observed covariates, e.g.
+\code{list(motivation ~ ability + ses)}. The latent part must be
+recursive (no cycles); observed covariates are carried as
+perfectly-measured exogenous variables (the joint-normal formulation,
+equivalent to \code{lavaan} with \code{fixed.x = FALSE}).}
 
-\item{data}{Data frame with the indicator variables}
+\item{data}{Data frame with the indicator (and covariate) variables}
 
 \item{method}{Estimation method: "ml" (default; Wishart maximum
-likelihood on the sample covariance matrix, the lavaan/LISREL
-approach - fitting cost independent of N) or "laplace" (full-data
-TMB Laplace estimation). Both give the same ML estimates for
-complete data.}
+likelihood on the sample covariance for complete data, casewise FIML
+under \code{missing = "fiml"}) or "laplace" (legacy full-data TMB
+path; latent-only structural models, uncorrelated exogenous factors,
+complete data).}
+
+\item{missing}{"listwise" (default) or "fiml" (full-information ML
+over all observed values, assuming MAR)}
+
+\item{se}{Compute standard errors (default TRUE)}
 
 \item{start}{Optional starting values (laplace method only)}
 
 \item{control}{Optimization control list}
 }
 \value{
-An object of class \code{gllamm_sem}
+An object of class \code{gllamm_sem}. Key components:
+  \code{param_table} (estimates, SEs, z, p), \code{fit_measures}
+  (chisq, df, CFI, TLI, RMSEA with 90\% CI, SRMR),
+  \code{latent_covariance} (exogenous block free; disturbances
+  diagonal), \code{standardized} (std.all solution), \code{loadings},
+  \code{structural}, \code{factor_scores}, \code{logLik}/\code{AIC}/
+  \code{BIC}.
 }
 \description{
 Fits a SEM with continuous indicators: a measurement model defining each
 latent variable by its indicators (marker-variable identification: the
-first indicator's loading is fixed at 1) and an optional recursive
-structural model of regressions among latent variables.
+first indicator's loading is fixed at 1), an optional recursive
+structural model of regressions among latent variables and on observed
+covariates (MIMIC models), freely correlated exogenous latent
+variables, full-information maximum likelihood for missing data, and
+the standard fit-index battery.
+}
+\details{
+Exogenous latent variables (those with no incoming structural paths)
+covary freely, as in lavaan. Likelihood-equivalent to lavaan with
+\code{fixed.x = FALSE} when covariates are present (covariate moments
+are modeled jointly), and to default lavaan otherwise.
 }
 \examples{
 \dontrun{
 fit <- fit_sem(
   measurement = list(f1 = ~ x1 + x2 + x3, f2 = ~ y1 + y2 + y3),
-  structural = list(f2 ~ f1),
-  data = d)
+  structural = list(f2 ~ f1 + w),
+  data = d, missing = "fiml")
+summary(fit)
 }
 
 }

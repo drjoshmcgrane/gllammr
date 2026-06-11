@@ -2,16 +2,47 @@
 % Please edit documentation in R/sem_ml.R
 \name{fit_sem_ml}
 \alias{fit_sem_ml}
-\title{Covariance-based ML estimation for SEM (Wishart likelihood)}
+\title{Covariance-based ML estimation for SEM (Wishart / FIML likelihood)}
 \usage{
-fit_sem_ml(Y, lambda_pattern, beta_pattern, control = list())
+fit_sem_ml(
+  Y,
+  lambda_pattern,
+  beta_pattern,
+  theta_zero = NULL,
+  missing = c("listwise", "fiml"),
+  se = TRUE,
+  control = list()
+)
+}
+\arguments{
+\item{Y}{Observed-variable matrix (indicators first, then any observed
+structural covariates appended by the caller)}
+
+\item{lambda_pattern}{p x q loading pattern (0 zero / 1 free / 2 fixed 1)}
+
+\item{beta_pattern}{q x q structural pattern (1 = free path row ~ col)}
+
+\item{theta_zero}{Logical p-vector: TRUE for rows whose residual
+variance is fixed at 0 (covariate pseudo-indicators)}
+
+\item{missing}{"listwise" or "fiml"}
+
+\item{se}{Compute standard errors (numerical Hessian; default TRUE)}
+
+\item{control}{Optimization control list}
 }
 \description{
-Fits the measurement + recursive structural model from the sample
-covariance matrix by minimizing the ML discrepancy
-F = log|Sigma(theta)| + tr(S Sigma^-1) - log|S| - p,
-the lavaan/LISREL approach. The data reduce to S and the mean vector, so
-fitting cost is independent of N. For complete data this yields the same
-ML estimates as the full-data marginal likelihood.
+Fits the measurement + recursive structural model. With complete data
+the data reduce to the sample covariance matrix and mean vector
+(Wishart ML, the lavaan/LISREL approach - fitting cost independent of
+N); with \code{missing = "fiml"} the casewise (missing-pattern) normal
+likelihood is maximized directly, with means as free parameters.
+}
+\details{
+Model structure: y = nu + Lambda eta + epsilon; eta = B eta + zeta.
+Exogenous latent variables (no incoming B paths - including the
+pseudo-latents that carry observed structural covariates) have a free
+covariance matrix parameterized by its Cholesky factor; endogenous
+disturbances are uncorrelated.
 }
 \keyword{internal}

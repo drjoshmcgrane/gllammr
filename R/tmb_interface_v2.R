@@ -31,7 +31,15 @@ fit_tmb_gllamm_v2 <- function(model_data, family, random_terms, start_params = N
   # Convert Z to sparse matrix for efficiency
   Z_sparse <- Matrix::Matrix(model_data$Z[[1]], sparse = TRUE)
 
-  # Level-1 and level-2 (survey) weights
+  # Level-1 and level-2 (survey) weights. Vector weights are aligned with
+  # the listwise-deleted rows; level-specific weight lists require
+  # complete data (no row-dropping has happened).
+  weights <- align_weights(weights, model_data)
+  if (is.list(weights) && !is.null(model_data$n_original) &&
+      model_data$n_obs < model_data$n_original) {
+    stop("Level-specific weights require complete data for the model ",
+         "variables; remove incomplete rows first")
+  }
   w <- parse_level_weights(weights, model_data$n_obs,
                            model_data$groups[[1]], model_data$n_groups[1])
   weights_vec <- w$level1
@@ -359,7 +367,7 @@ fit_tmb_gllamm_multi <- function(model_data, family, random_terms,
   if (is.null(weights)) {
     weights_vec <- rep(1.0, n_obs)
   } else {
-    weights_vec <- as.numeric(weights)
+    weights_vec <- as.numeric(align_weights(weights, model_data))
   }
 
   tmb_data <- list(

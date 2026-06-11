@@ -29,7 +29,7 @@ fit_tmb_gllamm <- function(model_data, family, start_params = NULL, control = li
   if (is.null(weights)) {
     weights_vec <- rep(1.0, model_data$n_obs)
   } else {
-    weights_vec <- as.numeric(weights)
+    weights_vec <- as.numeric(align_weights(weights, model_data))
   }
 
   # Prepare TMB data

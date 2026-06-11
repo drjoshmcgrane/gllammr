@@ -51,7 +51,7 @@ fit_npml <- function(formula, data, k = 2, family = stats::gaussian(),
   X <- drop_intercept_column(as.matrix(model_data$X))
 
   weights_vec <- if (is.null(weights)) rep(1.0, model_data$n_obs)
-                 else as.numeric(weights)
+                 else as.numeric(align_weights(weights, model_data))
 
   tmb_data <- list(
     y = as.numeric(model_data$y),
