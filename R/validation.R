@@ -16,7 +16,7 @@
 #'   "survival_exponential", "sem_lavaan", "lca_polytomous",
 #'   "npml_binomial", "aghq_binomial", "twopl_lsat_em", "eirt_verbagg",
 #'   "eirt_verbagg_pcm", "cdm_fraction_dina", "ordinal_crossed",
-#'   "dif_logistic".
+#'   "dif_logistic", "dif_irt_glmm".
 #' @param scale "standard" (default) runs the canonical-dataset cases;
 #'   "large" runs the large-scale tier (n in the tens of thousands, long
 #'   item batteries - sizes where quadrature grids and tolerances can fail
@@ -44,7 +44,8 @@ gllammr_validate <- function(cases = "all", scale = c("standard", "large", "all"
                  "gamma_simulated", "survival_exponential", "sem_lavaan",
                  "lca_polytomous", "npml_binomial", "aghq_binomial",
                  "twopl_lsat_em", "eirt_verbagg", "eirt_verbagg_pcm",
-                 "cdm_fraction_dina", "ordinal_crossed", "dif_logistic")
+                 "cdm_fraction_dina", "ordinal_crossed", "dif_logistic",
+                 "dif_irt_glmm")
   # Large-scale tier: numerical behavior at sizes where quadrature grids,
   # tolerances, and interpreted-loop costs can fail silently
   large_cases <- c("large_glmm_binomial", "large_grm_battery",
@@ -754,6 +755,54 @@ gllammr_validate <- function(cases = "all", scale = c("standard", "large", "all"
     .val_row("dif_logistic", "stat_item3",
              fit$dif_results$chisq[fit$dif_results$item == 3],
              unname(ref$Logistik[3]), 0.15)
+  )
+}
+
+
+#' @keywords internal
+.validate_dif_irt_glmm <- function() {
+  if (!requireNamespace("lme4", quietly = TRUE)) {
+    return(NULL)
+  }
+  # Confirmatory IRT-LR DIF: for the Rasch model with uniform DIF, the
+  # compared marginal likelihoods are exactly those of the long-format
+  # GLMM y ~ 0 + item + z + item_j:z + (1|person) under the same Laplace
+  # approximation (the De Boeck & Wilson formulation).
+  set.seed(55)
+  n <- 600; ni <- 8
+  g <- rep(c(0, 1), length.out = n)
+  theta <- rnorm(n, mean = -0.5 * g)
+  b <- seq(-1.5, 1.5, length.out = ni)
+  resp <- sapply(seq_len(ni), function(j) {
+    eta <- theta - b[j]
+    if (j == 4) eta <- eta - 0.8 * g
+    rbinom(n, 1, plogis(eta))
+  })
+  grp <- factor(ifelse(g == 1, "B", "A"))
+
+  fit <- dif_irt(resp, dif = grp, items = 4,
+                 anchors = setdiff(1:ni, 4), model = "Rasch")
+
+  long <- data.frame(y = as.vector(resp),
+                     item = factor(rep(1:ni, each = n)),
+                     id = factor(rep(1:n, times = ni)),
+                     g = rep(g, ni))
+  long$dif4 <- as.integer(long$item == 4) * long$g
+  m1 <- lme4::glmer(y ~ 0 + item + g + dif4 + (1 | id), data = long,
+                    family = stats::binomial(), nAGQ = 1)
+  m0 <- lme4::glmer(y ~ 0 + item + g + (1 | id), data = long,
+                    family = stats::binomial(), nAGQ = 1)
+  lr_glmer <- 2 * (as.numeric(logLik(m1)) - as.numeric(logLik(m0)))
+
+  rbind(
+    .val_row("dif_irt_glmm", "lr_statistic_item4",
+             fit$dif_results$chisq[1], lr_glmer, 0.05, relative = FALSE),
+    .val_row("dif_irt_glmm", "delta_item4",
+             fit$dif_results$delta_groupB[1],
+             unname(lme4::fixef(m1)["dif4"]), 0.02, relative = FALSE),
+    .val_row("dif_irt_glmm", "impact_gamma",
+             fit$impact$gamma[1], unname(lme4::fixef(m1)["g"]), 0.05,
+             relative = FALSE)
   )
 }
 

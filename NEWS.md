@@ -2,6 +2,18 @@
 
 ## Post-1.2.0 development
 
+* New `dif_irt()`: confirmatory model-based DIF (IRT-LR; Thissen et al.)
+  as the companion to the `dif_test` screening tests. DIF parameters are
+  item-by-covariate interactions inside the joint marginal-ML Rasch/2PL
+  model, with a latent-regression impact term separating true ability
+  differences from item bias; supports multiple DIF variables and
+  interactions via the same formula interface, uniform and (2PL)
+  nonuniform DIF, per-item LR tests or joint-model Wald tests with
+  anchors, and purified IRT-LR. For the Rasch model with uniform DIF the
+  tests are likelihood-identical to the De Boeck & Wilson long-format
+  GLMM (`y ~ 0 + item + z + item_j:z + (1|person)`), verified against
+  glmer (validation case `dif_irt_glmm`). Estimated DIF effects are
+  reported on the logit metric with standard errors.
 * DIF analysis rewritten (`dif_test`): logistic-regression DIF with a
   latent (EAP) or observed-score matching criterion, a formula interface
   for **multiple DIF variables and their interactions**

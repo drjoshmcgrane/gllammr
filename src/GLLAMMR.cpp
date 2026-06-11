@@ -11,6 +11,7 @@
 #include "include/gllamm_poisson.hpp"
 #include "include/gllamm_ordinal.hpp"
 #include "include/gllamm_ordinal_multi.hpp"
+#include "include/gllamm_irt_dif.hpp"
 #include "include/gllamm_multinomial_multi.hpp"
 #include "include/gllamm_multinomial.hpp"
 #include "include/gllamm_irt.hpp"
@@ -41,6 +42,7 @@ Type objective_function<Type>::operator() ()
   else if (model_name == "multinomial")         return gllamm_multinomial(this);
   else if (model_name == "multinomial_multi")   return gllamm_multinomial_multi(this);
   else if (model_name == "irt")                 return gllamm_irt(this);
+  else if (model_name == "irt_dif")             return gllamm_irt_dif(this);
   else if (model_name == "irt_multilevel")      return gllamm_irt_multilevel(this);
   else if (model_name == "irt_poly")            return gllamm_irt_poly(this);
   else if (model_name == "irt_poly_multilevel") return gllamm_irt_poly_multilevel(this);

@@ -18,7 +18,7 @@ Available: "gaussian_sleepstudy", "binomial_toenail",
 "survival_exponential", "sem_lavaan", "lca_polytomous",
 "npml_binomial", "aghq_binomial", "twopl_lsat_em", "eirt_verbagg",
 "eirt_verbagg_pcm", "cdm_fraction_dina", "ordinal_crossed",
-"dif_logistic".}
+"dif_logistic", "dif_irt_glmm".}
 
 \item{scale}{"standard" (default) runs the canonical-dataset cases;
 "large" runs the large-scale tier (n in the tens of thousands, long
