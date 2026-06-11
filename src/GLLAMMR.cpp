@@ -59,10 +59,12 @@ Type objective_function<Type>::operator() ()
 extern "C" {
 
 SEXP C_em_poly(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP C_em_cdm(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 
 static const R_CallMethodDef CallEntries[] = {
   TMB_CALLDEFS,
   {"C_em_poly", (DL_FUNC) &C_em_poly, 9},
+  {"C_em_cdm", (DL_FUNC) &C_em_cdm, 10},
   {NULL, NULL, 0}
 };
 

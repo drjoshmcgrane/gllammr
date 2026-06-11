@@ -11,7 +11,10 @@
   probabilities (guess/slip for DINA/DINO), profile prevalences, and
   per-person marginal attribute-mastery posteriors. Validated against
   CDM::din and CDM::gdina (logLik to ~1e-4 on simulated G-DINA; classic
-  fraction-subtraction DINA matched on logLik and guess/slip).
+  fraction-subtraction DINA matched on logLik and guess/slip). The EM
+  loop runs in compiled C++ on BLAS level-3 kernels with SQUAREM
+  acceleration (Varadhan & Roland 2008) - the 256-profile
+  fraction-subtraction DINA fits in ~0.5s per start.
 * `fit_lca()` gains order-restricted latent class models. Total orders
   (`ordering = "increasing"`; Croon's 1990 ordered LCM) constrain every
   binary item probability and gaussian indicator mean to be nondecreasing

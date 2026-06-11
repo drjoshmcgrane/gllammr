@@ -47,8 +47,8 @@ M-step, so estimation remains closed-form EM.}
 
 \item{weights}{Optional vector of case weights (one per person)}
 
-\item{control}{List: \code{n_starts} (default 5), \code{max_iter}
-(default 1000), \code{tol} (default 1e-8)}
+\item{control}{List: \code{n_starts} (default 3), \code{max_iter}
+(default 2000), \code{tol} (default 1e-7, absolute logLik change)}
 }
 \value{
 An object of class \code{gllamm_cdm} with components including

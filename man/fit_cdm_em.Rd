@@ -13,17 +13,19 @@ fit_cdm_em(
   group_levels,
   monotone = TRUE,
   weights = NULL,
-  n_starts = 5,
-  max_iter = 1000,
-  tol = 1e-08
+  n_starts = 3,
+  max_iter = 2000,
+  tol = 1e-07
 )
 }
 \description{
-Marginal ML for CDMs: the E-step is the standard finite-mixture
-posterior over attribute profiles (BLAS matrix products); the M-step
-pools expected counts over each item's reduced-profile groups (the
-closed-form weighted proportion) and, when monotone, projects with
-isotonic regression over the reduced-profile lattice. Safeguarded
-Ramsay acceleration as in \code{fit_lca_em}.
+Marginal ML for CDMs. The entire EM loop runs in compiled C++
+(src/em_cdm.cpp): one pass per iteration accumulates the
+person-by-profile posterior and the group-pooled expected counts; the
+M-step is the closed-form weighted proportion per reduced-profile
+group, isotonically projected over the group lattice when monotone;
+safeguarded Ramsay acceleration monitors the true marginal
+log-likelihood. R draws the random starting values (one C call per
+start) and keeps the best solution.
 }
 \keyword{internal}

@@ -33,8 +33,8 @@
 #'   weighted isotonic regression over the reduced-profile lattice in the
 #'   M-step, so estimation remains closed-form EM.
 #' @param weights Optional vector of case weights (one per person)
-#' @param control List: \code{n_starts} (default 5), \code{max_iter}
-#'   (default 1000), \code{tol} (default 1e-8)
+#' @param control List: \code{n_starts} (default 3), \code{max_iter}
+#'   (default 2000), \code{tol} (default 1e-7, absolute logLik change)
 #'
 #' @return An object of class \code{gllamm_cdm} with components including
 #'   \code{item_params} (per item, P(Y = 1) by reduced profile; for
@@ -260,34 +260,36 @@ fit_cdm <- function(Y, Q, model = c("gdina", "dina", "dino"),
 
 #' EM estimation for cognitive diagnosis models
 #'
-#' Marginal ML for CDMs: the E-step is the standard finite-mixture
-#' posterior over attribute profiles (BLAS matrix products); the M-step
-#' pools expected counts over each item's reduced-profile groups (the
-#' closed-form weighted proportion) and, when monotone, projects with
-#' isotonic regression over the reduced-profile lattice. Safeguarded
-#' Ramsay acceleration as in \code{fit_lca_em}.
+#' Marginal ML for CDMs. The entire EM loop runs in compiled C++
+#' (src/em_cdm.cpp): one pass per iteration accumulates the
+#' person-by-profile posterior and the group-pooled expected counts; the
+#' M-step is the closed-form weighted proportion per reduced-profile
+#' group, isotonically projected over the group lattice when monotone;
+#' safeguarded Ramsay acceleration monitors the true marginal
+#' log-likelihood. R draws the random starting values (one C call per
+#' start) and keeps the best solution.
 #'
 #' @keywords internal
 fit_cdm_em <- function(Y, profiles, group_id, n_groups, group_edges,
                        group_levels, monotone = TRUE, weights = NULL,
-                       n_starts = 5, max_iter = 1000, tol = 1e-8) {
+                       n_starts = 3, max_iter = 2000, tol = 1e-7) {
   n_obs <- nrow(Y)
   n_items <- ncol(Y)
   K <- nrow(profiles)
-  obs_mask <- !is.na(Y)
   w <- if (is.null(weights)) rep(1, n_obs) else as.numeric(weights)
 
-  Yb <- ifelse(obs_mask, Y, 0)
-  Mb <- obs_mask * 1
-  complete <- all(obs_mask)
-
-  # Class membership lists per item group (M-step pooling)
-  grp_members <- lapply(seq_len(n_items), function(j) {
-    lapply(seq_len(n_groups[j]), function(g) which(group_id[j, ] == g))
+  storage.mode(Y) <- "double"
+  storage.mode(group_id) <- "integer"
+  edges <- lapply(group_edges, function(e) {
+    storage.mode(e) <- "integer"
+    e
   })
 
+  obs_mask <- !is.na(Y)
+  base <- colSums(ifelse(obs_mask, Y, 0)) / pmax(colSums(obs_mask), 1)
+  base <- pmin(pmax(base, 0.1), 0.9)
+
   init_params <- function() {
-    base <- pmin(pmax(colSums(Yb) / pmax(colSums(Mb), 1), 0.1), 0.9)
     items <- vector("list", n_items)
     for (j in seq_len(n_items)) {
       # Monotone-friendly starts: spread the groups by their lattice level
@@ -303,138 +305,19 @@ fit_cdm_em <- function(Y, profiles, group_id, n_groups, group_edges,
     list(pi = pi0 / sum(pi0), items = items)
   }
 
-  expand_probs <- function(p) {
-    Pf <- matrix(0, n_items, K)
-    for (j in seq_len(n_items)) {
-      Pf[j, ] <- p$items[[j]][group_id[j, ]]
-    }
-    Pf
-  }
-
-  class_loglik <- function(p) {
-    Pf <- expand_probs(p)
-    lq <- log1p(-Pf)
-    if (complete) {
-      # One BLAS product: y*log(p) + (1-y)*log(1-p) = y*logit(p) + log(1-p)
-      sweep(Yb %*% (log(Pf) - lq), 2, colSums(lq), "+")
-    } else {
-      Yb %*% log(Pf) + (Mb - Yb) %*% lq
-    }
-  }
-
-  row_max <- function(M) {
-    m <- M[, 1]
-    for (k in 2:ncol(M)) m <- pmax(m, M[, k])
-    m
-  }
-
-  flatten <- function(p) c(log(p$pi), qlogis(unlist(p$items)))
-  unflatten <- function(v, p) {
-    pi_raw <- exp(v[1:K]); p$pi <- pi_raw / sum(pi_raw)
-    k <- K
-    for (j in seq_len(n_items)) {
-      G <- n_groups[j]
-      pj <- plogis(v[k + seq_len(G)])
-      if (monotone && nrow(group_edges[[j]])) {
-        # Project extrapolations back into the constraint set
-        pj <- .isotonic_poset(pj, rep(1, G), group_edges[[j]])
-      }
-      p$items[[j]] <- pmin(pmax(pj, 1e-6), 1 - 1e-6)
-      k <- k + G
-    }
-    p
-  }
-
-  run_em <- function(p) {
-    loglik_old <- -Inf
-    loglik <- NA_real_
-    converged <- FALSE
-    iter <- 0
-    th_before <- NULL
-    step_prev_norm <- -1
-    accelerated <- FALSE
-    p_revert <- NULL
-
-    for (iter in seq_len(max_iter)) {
-      # ---- E-step ----
-      Lw <- sweep(class_loglik(p), 2, log(p$pi), "+")
-      m <- row_max(Lw)
-      W <- exp(Lw - m)
-      rs <- rowSums(W)
-      loglik <- sum(w * (m + log(rs)))
-      W <- (W / rs) * w
-
-      if (accelerated && loglik < loglik_old) {
-        p <- p_revert
-        accelerated <- FALSE
-        next
-      }
-      accelerated <- FALSE
-
-      if (abs(loglik - loglik_old) < tol) {
-        converged <- TRUE
-        break
-      }
-      loglik_old <- loglik
-      th_before <- flatten(p)
-
-      # ---- closed-form M-steps ----
-      # Floor pi: with 2^A profiles many prevalences are legitimately ~0,
-      # and an exact zero makes log(pi) infinite (breaks acceleration)
-      Nk <- colSums(W)
-      pi_new <- Nk / sum(Nk)
-      pi_new[pi_new < 1e-12] <- 1e-12
-      p$pi <- pi_new / sum(pi_new)
-      num <- crossprod(Yb, W)                      # n_items x K
-      # With complete data the per-class denominator is just Nk for every
-      # item; the second crossprod is only needed under missingness
-      den <- if (complete) NULL else crossprod(Mb, W)
-      for (j in seq_len(n_items)) {
-        dj <- if (complete) Nk else den[j, ]
-        ng <- vapply(grp_members[[j]], function(idx) sum(num[j, idx]), 0)
-        dg <- vapply(grp_members[[j]], function(idx) sum(dj[idx]), 0)
-        dg[dg < 1e-12] <- 1e-12
-        pg <- ng / dg
-        if (monotone && nrow(group_edges[[j]])) {
-          pg <- .isotonic_poset(pg, dg, group_edges[[j]])
-        }
-        pg[pg < 1e-6] <- 1e-6
-        pg[pg > 1 - 1e-6] <- 1 - 1e-6
-        p$items[[j]] <- pg
-      }
-
-      # ---- Ramsay acceleration (safeguarded; unflatten projects) ----
-      th_after <- flatten(p)
-      step_now <- th_after - th_before
-      step_norm <- sqrt(sum(step_now^2))
-      if (step_prev_norm > 0 && step_norm > 0) {
-        r <- step_norm / step_prev_norm
-        if (r > 0.1 && r < 0.98) {
-          gain <- min(r / (1 - r), 20)
-          p_revert <- p
-          p <- unflatten(th_after + gain * step_now, p)
-          accelerated <- TRUE
-        }
-      }
-      step_prev_norm <- step_norm
-    }
-    list(p = p, loglik = loglik, converged = converged, iter = iter)
-  }
-
   best <- NULL
   for (s in seq_len(n_starts)) {
-    fit <- run_em(init_params())
+    p0 <- init_params()
+    fit <- .Call(C_em_cdm, Y, as.numeric(w), group_id,
+                 as.integer(n_groups), edges, as.integer(monotone),
+                 as.numeric(p0$pi), p0$items,
+                 as.integer(max_iter), as.numeric(tol))
     if (is.null(best) || fit$loglik > best$loglik) best <- fit
   }
 
-  p <- best$p
-  Lw <- sweep(class_loglik(p), 2, log(p$pi), "+")
-  m <- row_max(Lw)
-  W <- exp(Lw - m)
-  posterior <- W / rowSums(W)
-
-  list(params = p, loglik = best$loglik, posterior = posterior,
-       converged = best$converged, iterations = best$iter)
+  list(params = list(pi = best$pi, items = best$items),
+       loglik = best$loglik, posterior = best$posterior,
+       converged = best$converged, iterations = best$iterations)
 }
 
 

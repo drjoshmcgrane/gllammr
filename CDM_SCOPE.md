@@ -7,9 +7,14 @@ deferred. Implementation notes vs scope: dedicated `fit_cdm_em()`
 generalizing `fit_lca_em` - simpler and zero risk to LCA paths;
 complete-data fast path (one BLAS product per E-step, denominator =
 class counts); pi floored at 1e-12 (2^A profiles legitimately hit zero
-prevalence); defaults n_starts = 3, tol = 1e-7. Fraction-subtraction
-(536 x 20, A = 8): ~9s vs CDM::din 0.3s - acceptable; the C++ E-step
-stays a phase-3 option.
+prevalence); defaults n_starts = 3, tol = 1e-7.
+PHASE-3 SPEED ITEM DONE: full EM loop in C++ (src/em_cdm.cpp) on dgemm
+kernels with SQUAREM acceleration (the iteration count, not the
+arithmetic, was the wall: ~490 EM steps -> ~115 E-steps).
+Fraction-subtraction: 29.7s (initial R) -> 1.4s for 3 starts (~0.45s
+per start; CDM::din 0.14s at much looser convergence and 1 start, and
+our logLik is 0.07 better). Large G-DINA (20000 x 30, A = 5): 2.7s for
+3 starts vs CDM::gdina 1.9s for 1.
 Prerequisite work: ordered LCA (commit 32716f3), partially ordered LCA
 (commit 149aa17) — the isotonic-poset M-step machinery this builds on.
 
