@@ -6,9 +6,37 @@
 #' so each iteration is one N x K posterior computation plus a handful of
 #' cross-products - the E-step runs on BLAS matrix products.
 #'
+#' Weighted isotonic regression (pool-adjacent-violators)
+#'
+#' Returns the nondecreasing vector minimizing sum(w * (y - x)^2), which is
+#' the constrained M-step maximizer for binomial proportions and normal
+#' means under a monotone-classes restriction (Croon 1990).
+#'
+#' @keywords internal
+.pava_weighted <- function(y, w) {
+  n <- length(y)
+  if (n <= 1) return(y)
+  vals <- numeric(n); wts <- numeric(n); sz <- integer(n)
+  nb <- 0L
+  for (i in seq_len(n)) {
+    nb <- nb + 1L
+    vals[nb] <- y[i]; wts[nb] <- w[i]; sz[nb] <- 1L
+    while (nb > 1L && vals[nb - 1L] > vals[nb]) {
+      wt <- wts[nb - 1L] + wts[nb]
+      vals[nb - 1L] <- (wts[nb - 1L] * vals[nb - 1L] + wts[nb] * vals[nb]) / wt
+      wts[nb - 1L] <- wt
+      sz[nb - 1L] <- sz[nb - 1L] + sz[nb]
+      nb <- nb - 1L
+    }
+  }
+  rep(vals[seq_len(nb)], sz[seq_len(nb)])
+}
+
+
 #' @keywords internal
 fit_lca_em <- function(Y, nclass, item_type, n_cats, weights = NULL,
-                       n_starts = 3, max_iter = 1000, tol = 1e-8) {
+                       n_starts = 3, max_iter = 1000, tol = 1e-8,
+                       ordering = FALSE) {
   n_obs <- nrow(Y)
   n_items <- ncol(Y)
   K <- nclass
@@ -48,6 +76,19 @@ fit_lca_em <- function(Y, nclass, item_type, n_cats, weights = NULL,
       p$mu <- outer(mu0, rep(1, K)) +
         outer(sd0, rnorm(K, 0, 0.7))
       p$sd <- matrix(pmax(sd0, 0.1), length(gau_idx), K)
+    }
+    if (ordering) {
+      # Start from a class permutation consistent with the constraint so
+      # the first PAVA M-steps don't collapse classes
+      crit <- rep(0, K)
+      if (length(bin_idx)) crit <- crit + colMeans(p$bin)
+      if (length(gau_idx)) crit <- crit + colMeans(p$mu)
+      ord <- order(crit)
+      if (length(bin_idx)) p$bin <- p$bin[, ord, drop = FALSE]
+      if (length(gau_idx)) {
+        p$mu <- p$mu[, ord, drop = FALSE]
+        p$sd <- p$sd[, ord, drop = FALSE]
+      }
     }
     p
   }
@@ -152,8 +193,16 @@ fit_lca_em <- function(Y, nclass, item_type, n_cats, weights = NULL,
       p$pi <- Nk / sum(Nk)
       if (length(bin_idx)) {
         num <- crossprod(Yb, W)                    # J_b x K
-        den <- crossprod(Mb, W)
-        p$bin <- pmin(pmax(num / pmax(den, 1e-12), 1e-6), 1 - 1e-6)
+        den <- pmax(crossprod(Mb, W), 1e-12)
+        praw <- num / den
+        if (ordering) {
+          # Croon's ordered LCM: the constrained binomial M-step is the
+          # weighted isotonic regression of the raw proportions
+          for (jj in seq_len(nrow(praw))) {
+            praw[jj, ] <- .pava_weighted(praw[jj, ], den[jj, ])
+          }
+        }
+        p$bin <- pmin(pmax(praw, 1e-6), 1 - 1e-6)
       }
       for (jj in seq_along(cat_idx)) {
         j <- cat_idx[jj]
@@ -173,8 +222,11 @@ fit_lca_em <- function(Y, nclass, item_type, n_cats, weights = NULL,
         Wo <- W[obs, , drop = FALSE]
         y <- Y[obs, j]
         den <- pmax(colSums(Wo), 1e-12)
-        mu <- as.numeric(crossprod(Wo, y)) / den
-        v <- as.numeric(crossprod(Wo, y^2)) / den - mu^2
+        m1 <- as.numeric(crossprod(Wo, y)) / den
+        m2 <- as.numeric(crossprod(Wo, y^2)) / den
+        mu <- if (ordering) .pava_weighted(m1, den) else m1
+        # E[(y - mu)^2] at the (possibly constrained) mean
+        v <- m2 - 2 * mu * m1 + mu^2
         p$mu[jj, ] <- mu
         p$sd[jj, ] <- sqrt(pmax(v, 1e-6))
       }
@@ -189,6 +241,22 @@ fit_lca_em <- function(Y, nclass, item_type, n_cats, weights = NULL,
           gain <- min(r / (1 - r), 20)
           p_revert <- p
           p <- unflatten(th_after + gain * step_now, p)
+          if (ordering) {
+            # Project the extrapolated point back into the constraint set
+            # (isotonic projection); the revert safeguard already protects
+            # monotone likelihood
+            if (length(bin_idx)) {
+              for (jj in seq_len(nrow(p$bin))) {
+                p$bin[jj, ] <- .pava_weighted(p$bin[jj, ], rep(1, K))
+              }
+              p$bin <- pmin(pmax(p$bin, 1e-6), 1 - 1e-6)
+            }
+            if (length(gau_idx)) {
+              for (jj in seq_len(nrow(p$mu))) {
+                p$mu[jj, ] <- .pava_weighted(p$mu[jj, ], rep(1, K))
+              }
+            }
+          }
           accelerated <- TRUE
         }
       }

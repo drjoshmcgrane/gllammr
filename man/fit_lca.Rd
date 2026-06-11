@@ -10,6 +10,7 @@ fit_lca(
   nclass = 2,
   weights = NULL,
   method = c("em", "tmb"),
+  ordering = c("none", "increasing"),
   start = NULL,
   control = list()
 )
@@ -26,6 +27,18 @@ fit_lca(
 \item{method}{Estimation method: "em" (default; closed-form EM with
 Ramsay acceleration, the poLCA algorithm) or "tmb" (direct
 quasi-Newton on the marginal likelihood via TMB)}
+
+\item{ordering}{Order restriction on the classes: "none" (default) or
+"increasing" for Croon's (1990) ordered latent class model, where the
+classes are constrained so that every binary item probability and
+every gaussian indicator mean is nondecreasing across classes. The
+constrained M-step is a weighted isotonic regression
+(pool-adjacent-violators), so estimation remains closed-form EM.
+Ordering resolves label switching by construction. Requires
+\code{method = "em"}; not available with categorical (> 2 category)
+indicators. Note that likelihood-ratio tests against the unrestricted
+model have a non-standard (chi-bar-square) null distribution, and
+AIC/BIC are reported with the nominal parameter count.}
 
 \item{start}{Optional starting values}
 

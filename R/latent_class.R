@@ -9,6 +9,17 @@
 #'   Ramsay acceleration, the poLCA algorithm) or "tmb" (direct
 #'   quasi-Newton on the marginal likelihood via TMB)
 #' @param weights Optional vector of case weights (one per observation)
+#' @param ordering Order restriction on the classes: "none" (default) or
+#'   "increasing" for Croon's (1990) ordered latent class model, where the
+#'   classes are constrained so that every binary item probability and
+#'   every gaussian indicator mean is nondecreasing across classes. The
+#'   constrained M-step is a weighted isotonic regression
+#'   (pool-adjacent-violators), so estimation remains closed-form EM.
+#'   Ordering resolves label switching by construction. Requires
+#'   \code{method = "em"}; not available with categorical (> 2 category)
+#'   indicators. Note that likelihood-ratio tests against the unrestricted
+#'   model have a non-standard (chi-bar-square) null distribution, and
+#'   AIC/BIC are reported with the nominal parameter count.
 #' @param start Optional starting values
 #' @param control Control parameters
 #'
@@ -43,9 +54,12 @@
 fit_lca <- function(formula, data = NULL, nclass = 2,
                     weights = NULL,
                     method = c("em", "tmb"),
+                    ordering = c("none", "increasing"),
                     start = NULL, control = list()) {
 
   method <- match.arg(method)
+  ordering <- match.arg(ordering)
+  ordered_classes <- ordering == "increasing"
 
   # Handle formula or matrix input
   if (is.matrix(formula)) {
@@ -90,6 +104,19 @@ fit_lca <- function(formula, data = NULL, nclass = 2,
   }
   max_cats <- max(c(n_cats, 2L))
 
+  if (ordered_classes) {
+    if (method != "em" || !is.null(start)) {
+      stop("ordering = \"increasing\" requires method = \"em\" ",
+           "(and EM-internal starting values)")
+    }
+    if (any(item_type == 1L)) {
+      stop("ordering = \"increasing\" supports binary and gaussian ",
+           "indicators only; items ", paste(which(item_type == 1L),
+           collapse = ", "), " are categorical. Monotone (stochastic) ",
+           "ordering for polytomous indicators is not implemented.")
+    }
+  }
+
   # ---- EM path (default): closed-form M-steps, poLCA algorithm ----
   if (method == "em" && is.null(start)) {
     n_starts <- control$n_starts %||% 3
@@ -97,7 +124,8 @@ fit_lca <- function(formula, data = NULL, nclass = 2,
                      n_cats = n_cats, weights = weights,
                      n_starts = n_starts,
                      max_iter = control$max_iter %||% 1000,
-                     tol = control$tol %||% 1e-8)
+                     tol = control$tol %||% 1e-8,
+                     ordering = ordered_classes)
     pE <- em$params
     item_names <- colnames(Y) %||% paste0("Item", 1:n_items)
 
@@ -138,6 +166,7 @@ fit_lca <- function(formula, data = NULL, nclass = 2,
     result <- list(
       nclass = nclass,
       method = "EM",
+      ordering = ordering,
       class_probs = class_probs,
       item_probs = item_probs_matrix,
       cat_probs = cat_probs,
@@ -395,6 +424,10 @@ fit_lca <- function(formula, data = NULL, nclass = 2,
 #' @export
 print.gllamm_lca <- function(x, ...) {
   cat("Latent Class Analysis\n\n")
+  if (identical(x$ordering, "increasing")) {
+    cat("Order-restricted classes (Croon): item probabilities and means\n")
+    cat("nondecreasing across classes\n")
+  }
   cat("Number of classes:", x$nclass, "\n")
   cat("Number of observations:", x$n_obs, "\n")
   cat("Number of items:", x$n_items, "\n\n")

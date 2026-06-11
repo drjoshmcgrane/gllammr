@@ -2,6 +2,14 @@
 
 ## Post-1.2.0 development
 
+* `fit_lca()` gains order-restricted latent class models
+  (`ordering = "increasing"`): Croon's (1990) ordered LCM, where every
+  binary item probability and gaussian indicator mean is nondecreasing
+  across classes. The constrained M-step is a weighted isotonic
+  regression (pool-adjacent-violators), so estimation remains closed-form
+  EM with safeguarded Ramsay acceleration (extrapolations are projected
+  back into the constraint set). Ordering removes label switching by
+  construction.
 * `fit_eirt()` identification fixes: the explanatory GRM now expresses its
   ordered thresholds as sum-to-zero deviations around the item location
   (previously a free first threshold per item silently absorbed the
