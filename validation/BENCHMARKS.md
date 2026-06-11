@@ -18,8 +18,10 @@ All timings are medians of 3 warm runs (single fits, one core).
 | Adaptive quadrature (15 nodes) | n=600, 100 grp | 0.19s | glmer nAGQ=15 0.10s | 1.9x |
 | NPML (k=2, binomial) | n=800, 80 grp | 0.04s | npmlreg::allvc 0.06s | **0.67x (faster)** |
 | Weibull frailty survival | n=1.5k, 50 grp | 0.21s | survreg (no frailty) 0.04s | n/a* |
-| SEM (2 factors + path) | n=800, 6 ind. | 0.40s | lavaan::sem 0.21s | 1.9x |
-| LCA (3 classes, 3 restarts) | n=1k, 8 items | 2.23s | poLCA (nrep=3) 0.42s | 5.3x |
+| SEM (ml default) | n=800, 6 ind. | 0.03s | lavaan::sem 0.21s | **0.14x (faster)** |
+| **Large SEM (ml)** | **n=100k, 6 ind.** | **0.03s** | **lavaan 0.08s** | **0.4x (faster)** |
+| LCA (em default, 3 restarts) | n=1k, 8 items | 0.1s | poLCA (nrep=3) 0.42s | **0.24x (faster)** |
+| **Large LCA (em)** | **n=20k, 8 items, 3 cls** | **6.7s** | **poLCA 15.9s** | **0.42x (2.4x faster)** |
 | Rasch IRT (em, default) | 1000 x 40 | 0.15s | mirt 0.09s | 1.7x |
 | 2PL IRT (em, default) | 1000 x 20 | 0.15s | mirt 0.19s | **0.8x (faster)** |
 | **Large GRM battery (em)** | **5000 x 100, 5 cat** | **3.0s** | **mirt graded 9.9s** | **0.3x (3.3x faster)** |
@@ -45,3 +47,13 @@ the fixed-effects model only.
   where joint-Laplace 2PL diverges (5-item LSAT validates against ltm).
 - All timings single fits on one core; estimates cross-validated in
   validation/RESULTS.md (49/49).
+- **LCA defaults to closed-form EM** (the poLCA algorithm with Ramsay
+  acceleration, pure R on BLAS): identical logLik to poLCA at every scale,
+  2.4x faster on n=20k. The TMB path remains as method = "tmb".
+- **SEM defaults to Wishart ML on the sample covariance** (the
+  lavaan/LISREL approach): fitting cost independent of N - 0.03s at
+  n=100k where the full-data Laplace path takes 61s - with lavaan's
+  estimates and logLik reproduced exactly. method = "laplace" retained.
+- **Large-scale validation tier**: gllammr_validate(scale = "large") runs
+  n=100k GLMM, 5000x100 GRM, n=20k LCA, and n=100k SEM agreement checks
+  (9/9 passing; 61/61 across both tiers).

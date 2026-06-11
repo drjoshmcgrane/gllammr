@@ -15,6 +15,10 @@
 #'   "lca_carcinoma", "grm_science", "gamma_simulated",
 #'   "survival_exponential", "sem_lavaan", "lca_polytomous",
 #'   "npml_binomial", "aghq_binomial", "twopl_lsat_em".
+#' @param scale "standard" (default) runs the canonical-dataset cases;
+#'   "large" runs the large-scale tier (n in the tens of thousands, long
+#'   item batteries - sizes where quadrature grids and tolerances can fail
+#'   silently); "all" runs both.
 #' @param verbose Print progress messages (default TRUE)
 #'
 #' @return Data frame with one row per compared statistic: case, statistic,
@@ -29,13 +33,23 @@
 #' }
 #'
 #' @export
-gllammr_validate <- function(cases = "all", verbose = TRUE) {
-  all_cases <- c("gaussian_sleepstudy", "binomial_toenail",
+gllammr_validate <- function(cases = "all", scale = c("standard", "large", "all"),
+                             verbose = TRUE) {
+  scale <- match.arg(scale)
+  standard_cases <- c("gaussian_sleepstudy", "binomial_toenail",
                  "poisson_grouseticks", "ordinal_wine", "rasch_lsat",
                  "twopl_simulated", "lca_carcinoma", "grm_science",
                  "gamma_simulated", "survival_exponential", "sem_lavaan",
                  "lca_polytomous", "npml_binomial", "aghq_binomial",
                  "twopl_lsat_em")
+  # Large-scale tier: numerical behavior at sizes where quadrature grids,
+  # tolerances, and interpreted-loop costs can fail silently
+  large_cases <- c("large_glmm_binomial", "large_grm_battery",
+                   "large_lca", "large_sem")
+  all_cases <- switch(scale,
+                      standard = standard_cases,
+                      large = large_cases,
+                      all = c(standard_cases, large_cases))
   if (identical(cases, "all")) cases <- all_cases
   unknown <- setdiff(cases, all_cases)
   if (length(unknown) > 0) {
@@ -556,5 +570,122 @@ gllammr_validate <- function(cases = "all", verbose = TRUE) {
     .val_row("twopl_lsat_em", "difficulty_mean",
              mean(fit$item_parameters$difficulty),
              mean(ref_coef[, "Dffclt"]), 0.02)
+  )
+}
+
+
+#' @keywords internal
+.validate_large_glmm_binomial <- function() {
+  if (!requireNamespace("glmmTMB", quietly = TRUE)) {
+    return(NULL)
+  }
+  set.seed(301)
+  n <- 100000; g <- 1000
+  grp <- factor(rep(1:g, each = n %/% g))
+  x <- rnorm(n)
+  u <- rnorm(g, 0, 0.8)
+  d <- data.frame(x = x, grp = grp,
+                  yb = rbinom(n, 1, plogis(-0.3 + 0.5 * x + u[as.integer(grp)])))
+
+  fit <- gllamm(yb ~ x + (1 | grp), data = d, family = stats::binomial())
+  ref <- glmmTMB::glmmTMB(yb ~ x + (1 | grp), data = d,
+                          family = stats::binomial())
+
+  rbind(
+    .val_row("large_glmm_binomial", "beta_x",
+             unname(coef(fit)$fixed[2]),
+             unname(glmmTMB::fixef(ref)$cond[2]), 1e-3),
+    .val_row("large_glmm_binomial", "sigma_u",
+             sqrt(fit$coefficients$random_var[[1]][1, 1]),
+             unname(attr(glmmTMB::VarCorr(ref)$cond$grp, "stddev")), 1e-3),
+    .val_row("large_glmm_binomial", "logLik",
+             fit$logLik, as.numeric(logLik(ref)), 0.5, relative = FALSE)
+  )
+}
+
+
+#' @keywords internal
+.validate_large_grm_battery <- function() {
+  if (!requireNamespace("mirt", quietly = TRUE)) {
+    return(NULL)
+  }
+  set.seed(9)
+  np <- 5000; ni <- 100
+  theta <- rnorm(np)
+  a <- runif(ni, 0.7, 1.8)
+  taus <- t(sapply(rnorm(ni), function(b0) b0 + c(-1.5, -0.5, 0.5, 1.5)))
+  resp <- sapply(1:ni, function(j) {
+    cum <- sapply(1:4, function(k) plogis(a[j] * (theta - taus[j, k])))
+    1L + rowSums(matrix(runif(np), np, 4) < cum)
+  })
+
+  fit <- fit_irt(resp, model = "GRM")
+  ref <- mirt::mirt(as.data.frame(resp), 1, itemtype = "graded",
+                    verbose = FALSE)
+  co <- mirt::coef(ref, simplify = TRUE)$items
+
+  rbind(
+    .val_row("large_grm_battery", "discrimination_cor",
+             cor(fit$item_parameters$discrimination, co[, "a1"]), 1, 1e-4),
+    .val_row("large_grm_battery", "logLik",
+             fit$logLik, mirt::extract.mirt(ref, "logLik"),
+             0.5, relative = FALSE)
+  )
+}
+
+
+#' @keywords internal
+.validate_large_lca <- function() {
+  if (!requireNamespace("poLCA", quietly = TRUE)) {
+    return(NULL)
+  }
+  set.seed(201)
+  n <- 20000
+  cls <- sample(1:3, n, TRUE, prob = c(0.5, 0.3, 0.2))
+  pmat <- matrix(runif(3 * 8, 0.1, 0.9), 3, 8)
+  Y <- matrix(rbinom(n * 8, 1, pmat[cls, ]), n, 8)
+
+  fit <- fit_lca(Y, nclass = 3, control = list(n_starts = 3))
+  dl <- as.data.frame(Y + 1)
+  f <- stats::as.formula(paste0("cbind(", paste(names(dl), collapse = ","),
+                                ") ~ 1"))
+  set.seed(2)
+  ref <- poLCA::poLCA(f, data = dl, nclass = 3, nrep = 3, verbose = FALSE)
+
+  rbind(
+    .val_row("large_lca", "logLik",
+             fit$logLik, ref$llik, 0.5, relative = FALSE),
+    .val_row("large_lca", "max_class_proportion",
+             max(fit$class_probs), max(ref$P), 1e-2)
+  )
+}
+
+
+#' @keywords internal
+.validate_large_sem <- function() {
+  if (!requireNamespace("lavaan", quietly = TRUE)) {
+    return(NULL)
+  }
+  set.seed(71)
+  n <- 100000
+  f1 <- rnorm(n); f2 <- 0.6 * f1 + rnorm(n, 0, 0.8)
+  d <- data.frame(
+    x1 = 1.0 * f1 + rnorm(n, 0, .6), x2 = 0.8 * f1 + rnorm(n, 0, .6),
+    x3 = 1.2 * f1 + rnorm(n, 0, .6),
+    y1 = 1.0 * f2 + rnorm(n, 0, .5), y2 = 0.9 * f2 + rnorm(n, 0, .5),
+    y3 = 1.1 * f2 + rnorm(n, 0, .5))
+
+  fit <- fit_sem(measurement = list(f1 = ~ x1 + x2 + x3, f2 = ~ y1 + y2 + y3),
+                 structural = list(f2 ~ f1), data = d)
+  lav <- lavaan::sem("f1 =~ x1 + x2 + x3\nf2 =~ y1 + y2 + y3\nf2 ~ f1",
+                     data = d)
+  pe <- lavaan::parameterEstimates(lav)
+
+  rbind(
+    .val_row("large_sem", "structural_f2_f1",
+             fit$structural["f2", "f1"], pe$est[pe$op == "~"], 1e-3),
+    .val_row("large_sem", "loading_x3",
+             fit$loadings["x3", "f1"],
+             pe$est[pe$lhs == "f1" & pe$op == "=~" & pe$rhs == "x3"], 1e-3)
   )
 }

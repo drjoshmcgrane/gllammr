@@ -8,7 +8,7 @@ Reference packages using the same Laplace approximation (lme4 nAGQ=1,
 ordinal::clmm) agree to numerical precision; packages using different
 integration (mirt, ltm) agree within stated tolerances.
 
-**Overall: 52 / 52 checks pass.**
+**Overall: 61 / 61 checks pass.**
 
 | Case | Statistic | GLLAMMR | Reference | Rel. diff | Tolerance | Pass |
 |---|---|---|---|---|---|---|
@@ -38,8 +38,8 @@ integration (mirt, ltm) agree within stated tolerances.
 | twopl_simulated | difficulty_cor |     1 |     1 | 5.92e-09 | 0.005 | yes |
 | twopl_simulated | mean_abs_a_diff | 0.0001076 |     0 | 4.84e+11 | 0.05 | yes |
 | twopl_simulated | mean_abs_b_diff | 0.0006587 |     0 | 2.97e+12 | 0.05 | yes |
-| lca_carcinoma | logLik | -317.3 | -317.3 | 9.38e-11 |  0.1 | yes |
-| lca_carcinoma | max_class_proportion | 0.501 | 0.5012 | 0.000499 | 0.02 | yes |
+| lca_carcinoma | logLik | -317.3 | -317.3 | 7.53e-07 |  0.1 | yes |
+| lca_carcinoma | max_class_proportion | 0.5012 | 0.5012 | 9.19e-07 | 0.02 | yes |
 | grm_science | threshold1_item1_std | -4.666 | -4.669 | 0.000613 |  0.1 | yes |
 | grm_science | discrimination_item1_std | 1.043 | 1.042 | 0.000724 | 0.15 | yes |
 | gamma_simulated | beta_x | 0.2929 | 0.2929 | 2.64e-07 | 0.001 | yes |
@@ -48,11 +48,11 @@ integration (mirt, ltm) agree within stated tolerances.
 | survival_exponential | beta_x | 0.419 | 0.419 | 3.53e-06 | 0.001 | yes |
 | survival_exponential | sigma_frailty | 0.6206 | 0.6206 | 2e-05 | 0.001 | yes |
 | survival_exponential | logLik_vs_poisson_plus_constant | -1929 | -1929 | 3.93e-08 | 0.01 | yes |
-| sem_lavaan | loading_x2 | 0.8097 | 0.8097 | 3.68e-07 | 0.005 | yes |
-| sem_lavaan | loading_y3 |  1.09 |  1.09 | 1.15e-07 | 0.005 | yes |
-| sem_lavaan | structural_f2_f1 | 0.5404 | 0.5404 | 9.47e-07 | 0.005 | yes |
-| lca_polytomous | logLik | -3099 | -3099 | 9.91e-12 |  0.1 | yes |
-| lca_polytomous | max_class_proportion | 0.6217 | 0.6219 | 0.00038 | 0.01 | yes |
+| sem_lavaan | loading_x2 | 0.8097 | 0.8097 | 7.81e-08 | 0.005 | yes |
+| sem_lavaan | loading_y3 |  1.09 |  1.09 | 4.46e-08 | 0.005 | yes |
+| sem_lavaan | structural_f2_f1 | 0.5404 | 0.5404 | 3.32e-08 | 0.005 | yes |
+| lca_polytomous | logLik | -3099 | -3099 | 2.1e-14 |  0.1 | yes |
+| lca_polytomous | max_class_proportion | 0.6219 | 0.6219 | 8.64e-08 | 0.01 | yes |
 | npml_binomial | beta_x | 0.3874 | 0.3874 | 2.19e-05 | 0.005 | yes |
 | npml_binomial | location_1 | -0.8782 | -0.8791 | 0.00104 | 0.01 | yes |
 | npml_binomial | location_2 | 1.575 | 1.573 | 0.0011 | 0.01 | yes |
@@ -64,6 +64,15 @@ integration (mirt, ltm) agree within stated tolerances.
 | twopl_lsat_em | difficulty_item1 | -3.363 | -3.36 | 0.000925 | 0.02 | yes |
 | twopl_lsat_em | discrimination_item1 | 0.8244 | 0.8254 | 0.00112 | 0.03 | yes |
 | twopl_lsat_em | difficulty_mean | -1.997 |    -2 | 0.00118 | 0.02 | yes |
+| large_glmm_binomial | beta_x | 0.4915 | 0.4915 | 1.95e-06 | 0.001 | yes |
+| large_glmm_binomial | sigma_u | 0.7882 | 0.7882 | 2.05e-05 | 0.001 | yes |
+| large_glmm_binomial | logLik | -6.154e+04 | -6.154e+04 | 3.35e-10 |  0.5 | yes |
+| large_grm_battery | discrimination_cor |     1 |     1 | 4.1e-08 | 0.0001 | yes |
+| large_grm_battery | logLik | -6.446e+05 | -6.446e+05 | 4.11e-08 |  0.5 | yes |
+| large_lca | logLik | -1.039e+05 | -1.039e+05 | 1.6e-10 |  0.5 | yes |
+| large_lca | max_class_proportion | 0.496 | 0.496 | 9.25e-06 | 0.01 | yes |
+| large_sem | structural_f2_f1 | 0.6073 | 0.6073 | 5.58e-08 | 0.001 | yes |
+| large_sem | loading_x3 | 1.205 | 1.205 | 1.91e-08 | 0.001 | yes |
 
 ## Known limitations
 

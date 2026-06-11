@@ -11,7 +11,12 @@
 #' @param structural Optional list of formulas among latent variables, e.g.
 #'   \code{list(motivation ~ ability)}. Must be recursive (no cycles).
 #' @param data Data frame with the indicator variables
-#' @param start Optional starting values
+#' @param method Estimation method: "ml" (default; Wishart maximum
+#'   likelihood on the sample covariance matrix, the lavaan/LISREL
+#'   approach - fitting cost independent of N) or "laplace" (full-data
+#'   TMB Laplace estimation). Both give the same ML estimates for
+#'   complete data.
+#' @param start Optional starting values (laplace method only)
 #' @param control Optimization control list
 #'
 #' @return An object of class \code{gllamm_sem}
@@ -26,7 +31,10 @@
 #'
 #' @export
 fit_sem <- function(measurement, structural = NULL, data,
+                    method = c("ml", "laplace"),
                     start = NULL, control = list()) {
+
+  method <- match.arg(method)
 
   if (!is.list(measurement) || is.null(names(measurement)) ||
       any(names(measurement) == "")) {
@@ -85,6 +93,37 @@ fit_sem <- function(measurement, structural = NULL, data,
     stop("Indicator variables must be complete (no NA values)")
   }
   n_obs <- nrow(Y)
+
+  if (method == "ml") {
+    ml <- fit_sem_ml(Y, lambda_pattern, beta_pattern, control = control)
+
+    Lambda <- ml$Lambda
+    dimnames(Lambda) <- dimnames(lambda_pattern)
+    Beta <- ml$B
+    dimnames(Beta) <- dimnames(beta_pattern)
+    psi_sd <- setNames(ml$psi, latent_names)
+    theta_sd <- setNames(ml$theta_sd, indicator_names)
+    colnames(ml$factor_scores) <- latent_names
+
+    result <- list(
+      method = "ML",
+      loadings = Lambda,
+      structural = Beta,
+      latent_residual_sd = psi_sd,
+      indicator_residual_sd = theta_sd,
+      intercepts = setNames(ml$intercepts, indicator_names),
+      factor_scores = ml$factor_scores,
+      logLik = ml$logLik,
+      AIC = -2 * ml$logLik + 2 * ml$n_params,
+      BIC = -2 * ml$logLik + log(n_obs) * ml$n_params,
+      convergence = list(converged = ml$converged, message = ml$message),
+      n_obs = n_obs,
+      measurement = measurement,
+      structural_formulas = structural
+    )
+    class(result) <- c("gllamm_sem", "gllamm")
+    return(result)
+  }
 
   tmb_data <- list(
     Y = Y,

@@ -59,7 +59,7 @@ test_that("fit_binomial() works with logit link", {
   expect_true(fit$convergence$converged)
 
   # Check parameter recovery (approximately)
-  expect_equal(fit$coefficients$fixed[2], 1.0, tolerance = 0.3)  # Slope coefficient
+  expect_equal(unname(fit$coefficients$fixed[2]), 1.0, tolerance = 0.3)  # Slope coefficient
 })
 
 
@@ -126,7 +126,7 @@ test_that("fit_binomial() works with cloglog link", {
   expect_true(all(fit$fitted_values >= 0 & fit$fitted_values <= 1))
 
   # cloglog should recover parameters reasonably
-  expect_equal(fit$coefficients$fixed[2], 0.7, tolerance = 0.4)
+  expect_equal(unname(fit$coefficients$fixed[2]), 0.7, tolerance = 0.4)
 })
 
 

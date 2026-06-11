@@ -4,7 +4,11 @@
 \alias{gllammr_validate}
 \title{Cross-package validation of GLLAMMR estimates}
 \usage{
-gllammr_validate(cases = "all", verbose = TRUE)
+gllammr_validate(
+  cases = "all",
+  scale = c("standard", "large", "all"),
+  verbose = TRUE
+)
 }
 \arguments{
 \item{cases}{Character vector of case names to run, or "all" (default).
@@ -13,6 +17,11 @@ Available: "gaussian_sleepstudy", "binomial_toenail",
 "lca_carcinoma", "grm_science", "gamma_simulated",
 "survival_exponential", "sem_lavaan", "lca_polytomous",
 "npml_binomial", "aghq_binomial", "twopl_lsat_em".}
+
+\item{scale}{"standard" (default) runs the canonical-dataset cases;
+"large" runs the large-scale tier (n in the tens of thousands, long
+item batteries - sizes where quadrature grids and tolerances can fail
+silently); "all" runs both.}
 
 \item{verbose}{Print progress messages (default TRUE)}
 }

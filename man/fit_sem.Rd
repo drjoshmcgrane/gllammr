@@ -4,7 +4,14 @@
 \alias{fit_sem}
 \title{Fit Structural Equation Models with Latent Variables}
 \usage{
-fit_sem(measurement, structural = NULL, data, start = NULL, control = list())
+fit_sem(
+  measurement,
+  structural = NULL,
+  data,
+  method = c("ml", "laplace"),
+  start = NULL,
+  control = list()
+)
 }
 \arguments{
 \item{measurement}{Named list of one-sided formulas defining each latent
@@ -16,7 +23,13 @@ motivation = ~ y4 + y5 + y6)}.}
 
 \item{data}{Data frame with the indicator variables}
 
-\item{start}{Optional starting values}
+\item{method}{Estimation method: "ml" (default; Wishart maximum
+likelihood on the sample covariance matrix, the lavaan/LISREL
+approach - fitting cost independent of N) or "laplace" (full-data
+TMB Laplace estimation). Both give the same ML estimates for
+complete data.}
+
+\item{start}{Optional starting values (laplace method only)}
 
 \item{control}{Optimization control list}
 }

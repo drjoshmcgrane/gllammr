@@ -9,6 +9,7 @@ fit_lca(
   data = NULL,
   nclass = 2,
   weights = NULL,
+  method = c("em", "tmb"),
   start = NULL,
   control = list()
 )

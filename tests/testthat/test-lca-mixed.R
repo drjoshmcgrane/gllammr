@@ -57,3 +57,22 @@ test_that("binary-only LCA is unchanged", {
   expect_null(fit$cat_probs)
   expect_null(fit$gaussian_params)
 })
+
+
+test_that("LCA EM (default) and TMB methods agree; EM matches poLCA", {
+  skip_if_not_installed("poLCA")
+  data("carcinoma", package = "poLCA", envir = environment())
+  resp <- as.matrix(carcinoma) - 1L
+
+  set.seed(1)
+  fit_em <- fit_lca(resp, nclass = 2, control = list(n_starts = 5))
+  set.seed(1)
+  fit_tmb <- fit_lca(resp, nclass = 2, method = "tmb",
+                     control = list(n_starts = 5))
+
+  expect_equal(fit_em$method, "EM")
+  expect_equal(fit_em$logLik, fit_tmb$logLik, tolerance = 1e-3)
+  expect_equal(fit_em$logLik, -317.2568, tolerance = 1e-2)  # poLCA reference
+  expect_equal(sort(unname(fit_em$class_probs)),
+               sort(unname(fit_tmb$class_probs)), tolerance = 1e-2)
+})

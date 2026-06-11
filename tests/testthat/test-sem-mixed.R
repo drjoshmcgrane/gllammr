@@ -58,3 +58,33 @@ test_that("mixed-response input validation errors clearly", {
   d <- data.frame(y = rnorm(50), g = factor(rep(1:5, 10)))
   expect_error(fit_mixed(list(weibull = y ~ 1), ~ (1 | g), d), "names among")
 })
+
+
+test_that("SEM ML (default) agrees with the Laplace path and lavaan exactly", {
+  skip_if_not_installed("lavaan")
+  set.seed(71)
+  n <- 800
+  f1 <- rnorm(n); f2 <- 0.6 * f1 + rnorm(n, 0, 0.8)
+  d <- data.frame(
+    x1 = 1.0 * f1 + rnorm(n, 0, .6), x2 = 0.8 * f1 + rnorm(n, 0, .6),
+    x3 = 1.2 * f1 + rnorm(n, 0, .6),
+    y1 = 1.0 * f2 + rnorm(n, 0, .5), y2 = 0.9 * f2 + rnorm(n, 0, .5),
+    y3 = 1.1 * f2 + rnorm(n, 0, .5))
+  meas <- list(f1 = ~ x1 + x2 + x3, f2 = ~ y1 + y2 + y3)
+
+  fit_ml <- fit_sem(meas, structural = list(f2 ~ f1), data = d)
+  fit_lap <- fit_sem(meas, structural = list(f2 ~ f1), data = d,
+                     method = "laplace")
+  lav <- lavaan::sem("f1 =~ x1 + x2 + x3\nf2 =~ y1 + y2 + y3\nf2 ~ f1",
+                     data = d, meanstructure = TRUE)
+  pe <- lavaan::parameterEstimates(lav)
+
+  expect_equal(fit_ml$method, "ML")
+  expect_equal(fit_ml$structural["f2", "f1"],
+               fit_lap$structural["f2", "f1"], tolerance = 1e-3)
+  expect_equal(fit_ml$structural["f2", "f1"],
+               pe$est[pe$op == "~"], tolerance = 1e-4)
+  expect_equal(fit_ml$logLik, as.numeric(lavaan::logLik(lav)),
+               tolerance = 1e-2)
+  expect_equal(dim(fit_ml$factor_scores), c(n, 2L))
+})

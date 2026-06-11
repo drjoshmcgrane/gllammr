@@ -11,7 +11,7 @@ fit_irt_em(
   mc_items = NULL,
   quad_points = 61,
   max_iter = 500,
-  tol = 1e-06,
+  tol = 1e-04,
   control = list()
 )
 }

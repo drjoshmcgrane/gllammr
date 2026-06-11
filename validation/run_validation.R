@@ -5,7 +5,7 @@
 library(GLLAMMR)
 
 set.seed(2026)
-res <- gllammr_validate(verbose = TRUE)
+res <- gllammr_validate(scale = "all", verbose = TRUE)
 
 fmt <- function(x, digits = 4) ifelse(is.na(x), "NA", formatC(x, digits = digits, format = "g"))
 

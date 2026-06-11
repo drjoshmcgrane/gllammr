@@ -39,7 +39,10 @@
 #' @export
 fit_lca <- function(formula, data = NULL, nclass = 2,
                     weights = NULL,
+                    method = c("em", "tmb"),
                     start = NULL, control = list()) {
+
+  method <- match.arg(method)
 
   # Handle formula or matrix input
   if (is.matrix(formula)) {
@@ -83,6 +86,77 @@ fit_lca <- function(formula, data = NULL, nclass = 2,
     }
   }
   max_cats <- max(c(n_cats, 2L))
+
+  # ---- EM path (default): closed-form M-steps, poLCA algorithm ----
+  if (method == "em" && is.null(start)) {
+    n_starts <- control$n_starts %||% 3
+    em <- fit_lca_em(Y, nclass = nclass, item_type = item_type,
+                     n_cats = n_cats, weights = weights,
+                     n_starts = n_starts,
+                     max_iter = control$max_iter %||% 1000,
+                     tol = control$tol %||% 1e-8)
+    pE <- em$params
+    item_names <- colnames(Y) %||% paste0("Item", 1:n_items)
+
+    item_probs_matrix <- matrix(NA_real_, n_items, nclass,
+                                dimnames = list(item_names,
+                                                paste0("Class", 1:nclass)))
+    if (length(em$bin_idx)) item_probs_matrix[em$bin_idx, ] <- pE$bin
+
+    cat_probs <- NULL
+    if (length(em$cat_idx)) {
+      cat_probs <- list()
+      for (jj in seq_along(em$cat_idx)) {
+        j <- em$cat_idx[jj]
+        pj <- pE$cat[[jj]]
+        dimnames(pj) <- list(paste0("Cat", seq_len(n_cats[j])),
+                             paste0("Class", 1:nclass))
+        cat_probs[[item_names[j]]] <- pj
+      }
+    }
+    gaussian_params <- NULL
+    if (length(em$gau_idx)) {
+      gaussian_params <- list(
+        means = matrix(pE$mu, nrow = length(em$gau_idx),
+                       dimnames = list(item_names[em$gau_idx],
+                                       paste0("Class", 1:nclass))),
+        sds = matrix(pE$sd, nrow = length(em$gau_idx),
+                     dimnames = list(item_names[em$gau_idx],
+                                     paste0("Class", 1:nclass)))
+      )
+    }
+    class_probs <- pE$pi
+    names(class_probs) <- paste0("Class", 1:nclass)
+
+    n_par <- (nclass - 1) + length(em$bin_idx) * nclass +
+      sum(pmax(n_cats[em$cat_idx] - 1, 0)) * nclass +
+      2 * length(em$gau_idx) * nclass
+
+    result <- list(
+      nclass = nclass,
+      method = "EM",
+      class_probs = class_probs,
+      item_probs = item_probs_matrix,
+      cat_probs = cat_probs,
+      gaussian_params = gaussian_params,
+      item_type = item_type,
+      posterior = em$posterior,
+      modal_class = apply(em$posterior, 1, which.max),
+      logLik = em$loglik,
+      AIC = -2 * em$loglik + 2 * n_par,
+      BIC = -2 * em$loglik + log(n_obs) * n_par,
+      convergence = list(
+        converged = em$converged,
+        message = if (em$converged) "EM converged"
+                  else "Maximum EM iterations reached",
+        iterations = em$iterations
+      ),
+      n_obs = n_obs,
+      n_items = n_items
+    )
+    class(result) <- c("gllamm_lca", "gllamm")
+    return(result)
+  }
 
   # Remove missing (for now - could implement EM with missing data)
   complete_rows <- complete.cases(Y)
