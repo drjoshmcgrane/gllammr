@@ -47,7 +47,9 @@ Suggests:
     glmmTMB,
     ordinal,
     poLCA,
-    survival
+    survival,
+    HSAUR3,
+    ltm
 Encoding: UTF-8
 RoxygenNote: 7.3.3
 VignetteBuilder: knitr

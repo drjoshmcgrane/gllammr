@@ -284,8 +284,7 @@ create_grouping_matrix <- function(terms, data) {
   ))
 }
 
-#' Null-coalescing operator
-#' @keywords internal
+# Null-coalescing operator (internal)
 `%||%` <- function(x, y) {
   if (is.null(x)) y else x
 }

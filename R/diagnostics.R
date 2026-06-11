@@ -131,17 +131,17 @@ plot.gllamm <- function(x, which = c(1, 2, 3, 5), ...) {
 
 #' Influence diagnostics for GLLAMM
 #'
-#' @param object A gllamm object
+#' @param model A gllamm object
 #' @param ... Additional arguments
 #'
 #' @return Data frame with influence measures
 #'
 #' @export
-influence.gllamm <- function(object, ...) {
+influence.gllamm <- function(model, ...) {
 
-  n <- object$n_obs
-  resids <- residuals(object, type = "response")
-  fitted_vals <- fitted(object)
+  n <- model$n_obs
+  resids <- residuals(model, type = "response")
+  fitted_vals <- fitted(model)
 
   # Hat values (approximate for mixed models)
   # Use diagonal of projection matrix approximation

@@ -4,10 +4,10 @@
 \alias{influence.gllamm}
 \title{Influence diagnostics for GLLAMM}
 \usage{
-\method{influence}{gllamm}(object, ...)
+\method{influence}{gllamm}(model, ...)
 }
 \arguments{
-\item{object}{A gllamm object}
+\item{model}{A gllamm object}
 
 \item{...}{Additional arguments}
 }
