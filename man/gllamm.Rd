@@ -34,6 +34,19 @@ function. Supports:
   \item \code{ordinal()} - Ordered categorical responses (see \code{?ordinal})
 }}
 
+\item{weights}{Optional case weights: a numeric vector of observation
+(level-1) weights, or a list with elements \code{level1} and/or
+\code{level2} for survey designs with weights at both levels.}
+
+\item{random}{For matrix-response families (\code{irt()}, \code{lca()}):
+an optional person-level random-effects formula such as
+\code{~ (1 | class)}.}
+
+\item{integration}{Optional integration specification; \code{aghq(k)}
+selects adaptive Gauss-Hermite quadrature with \code{k} nodes for
+two-level random-intercept models (default is the Laplace
+approximation).}
+
 \item{start}{Optional named list of starting values for parameters.}
 
 \item{control}{A list of control parameters for the optimization algorithm:

@@ -20,6 +20,8 @@ fit_ordinal(
 
 \item{link}{Link function: "logit" (proportional odds) or "probit"}
 
+\item{weights}{Optional vector of case weights (one per observation)}
+
 \item{start}{Optional starting values}
 
 \item{control}{Control parameters}

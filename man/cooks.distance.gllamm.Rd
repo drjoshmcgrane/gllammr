@@ -20,7 +20,7 @@ Named vector of Cook's distances, one per cluster. Clusters whose
 }
 \description{
 Influence of each cluster on the fixed effects, computed by refitting the
-model with the cluster deleted: D_j = (beta - beta_(-j))' V^{-1}
+model with the cluster deleted: D_j = (beta - beta_(-j))' V^(-1)
 (beta - beta_(-j)) / p, with V the estimated covariance of the fixed
 effects. Case deletion at the cluster level is the standard influence
 measure for mixed models; observation-level deletion would break the

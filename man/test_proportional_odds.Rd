@@ -8,6 +8,9 @@ test_proportional_odds(object, data = NULL)
 }
 \arguments{
 \item{object}{A fitted ordinal regression model (gllamm_ordinal)}
+
+\item{data}{The data frame used to fit the model (required when the
+fitted object does not store its data)}
 }
 \value{
 An object of class \code{po_test} with components:

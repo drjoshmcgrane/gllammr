@@ -304,7 +304,7 @@ plot_covariate_effects_ordinal <- function(x, covariate, ...) {
          xaxt = "n")
 
     # Add x-axis labels
-    axis(1, at = 1:n_thresholds, labels = paste("τ", 1:n_thresholds, sep = ""))
+    axis(1, at = 1:n_thresholds, labels = paste("tau", 1:n_thresholds, sep = ""))
 
     # Add grid
     grid(col = "gray90")

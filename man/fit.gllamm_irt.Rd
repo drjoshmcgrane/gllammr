@@ -9,7 +9,7 @@
 \arguments{
 \item{object}{A gllamm_irt object}
 
-\item{compute_item_fit}{Compute item fit statistics (S-X²) (default: TRUE)}
+\item{compute_item_fit}{Compute item fit statistics (S-X^2) (default: TRUE)}
 
 \item{compute_person_fit}{Compute person fit statistics (outfit/infit) (default: TRUE)}
 

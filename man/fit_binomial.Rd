@@ -20,6 +20,8 @@ fit_binomial(
 
 \item{link}{Link function: "logit" (default), "probit", or "cloglog"}
 
+\item{weights}{Optional vector of case weights (one per observation)}
+
 \item{start}{Optional starting values}
 
 \item{control}{Control parameters for optimization}
@@ -45,7 +47,7 @@ responses. This function can be called directly or through \code{gllamm()} with
 for consistency with other model types.
 }
 \details{
-For binary response Y in {0, 1} or binomial response Y/n, the model is:
+For binary response Y in \{0, 1\} or binomial response Y/n, the model is:
 
 \strong{Logit link (default - logistic regression):}
 \deqn{P(Y=1|x) = \frac{1}{1 + \exp(-x'\beta - Z'u)}}

@@ -4,10 +4,10 @@
 \alias{icc.gllamm}
 \title{Variance decomposition (ICC)}
 \usage{
-\method{icc}{gllamm}(object, quiet = FALSE, ...)
+\method{icc}{gllamm}(x, quiet = FALSE, ...)
 }
 \arguments{
-\item{object}{A gllamm object}
+\item{x}{A gllamm object}
 
 \item{quiet}{Suppress printed output and messages (default: FALSE)}
 

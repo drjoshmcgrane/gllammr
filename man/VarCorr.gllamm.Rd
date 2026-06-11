@@ -4,10 +4,10 @@
 \alias{VarCorr.gllamm}
 \title{Extract variance components}
 \usage{
-\method{VarCorr}{gllamm}(object, ...)
+\method{VarCorr}{gllamm}(x, ...)
 }
 \arguments{
-\item{object}{A gllamm object}
+\item{x}{A gllamm object}
 
 \item{...}{Additional arguments (ignored)}
 }

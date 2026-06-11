@@ -7,12 +7,10 @@
 abilities(object, ...)
 }
 \arguments{
-\item{object}{A fitted IRT model}
+\item{object}{A fitted IRT model
+(theta_0 + random effects) instead of just theta_0. Default FALSE.}
 
 \item{...}{Additional arguments (not used)}
-
-\item{composite}{Logical. For multi-level models, return composite abilities
-(theta_0 + random effects) instead of just theta_0. Default FALSE.}
 }
 \value{
 A named vector of person abilities

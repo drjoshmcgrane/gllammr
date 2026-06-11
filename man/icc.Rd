@@ -9,9 +9,7 @@ icc(x, ...)
 \arguments{
 \item{x}{A fitted multi-level IRT model}
 
-\item{...}{Additional arguments (not used)}
-
-\item{level}{Optional: specific level to compute ICC for. If NULL, returns all levels.}
+\item{...}{Additional arguments (not used; methods may add \code{level})}
 }
 \value{
 A named vector of ICCs, or a single ICC if level specified

@@ -30,7 +30,7 @@ The \code{fit()} function provides comprehensive, model-specific fit statistics:
 \strong{IRT models:}
 \itemize{
   \item Log-likelihood, AIC, BIC
-  \item Item fit statistics (S-X²)
+  \item Item fit statistics (S-X^2)
   \item Person fit statistics (outfit/infit)
   \item Reliability estimates
   \item Test information function
@@ -47,7 +47,7 @@ The \code{fit()} function provides comprehensive, model-specific fit statistics:
 \strong{Ordinal models:}
 \itemize{
   \item Log-likelihood, AIC, BIC
-  \item Pseudo-R² (McFadden)
+  \item Pseudo-R^2 (McFadden)
   \item Proportional odds test (for PO/probit models)
 }
 }

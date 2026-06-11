@@ -10,6 +10,8 @@
 \item{object}{A gllamm_eirt object}
 
 \item{se}{Logical; include standard errors?}
+
+\item{...}{Additional arguments (ignored)}
 }
 \value{
 A data frame with item parameters

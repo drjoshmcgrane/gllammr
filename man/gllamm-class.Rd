@@ -31,6 +31,11 @@
 \item{...}{Additional arguments}
 
 \item{object}{A gllamm object}
+
+\item{which}{Which covariance block to return: "fixed" (default) or "all"}
+
+\item{type}{Covariance type: "model" (default) or "sandwich"
+(cluster-robust)}
 }
 \description{
 S3 class for fitted GLLAMM models

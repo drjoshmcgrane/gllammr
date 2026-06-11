@@ -21,6 +21,6 @@ mc_integrate_fixed_samples(X, Z, beta, u_samples, inv_link_fn)
 Vector of marginal predictions (length n)
 }
 \description{
-Computes E[g^{-1}(X'β + Z'u)] by averaging over draws from u ~ N(0, Σ_u)
+Computes E[g^(-1)(X'beta + Z'u)] by averaging over draws from u ~ N(0, Sigma_u)
 }
 \keyword{internal}

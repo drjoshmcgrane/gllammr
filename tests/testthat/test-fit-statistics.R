@@ -140,7 +140,7 @@ test_that("fit() pseudo-R² is computed correctly for ordinal models", {
   fit_strong <- fit_ordinal(y ~ x + (1 | group), data = data_strong)
   fit_stats_strong <- fit(fit_strong, test_po = FALSE)
 
-  # Pseudo-R² should be positive for model with predictor
+  # Pseudo-R\^2 should be positive for model with predictor
   expect_true(fit_stats_strong$pseudo_R2 >= 0)
   expect_true(fit_stats_strong$pseudo_R2 <= 1)
 })
@@ -161,7 +161,7 @@ test_that("print.fit_statistics works for different model types", {
 
   expect_output(print(fit_stats_glmm), "Model Fit Statistics")
   expect_output(print(fit_stats_glmm), "Model type: GLMM")
-  expect_output(print(fit_stats_glmm), "R²")
+  expect_output(print(fit_stats_glmm), "R\\^2")
 
   # Ordinal
   data_ord <- data.frame(
@@ -173,7 +173,7 @@ test_that("print.fit_statistics works for different model types", {
   fit_stats_ord <- fit(fit_ord, test_po = FALSE)
 
   expect_output(print(fit_stats_ord), "Model type: Ordinal")
-  expect_output(print(fit_stats_ord), "Pseudo-R²")
+  expect_output(print(fit_stats_ord), "Pseudo-R.2")
 })
 
 
