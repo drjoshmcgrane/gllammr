@@ -5,6 +5,9 @@
 #' @param formula Formula specifying manifest variables (can be a matrix)
 #' @param data Data frame containing variables
 #' @param nclass Number of latent classes
+#' @param method Estimation method: "em" (default; closed-form EM with
+#'   Ramsay acceleration, the poLCA algorithm) or "tmb" (direct
+#'   quasi-Newton on the marginal likelihood via TMB)
 #' @param weights Optional vector of case weights (one per observation)
 #' @param start Optional starting values
 #' @param control Control parameters

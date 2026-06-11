@@ -23,6 +23,10 @@ fit_lca(
 
 \item{weights}{Optional vector of case weights (one per observation)}
 
+\item{method}{Estimation method: "em" (default; closed-form EM with
+Ramsay acceleration, the poLCA algorithm) or "tmb" (direct
+quasi-Newton on the marginal likelihood via TMB)}
+
 \item{start}{Optional starting values}
 
 \item{control}{Control parameters}
