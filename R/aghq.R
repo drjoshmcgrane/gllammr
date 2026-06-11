@@ -18,6 +18,29 @@ aghq <- function(k = 15) {
 }
 
 
+#' Nonparametric maximum likelihood integration
+#'
+#' Integration specification for \code{\link{gllamm}}: replace the normal
+#' latent distribution with k estimated mass points and masses (NPML;
+#' Aitkin 1999). Equivalent to \code{\link{fit_npml}}.
+#'
+#' @param k Number of mass points (default 2)
+#' @return An object of class \code{gllamm_integration}
+#' @examples
+#' \dontrun{
+#' gllamm(y ~ x + (1 | g), data = d, family = binomial(),
+#'        integration = npml(2))
+#' }
+#' @export
+npml <- function(k = 2) {
+  if (!is.numeric(k) || length(k) != 1 || k < 2) {
+    stop("k must be a single integer >= 2")
+  }
+  structure(list(method = "npml", k = as.integer(k)),
+            class = "gllamm_integration")
+}
+
+
 #' Gauss-Hermite nodes and weights (Golub-Welsch)
 #' @keywords internal
 gauss_hermite <- function(n) {

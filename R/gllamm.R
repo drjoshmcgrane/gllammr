@@ -11,14 +11,32 @@
 #'
 #' @param data A data frame containing the variables in the formula.
 #'
-#' @param family A GLM family object specifying the error distribution and link
-#'   function. Supports:
+#' @param family A family object selecting the model class. Every model in
+#'   the package is reachable here:
 #'   \itemize{
-#'     \item \code{gaussian()} - Normal distribution (default)
-#'     \item \code{binomial()} - Binary/binomial outcomes
-#'     \item \code{poisson()} - Count data
-#'     \item \code{ordinal()} - Ordered categorical responses (see \code{?ordinal})
+#'     \item \code{gaussian()} (default), \code{binomial()},
+#'       \code{poisson()}, \code{Gamma()} - GLMMs with any number of
+#'       crossed/nested random-effects terms and random slopes
+#'     \item \code{ordinal(link)} - cumulative, adjacent-category,
+#'       continuation-ratio, and partial-proportional-odds models
+#'     \item \code{multinomial(reference)} - baseline-category logit
+#'     \item \code{irt(model)} / \code{eirt(item_data, ...)} - (explanatory)
+#'       item response models; first argument is the response matrix
+#'     \item \code{lca(nclass, ordering)} / \code{cdm(Q, model)} - latent
+#'       class and cognitive diagnosis models; first argument is the
+#'       response matrix
+#'     \item \code{sem(measurement, structural)} - structural equation
+#'       models; first argument is the data frame
+#'     \item \code{mixed_response(...)} - joint mixed-type outcomes; first
+#'       argument is the shared random-effects formula
+#'     \item \code{survival_family(distribution)} - parametric frailty
+#'       survival with \code{Surv(time, event)} on the left-hand side
+#'     \item \code{ranking(case)} - rank-ordered (exploded) logit
 #'   }
+#'   The latent distribution is normal with Laplace integration by
+#'   default; \code{integration = aghq(k)} requests adaptive quadrature
+#'   and \code{integration = npml(k)} a nonparametric (mass-point)
+#'   latent distribution.
 #'
 #' @param start Optional named list of starting values for parameters.
 #'
@@ -149,9 +167,75 @@ gllamm <- function(formula,
     stop("Argument 'formula' is required")
   }
 
+  # SEM: the first argument is the data frame of indicators/covariates;
+  # the model lives in the family object
+  if (inherits(family, "sem_family")) {
+    d_sem <- if (is.data.frame(formula)) formula
+             else if (!missing(data)) data
+             else stop("For family = sem(), pass the data frame as the ",
+                       "first argument")
+    return(fit_sem(measurement = family$measurement,
+                   structural = family$structural,
+                   data = d_sem,
+                   missing = family$missing,
+                   se = family$se,
+                   start = start,
+                   control = control))
+  }
+
+  # Mixed responses: the first argument is the shared random-effects
+  # formula (e.g. ~ 1 | group); the outcome formulas live in the family
+  if (inherits(family, "mixed_family")) {
+    return(fit_mixed(formulas = family$formulas,
+                     random = formula,
+                     data = data,
+                     start = start,
+                     control = control))
+  }
+
+  # Parametric frailty survival: Surv(time, event) on the left-hand side
+  if (inherits(family, "survival_family")) {
+    return(fit_survival(formula = formula,
+                        data = data,
+                        distribution = family$distribution,
+                        weights = weights,
+                        start = start,
+                        control = control))
+  }
+
+  # Rank-ordered (exploded) logit
+  if (inherits(family, "rank_family")) {
+    return(fit_rank(formula = formula,
+                    case = family$case,
+                    data = data,
+                    random = random,
+                    weights = weights,
+                    start = start,
+                    control = control))
+  }
+
   # Matrix-response families dispatch before formula validation: the first
   # argument is the response matrix, `data` (optional) carries person-level
   # variables, `random` the person-level random-effects formula
+  if (inherits(family, "eirt_family")) {
+    if (!is.matrix(formula) && !is.data.frame(formula)) {
+      stop("For family = eirt(), the first argument must be the persons x ",
+           "items response matrix")
+    }
+    return(fit_eirt(as.matrix(formula),
+                    item_data = family$item_data,
+                    difficulty_formula = family$difficulty_formula,
+                    discrimination_formula = family$discrimination_formula,
+                    threshold_formula = family$threshold_formula,
+                    person_data = if (missing(data)) NULL else data,
+                    random = random,
+                    weights = weights,
+                    model = family$model,
+                    item_residuals = family$item_residuals,
+                    start = start,
+                    control = control))
+  }
+
   if (inherits(family, "irt_family")) {
     if (!is.matrix(formula) && !is.data.frame(formula)) {
       stop("For family = irt(), the first argument must be the persons x ",
@@ -245,11 +329,12 @@ gllamm <- function(formula,
 
   if (inherits(family, "binomial_family")) {
     # Binomial regression models with custom link (logit, probit, cloglog).
-    # fit_binomial handles the single-random-term case; crossed/multiple
-    # random-effects terms route through the general multi-term engine
-    # (glmm_multi), which supports all three binomial links.
+    # fit_binomial handles the single-random-term Laplace case; crossed/
+    # multiple random-effects terms and non-default integration (aghq,
+    # npml) route through the general engines, which support all three
+    # links.
     n_re <- length(parse_formula(formula, data)$random_terms)
-    if (n_re <= 1) {
+    if (n_re <= 1 && is.null(integration)) {
       return(fit_binomial(formula = formula,
                           data = data,
                           link = family$link,
@@ -269,6 +354,22 @@ gllamm <- function(formula,
 
   # Create model matrices
   model_data <- make_model_matrices(parsed, data)
+
+  # Nonparametric maximum likelihood: discrete mass points instead of a
+  # normal latent distribution
+  if (inherits(integration, "gllamm_integration") &&
+      identical(integration$method, "npml")) {
+    return(fit_npml(formula = formula,
+                    data = data,
+                    k = integration$k,
+                    family = family,
+                    weights = if (is.list(weights)) {
+                      stop("Level-specific weights are not supported ",
+                           "under NPML")
+                    } else weights,
+                    start = start,
+                    control = control))
+  }
 
   # Adaptive quadrature integration (Laplace is the default)
   if (inherits(integration, "gllamm_integration") &&

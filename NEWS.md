@@ -2,6 +2,13 @@
 
 ## Post-1.2.0 development
 
+* The unified `gllamm()` interface now reaches every model class: new
+  family constructors `eirt()`, `sem()`, `mixed_response()`,
+  `survival_family()`, and `ranking()`, plus `integration = npml(k)` for
+  nonparametric (mass-point) latent distributions. Also fixed:
+  `family = binomial()` with `integration = aghq(k)` or `npml(k)` was
+  silently ignoring the integration request (the binomial fast path
+  intercepted dispatch); it now routes through the requested engine.
 * New `dif_irt()`: confirmatory model-based DIF (IRT-LR; Thissen et al.)
   as the companion to the `dif_test` screening tests. DIF parameters are
   item-by-covariate interactions inside the joint marginal-ML Rasch/2PL

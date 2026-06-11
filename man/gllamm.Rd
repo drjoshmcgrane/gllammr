@@ -25,14 +25,32 @@ Nested random effects can be specified as \code{(1 | level1/level2)}.}
 
 \item{data}{A data frame containing the variables in the formula.}
 
-\item{family}{A GLM family object specifying the error distribution and link
-function. Supports:
+\item{family}{A family object selecting the model class. Every model in
+the package is reachable here:
 \itemize{
-  \item \code{gaussian()} - Normal distribution (default)
-  \item \code{binomial()} - Binary/binomial outcomes
-  \item \code{poisson()} - Count data
-  \item \code{ordinal()} - Ordered categorical responses (see \code{?ordinal})
-}}
+  \item \code{gaussian()} (default), \code{binomial()},
+    \code{poisson()}, \code{Gamma()} - GLMMs with any number of
+    crossed/nested random-effects terms and random slopes
+  \item \code{ordinal(link)} - cumulative, adjacent-category,
+    continuation-ratio, and partial-proportional-odds models
+  \item \code{multinomial(reference)} - baseline-category logit
+  \item \code{irt(model)} / \code{eirt(item_data, ...)} - (explanatory)
+    item response models; first argument is the response matrix
+  \item \code{lca(nclass, ordering)} / \code{cdm(Q, model)} - latent
+    class and cognitive diagnosis models; first argument is the
+    response matrix
+  \item \code{sem(measurement, structural)} - structural equation
+    models; first argument is the data frame
+  \item \code{mixed_response(...)} - joint mixed-type outcomes; first
+    argument is the shared random-effects formula
+  \item \code{survival_family(distribution)} - parametric frailty
+    survival with \code{Surv(time, event)} on the left-hand side
+  \item \code{ranking(case)} - rank-ordered (exploded) logit
+}
+The latent distribution is normal with Laplace integration by
+default; \code{integration = aghq(k)} requests adaptive quadrature
+and \code{integration = npml(k)} a nonparametric (mass-point)
+latent distribution.}
 
 \item{weights}{Optional case weights: a numeric vector of observation
 (level-1) weights, or a list with elements \code{level1} and/or

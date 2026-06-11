@@ -298,6 +298,173 @@ cdm <- function(Q, model = c("gdina", "dina", "dino"),
 }
 
 
+#' Explanatory IRT Family
+#'
+#' Create a family object for explanatory item response models through the
+#' unified \code{gllamm()} interface. The response is the persons x items
+#' matrix passed as the first argument of \code{gllamm()}; \code{data}
+#' (optional) carries person-level variables and \code{random} person-level
+#' random effects. See \code{\link{fit_eirt}}.
+#'
+#' @param item_data Data frame of item covariates (one row per item)
+#' @param difficulty_formula Item-covariate formula for difficulty
+#' @param discrimination_formula Item-covariate formula for (log)
+#'   discrimination (2PL/GRM/GPCM)
+#' @param threshold_formula Optional threshold regression (LPCM framework)
+#' @param model "Rasch", "2PL", "GRM", "PCM", or "GPCM"
+#' @param item_residuals Random item residuals around the regression
+#'   (LLTM-plus-error; default TRUE)
+#'
+#' @return An object of class \code{eirt_family}
+#'
+#' @examples
+#' \dontrun{
+#' fit <- gllamm(resp, family = eirt(item_data,
+#'                                   difficulty_formula = ~ btype + mode))
+#' }
+#'
+#' @export
+eirt <- function(item_data, difficulty_formula = ~ 1,
+                 discrimination_formula = ~ 1, threshold_formula = NULL,
+                 model = c("Rasch", "2PL", "GRM", "PCM", "GPCM"),
+                 item_residuals = TRUE) {
+  model <- match.arg(model)
+  structure(
+    list(family = "eirt", item_data = item_data,
+         difficulty_formula = difficulty_formula,
+         discrimination_formula = discrimination_formula,
+         threshold_formula = threshold_formula,
+         model = model, item_residuals = item_residuals),
+    class = c("eirt_family", "family")
+  )
+}
+
+
+#' SEM Family for Structural Equation Models
+#'
+#' Create a family object for structural equation models through the
+#' unified \code{gllamm()} interface. The data frame is passed as the
+#' first argument of \code{gllamm()}; the measurement and structural
+#' models live in the family object. See \code{\link{fit_sem}}.
+#'
+#' @param measurement Named list of one-sided indicator formulas
+#' @param structural Optional list of structural formulas (latent and/or
+#'   observed predictors)
+#' @param missing "listwise" (default) or "fiml"
+#' @param se Compute standard errors (default TRUE)
+#'
+#' @return An object of class \code{sem_family}
+#'
+#' @examples
+#' \dontrun{
+#' fit <- gllamm(d, family = sem(
+#'   measurement = list(f1 = ~ x1 + x2 + x3, f2 = ~ y1 + y2 + y3),
+#'   structural = list(f2 ~ f1)))
+#' }
+#'
+#' @export
+sem <- function(measurement, structural = NULL,
+                missing = c("listwise", "fiml"), se = TRUE) {
+  structure(
+    list(family = "sem", measurement = measurement,
+         structural = structural, missing = match.arg(missing), se = se),
+    class = c("sem_family", "family")
+  )
+}
+
+
+#' Mixed-Response Family for Joint Outcome Models
+#'
+#' Create a family object for joint models of mixed-type outcomes sharing
+#' a random effect, through the unified \code{gllamm()} interface. The
+#' first argument of \code{gllamm()} is the shared random-effects formula
+#' (e.g. \code{~ 1 | group}). See \code{\link{fit_mixed}}.
+#'
+#' @param ... Named outcome formulas: \code{gaussian = y1 ~ x},
+#'   \code{binomial = y2 ~ x}, \code{poisson = y3 ~ x} (any subset)
+#'
+#' @return An object of class \code{mixed_family}
+#'
+#' @examples
+#' \dontrun{
+#' fit <- gllamm(~ 1 | clinic, data = d,
+#'               family = mixed_response(gaussian = severity ~ age,
+#'                                       binomial = dropout ~ age))
+#' }
+#'
+#' @export
+mixed_response <- function(...) {
+  formulas <- list(...)
+  if (length(formulas) == 0 || is.null(names(formulas)) ||
+      any(names(formulas) == "")) {
+    stop("mixed_response() needs named outcome formulas, e.g. ",
+         "mixed_response(gaussian = y1 ~ x, binomial = y2 ~ x)")
+  }
+  structure(
+    list(family = "mixed_response", formulas = formulas),
+    class = c("mixed_family", "family")
+  )
+}
+
+
+#' Rank-Ordered Logit Family
+#'
+#' Create a family object for rank-ordered (exploded) logit models through
+#' the unified \code{gllamm()} interface. See \code{\link{fit_rank}}.
+#'
+#' @param case Case (chooser) identifier: a one-sided formula
+#'   (\code{~ chooser}) or a variable name
+#'
+#' @return An object of class \code{rank_family}
+#'
+#' @examples
+#' \dontrun{
+#' fit <- gllamm(rank ~ price + quality, data = d,
+#'               family = ranking(case = ~ chooser),
+#'               random = ~ (1 | chooser))
+#' }
+#'
+#' @export
+ranking <- function(case) {
+  if (is.character(case)) {
+    case <- stats::as.formula(paste("~", case))
+  }
+  if (!inherits(case, "formula")) {
+    stop("case must be a one-sided formula or a variable name")
+  }
+  structure(
+    list(family = "ranking", case = case),
+    class = c("rank_family", "family")
+  )
+}
+
+
+#' Parametric Frailty Survival Family
+#'
+#' Create a family object for parametric survival models with shared
+#' (log-normal) frailties through the unified \code{gllamm()} interface;
+#' the formula uses \code{Surv(time, event)} on the left-hand side. See
+#' \code{\link{fit_survival}}.
+#'
+#' @param distribution "exponential" (default) or "weibull"
+#'
+#' @return An object of class \code{survival_family}
+#'
+#' @examples
+#' \dontrun{
+#' fit <- gllamm(Surv(time, status) ~ x + (1 | clinic), data = d,
+#'               family = survival_family("weibull"))
+#' }
+#'
+#' @export
+survival_family <- function(distribution = c("exponential", "weibull")) {
+  structure(
+    list(family = "survival", distribution = match.arg(distribution)),
+    class = c("survival_family", "family")
+  )
+}
+
+
 #' Multinomial Family for Unordered Categorical Outcomes
 #'
 #' Create a family object for baseline-category multinomial logit models
