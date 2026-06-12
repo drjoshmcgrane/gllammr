@@ -39,7 +39,11 @@ Only used for PCM/GPCM models. When specified, enables threshold-difficulty regr
 
 \item{random}{Optional random effects formula (e.g., ~ (1 | class))}
 
-\item{weights}{Optional vector of case weights (fweights or pweights).
+\item{weights}{Optional vector of integer person-level frequency weights
+(length = number of persons). Implemented by exact replication of
+weighted persons, so results are identical to fitting the duplicated
+data. Non-integer weights are not supported under the Laplace
+approximation.
 Length must equal number of persons. Default: all observations weighted equally.
 Weights are expanded to observation-level (person-item) internally.}
 

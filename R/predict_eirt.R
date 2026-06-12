@@ -195,7 +195,9 @@ predict.gllamm_eirt <- function(object,
 
   # Type: marginal — integrate ability over N(0, sigma_theta^2)
   if (type == "marginal") {
-    sigma_theta <- object$ability_sd
+    # Integrate over the TOTAL latent distribution: on multilevel fits
+    # this includes the group random-effect variances, not just theta.
+    sigma_theta <- .irt_total_latent_sd(object)
     theta_samples <- rnorm(n_sim, mean = 0, sd = sigma_theta)
 
     if (is_poly) {

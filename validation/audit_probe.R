@@ -115,6 +115,12 @@ probe("eirt pcm", fit_eirt(resp3, idata3, difficulty_formula = ~ z,
                            model = "PCM"))
 probe("eirt lpcm", fit_eirt(resp3, idata3, difficulty_formula = ~ 1,
                             threshold_formula = ~ z, model = "PCM"))
+probe("eirt multilevel", fit_eirt(resp, idata, difficulty_formula = ~ z,
+                                  model = "Rasch", person_data = pd,
+                                  random = ~ (1 | sch)))
+probe("eirt weighted", fit_eirt(resp, idata, difficulty_formula = ~ z,
+                                model = "Rasch",
+                                weights = rep(1:2, length.out = np)))
 
 cat("=== LCA / CDM / SEM ===\n")
 cls <- rbinom(np, 1, 0.45) + 1

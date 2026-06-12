@@ -44,6 +44,19 @@ jobs:
           extra-packages: any::rcmdcheck
           needs: check
 
+      # GCC >= 12 on Windows emits false-positive -Warray-bounds warnings
+      # from Eigen's SSE intrinsics included via TMB
+      # (https://gitlab.com/libeigen/eigen/-/issues/2506). Suppress on the
+      # runner only; the flag must not ship in the package's Makevars.win.
+      - name: Suppress Eigen array-bounds false positives (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          mkdir -p ~/.R
+          echo 'CXXFLAGS = -O2 -Wall -Wno-array-bounds' >> ~/.R/Makevars
+
       - uses: r-lib/actions/check-r-package@v2
         with:
           upload-snapshots: true
+        env:
+          _R_CHECK_COMPILATION_FLAGS_KNOWN_: -Wno-array-bounds

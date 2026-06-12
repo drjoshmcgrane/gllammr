@@ -15,7 +15,11 @@
 #' @param threshold_formula Formula for threshold-specific regression (e.g., ~ abstractness).
 #'   Only used for PCM/GPCM models. When specified, enables threshold-difficulty regression
 #'   (Kim & Wilson 2019 LPCM framework): delta_im = b_i + sum_k xi_km * x_ik + e_im
-#' @param weights Optional vector of case weights (fweights or pweights).
+#' @param weights Optional vector of integer person-level frequency weights
+#'   (length = number of persons). Implemented by exact replication of
+#'   weighted persons, so results are identical to fitting the duplicated
+#'   data. Non-integer weights are not supported under the Laplace
+#'   approximation.
 #'   Length must equal number of persons. Default: all observations weighted equally.
 #'   Weights are expanded to observation-level (person-item) internally.
 #' @param model IRT model type: "Rasch" or "2PL" (dichotomous), or
@@ -120,6 +124,38 @@ fit_eirt <- function(response_matrix,
   if (has_random && is.null(person_data)) {
     stop("person_data must be provided when random effects are specified")
   }
+
+  # Person-level frequency weights are implemented by exact replication of
+  # weighted persons (each copy gets its own ability), which reproduces
+  # duplicated-data fits exactly. Scaling each person's likelihood-plus-
+  # prior contribution instead makes the Laplace objective unbounded
+  # (every weighted person contributes -(w - 1) * log(sigma_theta), so
+  # sigma_theta collapses to 0). Must happen before random-effect parsing
+  # so person_data expands consistently.
+  if (!is.null(weights)) {
+    n_persons_w <- nrow(response_matrix)
+    if (length(weights) != n_persons_w) {
+      stop("weights length (", length(weights), ") must equal number of persons (", n_persons_w, ")")
+    }
+    if (any(is.na(weights))) {
+      stop("weights cannot contain NA values")
+    }
+    if (any(weights < 0)) {
+      stop("weights must be non-negative")
+    }
+    if (any(abs(weights - round(weights)) > 1e-8)) {
+      stop("Non-integer person weights are not supported: fit_eirt uses a ",
+           "Laplace approximation, which requires integer frequency weights ",
+           "(implemented by exact person replication).")
+    }
+    idx <- rep(seq_len(n_persons_w), times = round(weights))
+    response_matrix <- response_matrix[idx, , drop = FALSE]
+    if (!is.null(person_data)) {
+      person_data <- person_data[idx, , drop = FALSE]
+    }
+    weights <- NULL
+  }
+
   re_info <- NULL
   if (has_random) {
     if (nrow(person_data) != nrow(response_matrix)) {
@@ -139,21 +175,18 @@ fit_eirt <- function(response_matrix,
   n_persons <- nrow(response_matrix)
   n_items <- ncol(response_matrix)
 
-  # Validate weights
-  if (!is.null(weights)) {
-    if (length(weights) != n_persons) {
-      stop("weights length (", length(weights), ") must equal number of persons (", n_persons, ")")
-    }
-    if (any(weights < 0, na.rm = TRUE)) {
-      stop("weights must be non-negative")
-    }
-    if (any(is.na(weights))) {
-      stop("weights cannot contain NA values")
-    }
-  }
-
   if (nrow(item_data) != n_items) {
     stop("item_data must have ", n_items, " rows (one per item). Found: ", nrow(item_data))
+  }
+
+  # threshold_formula only has a likelihood under the adjacent-categories
+  # step structure (PCM/GPCM, the LPCM framework). Reject elsewhere rather
+  # than silently ignoring it.
+  if (!is.null(threshold_formula) && !model %in% c("PCM", "GPCM")) {
+    stop("threshold_formula is only supported for PCM and GPCM models ",
+         "(step-level regression in the LPCM framework); it has no ",
+         "interpretation for model = \"", model, "\". For GRM, item-level ",
+         "predictors enter through difficulty_formula.")
   }
 
   # Determine if polytomous
@@ -196,6 +229,24 @@ fit_eirt <- function(response_matrix,
     W_threshold <- matrix(0, n_items, 1)
   }
   p_thresh <- ncol(W_threshold)
+
+  # Rank-deficient designs produce singular Hessians and NaN standard
+  # errors downstream; fail with the aliased columns named instead.
+  check_designs <- c("difficulty_formula", "discrimination_formula",
+                     if (!is.null(threshold_formula)) "threshold_formula")
+  for (nm in check_designs) {
+    W <- switch(nm, difficulty_formula = W_diff,
+                discrimination_formula = W_disc,
+                threshold_formula = W_threshold)
+    qr_W <- qr(W)
+    if (qr_W$rank < ncol(W)) {
+      aliased <- colnames(W)[setdiff(seq_len(ncol(W)),
+                                     qr_W$pivot[seq_len(qr_W$rank)])]
+      stop("The ", nm, " design matrix is rank deficient: column(s) ",
+           paste(aliased, collapse = ", "), " are collinear with the ",
+           "others. Remove redundant item predictors.")
+    }
+  }
 
   # Validate and auto-recode responses for polytomous models
   if (is_polytomous) {
@@ -568,6 +619,8 @@ fit_eirt <- function(response_matrix,
       sigma_random = sigma_random_hat,
       group_names = re_info$group_names,
       n_groups = re_info$n_groups,
+      group_ids = re_info$group_ids,
+      re_design = re_info$re_design,
       icc = icc_values,
       composite_theta = composite_theta
     )

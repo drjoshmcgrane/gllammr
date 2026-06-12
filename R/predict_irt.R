@@ -138,7 +138,8 @@ predict.gllamm_irt <- function(object,
 #' @return Vector of marginal probabilities (one per item)
 #' @keywords internal
 predict_marginal_irt <- function(object, items, n_sim = 1000) {
-  sigma_theta <- object$ability_sd
+  # Total latent SD: includes group RE variances on multilevel fits
+  sigma_theta <- .irt_total_latent_sd(object)
 
   # Draw ability samples from population distribution
   theta_samples <- rnorm(n_sim, mean = 0, sd = sigma_theta)

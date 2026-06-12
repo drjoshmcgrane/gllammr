@@ -52,7 +52,8 @@ Suggests:
     ltm,
     CDM,
     difR,
-    VGAM
+    VGAM,
+    nnet
 URL: https://github.com/drjoshmcgrane/gllammr
 BugReports: https://github.com/drjoshmcgrane/gllammr/issues
 Encoding: UTF-8

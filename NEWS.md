@@ -2,6 +2,37 @@
 
 ## Post-1.2.0 development
 
+* EIRT deep audit. **Saturated identities verified exactly:** an EIRT
+  model with `difficulty_formula = ~ item` (and, where applicable,
+  `discrimination_formula = ~ item`) reproduces the descriptive
+  `fit_irt()` likelihood for Rasch, 2PL, PCM, GPCM, and GRM; multilevel
+  Rasch EIRT matches `lme4::glmer` on the crossed person/school
+  cross-walk (logLik, variance components, and standard errors).
+  **Weight semantics fixed:** person-level weights on Laplace-based fits
+  (`fit_eirt()`, and `fit_irt(method = "laplace")`) previously weighted
+  only the response terms, leaving the ability prior unweighted - not a
+  valid frequency- or sampling-weight likelihood. Weighting the prior
+  instead is degenerate under the Laplace approximation (each weighted
+  person contributes -(w-1)*log(sigma_theta), so the objective is
+  unbounded and sigma_theta collapses to 0). Integer frequency weights
+  are now implemented by exact replication of weighted persons, making
+  weighted fits identical to duplicated-data fits (verified to 1e-6,
+  single-level and multilevel, dichotomous and polytomous); non-integer
+  person weights on Laplace paths are rejected with guidance to
+  `method = "em"`, which weights each person's log marginal likelihood
+  directly (already exact). **Multilevel method fixes:** `simulate()` on
+  multilevel IRT/EIRT fits drew only the person deviation and ignored
+  group random effects (school-level variance was ~4x too small);
+  marginal predictions likewise integrated over `sigma_theta` only -
+  both now use the full latent structure. **New guards:** rank-deficient
+  `difficulty_formula`/`discrimination_formula`/`threshold_formula`
+  designs error early naming the aliased columns (previously NaN
+  standard errors); `threshold_formula` with GRM (or dichotomous
+  models) errors instead of being silently ignored.
+* CI: `nnet` added to Suggests (used by audit tests);
+  `-Wno-array-bounds` moved out of the shipped `Makevars.win` (it
+  triggered R CMD check's non-portable-flags warning) onto the Windows
+  CI runner only.
 * Package-wide audit (every S3 method probed on every fit variant;
   under-validated likelihoods checked externally). **Bug fixes:**
   on crossed/multi-term GLMMs, `simulate()` drew random effects for the

@@ -1,6 +1,3 @@
 PKG_CPPFLAGS = -DTMB_EIGEN_DISABLE_WARNINGS
-# -Wno-array-bounds: GCC >= 12 emits false-positive array-bounds warnings
-# from Eigen's SSE intrinsics (emmintrin.h) included via TMB; the code is
-# third-party and correct (https://gitlab.com/libeigen/eigen/-/issues/2506)
-PKG_CXXFLAGS = $(SHLIB_OPENMP_CXXFLAGS) -Wno-array-bounds
+PKG_CXXFLAGS = $(SHLIB_OPENMP_CXXFLAGS)
 PKG_LIBS = $(SHLIB_OPENMP_CXXFLAGS) $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS)

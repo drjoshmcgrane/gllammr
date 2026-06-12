@@ -37,7 +37,12 @@ Examples: \code{~ (1 | class)}, \code{~ (1 | school/class)},
 \code{~ (1 | student) + (1 | time)}.
 Requires person_data to contain the grouping variables.}
 
-\item{weights}{Optional vector of case weights. Length must equal number of persons.}
+\item{weights}{Optional vector of person-level weights (length = number of
+persons). Under \code{method = "em"} arbitrary non-negative weights are
+supported (each person's log marginal likelihood is weighted directly).
+Under \code{method = "laplace"} only integer frequency weights are
+supported; they are implemented by exact replication of weighted
+persons, so results are identical to fitting the duplicated data.}
 
 \item{mc_items}{For 3PL model only: which items have guessing parameters.
 Can be: NULL (default, all items have guessing), logical vector (length = n_items),

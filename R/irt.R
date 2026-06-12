@@ -17,7 +17,12 @@
 #'   Examples: \code{~ (1 | class)}, \code{~ (1 | school/class)},
 #'   \code{~ (1 | student) + (1 | time)}.
 #'   Requires person_data to contain the grouping variables.
-#' @param weights Optional vector of case weights. Length must equal number of persons.
+#' @param weights Optional vector of person-level weights (length = number of
+#'   persons). Under \code{method = "em"} arbitrary non-negative weights are
+#'   supported (each person's log marginal likelihood is weighted directly).
+#'   Under \code{method = "laplace"} only integer frequency weights are
+#'   supported; they are implemented by exact replication of weighted
+#'   persons, so results are identical to fitting the duplicated data.
 #' @param method Estimation method. "auto" (default) uses "em" for
 #'   single-level models and "laplace" whenever multi-level structure
 #'   (\code{random}) or standard errors (\code{se = TRUE}) require it.
@@ -138,6 +143,41 @@ fit_irt <- function(response_matrix,
     }
   }
 
+  # Person-level weights: validate here, before random-effect parsing.
+  # Under Laplace, frequency weights are implemented by exact replication
+  # of weighted persons (each copy gets its own ability), which reproduces
+  # duplicated-data fits exactly. Scaling the per-person likelihood-plus-
+  # prior contribution instead (the quadrature-free shortcut) makes the
+  # Laplace objective unbounded: each weighted person contributes
+  # -(w - 1) * log(sigma_theta), so sigma_theta collapses to 0. The EM
+  # method weights each person's log marginal likelihood directly and
+  # supports arbitrary non-negative weights.
+  if (!is.null(weights)) {
+    n_persons <- nrow(response_matrix)
+    if (length(weights) != n_persons) {
+      stop("Length of weights (", length(weights), ") must match number of persons (", n_persons, ")")
+    }
+    if (any(is.na(weights))) {
+      stop("weights cannot contain missing values")
+    }
+    if (any(weights < 0)) {
+      stop("All weights must be non-negative")
+    }
+    if (method == "laplace") {
+      if (any(abs(weights - round(weights)) > 1e-8)) {
+        stop("Non-integer person weights are not supported under method = \"laplace\". ",
+             "Use integer frequency weights, or method = \"em\" for ",
+             "arbitrary non-negative weights (single-level models).")
+      }
+      idx <- rep(seq_len(n_persons), times = round(weights))
+      response_matrix <- response_matrix[idx, , drop = FALSE]
+      if (!is.null(person_data)) {
+        person_data <- person_data[idx, , drop = FALSE]
+      }
+      weights <- NULL
+    }
+  }
+
   # Parse random effects if specified
   re_info <- NULL
   if (has_random) {
@@ -164,20 +204,6 @@ fit_irt <- function(response_matrix,
   if (is_polytomous && n_categories <= 2) {
     warning("Polytomous model specified but data appears dichotomous. ",
             "Consider using Rasch/2PL/3PL models instead.")
-  }
-
-  # Validate weights if provided
-  n_persons <- nrow(response_matrix)
-  if (!is.null(weights)) {
-    if (length(weights) != n_persons) {
-      stop("Length of weights (", length(weights), ") must match number of persons (", n_persons, ")")
-    }
-    if (any(weights < 0, na.rm = TRUE)) {
-      stop("All weights must be non-negative")
-    }
-    if (any(is.na(weights))) {
-      stop("weights cannot contain missing values")
-    }
   }
 
   # Validate mc_items (only for 3PL)
@@ -513,6 +539,8 @@ fit_irt_dichotomous <- function(response_matrix, model, weights, mc_items, re_in
       sigma_random = sigma_random_hat,
       group_names = re_info$group_names,
       n_groups = re_info$n_groups,
+      group_ids = re_info$group_ids,
+      re_design = re_info$re_design,
       icc = icc_values,
       composite_theta = composite_theta
     )
@@ -1030,6 +1058,8 @@ fit_irt_polytomous <- function(response_matrix, model, weights, re_info, se, sta
       sigma_random = sigma_random_hat,
       group_names = re_info$group_names,
       n_groups = re_info$n_groups,
+      group_ids = re_info$group_ids,
+      re_design = re_info$re_design,
       icc = icc_values,
       composite_theta = composite_theta
     )

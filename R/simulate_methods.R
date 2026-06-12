@@ -22,6 +22,38 @@
   out
 }
 
+# Total latent SD for an IRT/EIRT fit: person deviation plus all group
+# random-effect components (independent normals, so variances add). This
+# is the correct integration SD for marginal (population-averaged)
+# predictions from multilevel fits.
+.irt_total_latent_sd <- function(object) {
+  v <- (object$ability_sd %||% 1)^2
+  re <- object$random_effects
+  if (!is.null(re$sigma_random)) {
+    v <- v + sum(re$sigma_random^2)
+  }
+  sqrt(v)
+}
+
+# Draw one fresh composite-ability vector for an IRT/EIRT fit: person
+# deviation plus, on multilevel fits, fresh group effects for EVERY
+# random-effect term (using the grouping structure stored on the fit).
+.irt_sim_theta <- function(object) {
+  n <- object$n_persons
+  theta <- rnorm(n, 0, object$ability_sd %||% 1)
+  re <- object$random_effects
+  if (!is.null(re$sigma_random) && !is.null(re$group_ids)) {
+    gid <- as.matrix(re$group_ids)
+    des <- as.matrix(re$re_design)
+    for (k in seq_along(re$sigma_random)) {
+      u <- rnorm(re$n_groups[k], 0, re$sigma_random[k])
+      ok <- gid[, k] >= 0  # -1 marks NA (partial nesting)
+      theta[ok] <- theta[ok] + des[ok, k] * u[gid[ok, k] + 1L]
+    }
+  }
+  theta
+}
+
 
 #' Simulate from a fitted multinomial model
 #'
@@ -138,7 +170,7 @@ simulate.gllamm_irt <- function(object, nsim = 1, seed = NULL, ...) {
     isTRUE(object$max_categories > 2)
   out <- vector("list", nsim)
   for (s in seq_len(nsim)) {
-    theta <- rnorm(n, 0, sd_th)
+    theta <- .irt_sim_theta(object)
     Y <- matrix(NA_integer_, n, J)
     if (!poly) {
       b <- object$item_parameters$difficulty
@@ -326,7 +358,7 @@ simulate.gllamm_eirt <- function(object, nsim = 1, seed = NULL, ...) {
   sd_th <- object$ability_sd %||% 1
   out <- vector("list", nsim)
   for (s in seq_len(nsim)) {
-    theta <- rnorm(n, 0, sd_th)
+    theta <- .irt_sim_theta(object)
     Y <- matrix(NA_integer_, n, J)
     if (!isTRUE(object$is_polytomous)) {
       b <- object$item_parameters$difficulty

@@ -1,0 +1,165 @@
+# EIRT deep-audit regressions: saturated identities against descriptive
+# IRT, multilevel cross-walks against glmer, exact frequency-weight
+# semantics, and method correctness on multilevel fits.
+
+make_dichot <- function(np = 300, ni = 8, seed = 42, school = FALSE) {
+  set.seed(seed)
+  theta <- rnorm(np)
+  b <- seq(-1.2, 1.2, length.out = ni)
+  eta_extra <- 0
+  sch <- NULL
+  if (school) {
+    sch <- factor(rep(seq_len(np / 20), each = 20))
+    eta_extra <- rnorm(nlevels(sch), 0, 0.7)[sch]
+  }
+  resp <- sapply(seq_len(ni), function(j)
+    rbinom(np, 1, plogis(theta + eta_extra - b[j])))
+  list(resp = resp, sch = sch)
+}
+
+test_that("saturated EIRT difficulty model equals descriptive IRT exactly", {
+  d <- make_dichot()
+  ni <- ncol(d$resp)
+  fe <- fit_eirt(d$resp, data.frame(item = factor(seq_len(ni))),
+                 difficulty_formula = ~ item, model = "Rasch",
+                 item_residuals = FALSE)
+  fi <- fit_irt(d$resp, model = "Rasch", method = "laplace")
+  expect_equal(as.numeric(logLik(fe)), as.numeric(logLik(fi)),
+               tolerance = 1e-5)
+})
+
+test_that("EIRT person fweights reproduce duplicated-data fits exactly", {
+  d <- make_dichot(np = 120, ni = 8, seed = 8)
+  np <- nrow(d$resp)
+  z <- rnorm(ncol(d$resp))
+  w <- sample(1:3, np, replace = TRUE)
+  idx <- rep(seq_len(np), w)
+
+  fa <- fit_eirt(d$resp, data.frame(z = z), difficulty_formula = ~ z,
+                 model = "Rasch", item_residuals = FALSE, weights = w)
+  fb <- fit_eirt(d$resp[idx, ], data.frame(z = z),
+                 difficulty_formula = ~ z, model = "Rasch",
+                 item_residuals = FALSE)
+  expect_equal(as.numeric(logLik(fa)), as.numeric(logLik(fb)),
+               tolerance = 1e-6)
+  expect_equal(fa$regression_coefficients$difficulty,
+               fb$regression_coefficients$difficulty, tolerance = 1e-5)
+  expect_equal(fa$ability_sd, fb$ability_sd, tolerance = 1e-5)
+
+  # EM route weights the log marginal likelihood directly: also exact
+  ea <- fit_irt(d$resp, model = "Rasch", weights = w)
+  eb <- fit_irt(d$resp[idx, ], model = "Rasch")
+  expect_equal(as.numeric(logLik(ea)), as.numeric(logLik(eb)),
+               tolerance = 1e-4)
+
+  # Laplace fits refuse non-integer person weights (scaling the joint
+  # contribution would make the objective unbounded in sigma_theta)
+  expect_error(
+    fit_eirt(d$resp, data.frame(z = z), difficulty_formula = ~ z,
+             model = "Rasch", weights = w + 0.5),
+    "Non-integer")
+  expect_error(
+    fit_irt(d$resp, model = "Rasch", method = "laplace", weights = w + 0.5),
+    "Non-integer")
+})
+
+test_that("multilevel EIRT matches glmer on the crossed Rasch cross-walk", {
+  skip_if_not_installed("lme4")
+  d <- make_dichot(np = 200, ni = 8, seed = 99, school = TRUE)
+  np <- nrow(d$resp); ni <- ncol(d$resp)
+  fe <- fit_eirt(d$resp, data.frame(item = factor(seq_len(ni))),
+                 difficulty_formula = ~ item, model = "Rasch",
+                 item_residuals = FALSE,
+                 person_data = data.frame(sch = d$sch),
+                 random = ~ (1 | sch))
+  long <- data.frame(y = as.vector(t(d$resp)),
+                     item = factor(rep(seq_len(ni), np)),
+                     id = factor(rep(seq_len(np), each = ni)),
+                     sch = factor(rep(d$sch, each = ni)))
+  fg <- suppressWarnings(
+    lme4::glmer(y ~ 0 + item + (1 | id) + (1 | sch), data = long,
+                family = binomial()))
+  expect_equal(as.numeric(logLik(fe)), as.numeric(logLik(fg)),
+               tolerance = 0.02)
+  vc <- as.data.frame(lme4::VarCorr(fg))
+  expect_equal(unname(fe$ability_sd), vc$sdcor[vc$grp == "id"],
+               tolerance = 0.02)
+  expect_equal(unname(fe$random_effects$sigma_random),
+               vc$sdcor[vc$grp == "sch"], tolerance = 0.02)
+})
+
+test_that("EIRT difficulty standard errors match glmer", {
+  skip_if_not_installed("lme4")
+  d <- make_dichot(np = 300, ni = 8, seed = 7)
+  np <- nrow(d$resp); ni <- ncol(d$resp)
+  fe <- fit_eirt(d$resp, data.frame(item = factor(seq_len(ni))),
+                 difficulty_formula = ~ item, model = "Rasch",
+                 item_residuals = FALSE)
+  sdr <- summary(fe$tmb_sdr)
+  d_est <- sdr[rownames(sdr) == "difficulty", "Estimate"]
+  d_se <- sdr[rownames(sdr) == "difficulty", "Std. Error"]
+  long <- data.frame(y = as.vector(t(d$resp)),
+                     item = factor(rep(seq_len(ni), np)),
+                     id = factor(rep(seq_len(np), each = ni)))
+  fg <- suppressWarnings(
+    lme4::glmer(y ~ 0 + item + (1 | id), data = long,
+                family = binomial()))
+  expect_lt(max(abs(d_est - (-lme4::fixef(fg)))), 0.02)
+  expect_lt(max(abs(d_se - sqrt(diag(as.matrix(vcov(fg)))))), 0.005)
+})
+
+test_that("multilevel EIRT simulate and marginal use the group REs", {
+  d <- make_dichot(np = 200, ni = 10, seed = 99, school = TRUE)
+  ni <- ncol(d$resp)
+  z <- rnorm(ni)
+  fm <- fit_eirt(d$resp, data.frame(z = z), difficulty_formula = ~ z,
+                 model = "Rasch", item_residuals = TRUE,
+                 person_data = data.frame(sch = d$sch),
+                 random = ~ (1 | sch))
+
+  # Simulation must reproduce the school-level variance, not just theta
+  sm <- simulate(fm, nsim = 20, seed = 2)
+  smean <- mean(sapply(sm, function(s)
+    var(tapply(rowMeans(s), d$sch, mean))))
+  emp <- var(tapply(rowMeans(d$resp), d$sch, mean))
+  expect_gt(smean, 0.5 * emp)
+
+  # Marginal predictions integrate over the TOTAL latent distribution
+  mg <- predict(fm, type = "marginal")
+  expect_lt(abs(mean(mg) - mean(d$resp)), 0.03)
+})
+
+test_that("fit_eirt rejects misuse instead of silently proceeding", {
+  d <- make_dichot(np = 150, ni = 8, seed = 5)
+  z <- rnorm(8)
+
+  # Collinear item predictors -> singular Hessian; named, early error
+  expect_error(
+    fit_eirt(d$resp, data.frame(z = z, z2 = 2 * z),
+             difficulty_formula = ~ z + z2, model = "Rasch"),
+    "rank deficient")
+
+  # threshold_formula has no GRM interpretation; must not be ignored
+  set.seed(5)
+  resp3 <- sapply(1:6, function(j)
+    1L + rowSums(outer(rnorm(150) - (j - 3) / 2, c(-0.8, 0.8), ">")))
+  expect_error(
+    fit_eirt(resp3, data.frame(z = rnorm(6)), difficulty_formula = ~ 1,
+             threshold_formula = ~ z, model = "GRM"),
+    "only supported for PCM and GPCM")
+})
+
+test_that("multilevel fit_irt simulate and marginal use the group REs", {
+  d <- make_dichot(np = 200, ni = 10, seed = 21, school = TRUE)
+  fm <- fit_irt(d$resp, model = "Rasch",
+                person_data = data.frame(sch = d$sch),
+                random = ~ (1 | sch))
+  sm <- simulate(fm, nsim = 20, seed = 2)
+  smean <- mean(sapply(sm, function(s)
+    var(tapply(rowMeans(s), d$sch, mean))))
+  emp <- var(tapply(rowMeans(d$resp), d$sch, mean))
+  expect_gt(smean, 0.5 * emp)
+
+  mg <- predict(fm, type = "marginal")
+  expect_lt(abs(mean(mg) - mean(d$resp)), 0.03)
+})
