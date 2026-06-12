@@ -109,3 +109,25 @@ test_that("weights validation errors clearly", {
   expect_error(gllamm(y ~ x + (1 | grp), data = d,
                       weights = list(level2 = w_bad)), "constant within")
 })
+
+test_that("LCA and CDM person weights equal duplication exactly", {
+  set.seed(4)
+  np <- 150
+  cls <- rbinom(np, 1, 0.4) + 1
+  Y <- sapply(1:6, function(j) rbinom(np, 1, c(0.25, 0.75)[cls]))
+  w <- sample(1:3, np, replace = TRUE)
+  fa <- fit_lca(Y, nclass = 2, weights = w)
+  fb <- fit_lca(Y[rep(1:np, w), ], nclass = 2)
+  expect_equal(fa$logLik, fb$logLik, tolerance = 1e-5)
+
+  Q <- rbind(diag(2), diag(2), c(1, 1))
+  alpha <- matrix(rbinom(np * 2, 1, 0.5), np, 2)
+  Yc <- sapply(1:5, function(j) {
+    m <- which(Q[j, ] == 1)
+    rbinom(np, 1, 0.15 + 0.7 * (rowSums(alpha[, m, drop = FALSE]) ==
+                                  length(m)))
+  })
+  ca <- fit_cdm(Yc, Q, model = "dina", weights = w)
+  cb <- fit_cdm(Yc[rep(1:np, w), ], Q, model = "dina")
+  expect_equal(ca$logLik, cb$logLik, tolerance = 1e-5)
+})
