@@ -2,6 +2,20 @@
 
 ## Post-1.2.0 development
 
+* Latent structure analysis (Torres Irribarra & Diakow framework):
+  `fit_lca()` gains `item_ordering` (invariant item ordering - item
+  monotonicity within classes, via isotonic regression over the
+  item-by-class grid; combined with `ordering` this is the double
+  monotonicity model) and `structure = "rasch"` (located latent
+  classes / latent class Rasch: logit pi_ic = theta_c - delta_i, classes
+  on an interval scale, reported sorted by location with
+  `class_locations` and `item_difficulties`). The located class model's
+  likelihood is verified against `fit_npml()` on the long-format GLMM
+  (the Lindsay-Clogg-Grego equivalence, to 0.02 logLik). New
+  `latent_structure_comparison()` fits all six models of the framework
+  (UN, MON, IIO, DM, LCR, RM) and returns the successive-comparison
+  table for deciding between qualitative, ordinal, and quantitative
+  latent structure.
 * Vignette suite completed: four new evaluated vignettes -
   `explanatory-irt` (De Boeck & Wilson on the verbal aggression data,
   with the GLMM cross-walk and the Kim & Wilson polytomous extension),

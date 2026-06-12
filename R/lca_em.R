@@ -126,8 +126,11 @@
 #' @keywords internal
 fit_lca_em <- function(Y, nclass, item_type, n_cats, weights = NULL,
                        n_starts = 3, max_iter = 1000, tol = 1e-8,
-                       order_edges = NULL) {
+                       order_edges = NULL, item_edges = NULL,
+                       structure = "free") {
   ordering <- !is.null(order_edges)
+  item_ordering <- !is.null(item_edges)
+  rasch <- identical(structure, "rasch")
   n_obs <- nrow(Y)
   n_items <- ncol(Y)
   K <- nclass
@@ -144,6 +147,29 @@ fit_lca_em <- function(Y, nclass, item_type, n_cats, weights = NULL,
     Yb <- ifelse(obs_mask[, bin_idx, drop = FALSE],
                  Y[, bin_idx, drop = FALSE], 0)
     Mb <- obs_mask[, bin_idx, drop = FALSE] * 1
+  }
+
+  # Item-monotonicity (and double-monotonicity) constraints couple the
+  # binary items: build one combined edge set over the J_b x K probability
+  # grid, column-major node index (c - 1) * J_b + j
+  grid_edges <- NULL
+  if (item_ordering && length(bin_idx)) {
+    J_b <- length(bin_idx)
+    ge <- list()
+    if (ordering) {
+      for (e in seq_len(nrow(order_edges))) {
+        a <- order_edges[e, 1]; b <- order_edges[e, 2]
+        ge[[length(ge) + 1]] <- cbind((a - 1) * J_b + seq_len(J_b),
+                                      (b - 1) * J_b + seq_len(J_b))
+      }
+    }
+    for (e in seq_len(nrow(item_edges))) {
+      ge[[length(ge) + 1]] <- cbind((seq_len(K) - 1) * J_b +
+                                      item_edges[e, 1],
+                                    (seq_len(K) - 1) * J_b +
+                                      item_edges[e, 2])
+    }
+    grid_edges <- do.call(rbind, ge)
   }
 
   init_params <- function() {
@@ -289,7 +315,17 @@ fit_lca_em <- function(Y, nclass, item_type, n_cats, weights = NULL,
         num <- crossprod(Yb, W)                    # J_b x K
         den <- pmax(crossprod(Mb, W), 1e-12)
         praw <- num / den
-        if (ordering) {
+        if (rasch) {
+          # Located latent classes (latent class Rasch): the M-step fits
+          # logit pi_jc = theta_c - delta_j by weighted logistic regression
+          # on the expected counts
+          praw <- .rasch_mstep(num, den)
+        } else if (!is.null(grid_edges)) {
+          # Item (or double) monotonicity: one isotonic projection of the
+          # whole probability grid over the combined partial order
+          v <- .isotonic_poset(as.vector(praw), as.vector(den), grid_edges)
+          praw <- matrix(v, nrow(praw), K)
+        } else if (ordering) {
           # Ordered/partially ordered LCM: the constrained binomial M-step
           # is the weighted isotonic regression of the raw proportions
           # over the class partial order
@@ -327,6 +363,9 @@ fit_lca_em <- function(Y, nclass, item_type, n_cats, weights = NULL,
       }
 
       # ---- Ramsay acceleration on successive EM steps (safeguarded) ----
+      # (Acceleration is skipped under the Rasch structure: extrapolating
+      # cellwise logits would leave the additive model space)
+      if (!rasch) {
       th_after <- flatten(p)
       step_now <- th_after - th_before
       step_norm <- sqrt(sum(step_now^2))
@@ -336,19 +375,25 @@ fit_lca_em <- function(Y, nclass, item_type, n_cats, weights = NULL,
           gain <- min(r / (1 - r), 20)
           p_revert <- p
           p <- unflatten(th_after + gain * step_now, p)
-          if (ordering) {
+          if (ordering || item_ordering) {
             # Project the extrapolated point back into the constraint set
             # (isotonic projection); the revert safeguard already protects
             # monotone likelihood
             unit_w <- rep(1, K)
             if (length(bin_idx)) {
-              for (jj in seq_len(nrow(p$bin))) {
-                p$bin[jj, ] <- .isotonic_poset(p$bin[jj, ], unit_w,
-                                               order_edges)
+              if (!is.null(grid_edges)) {
+                v <- .isotonic_poset(as.vector(p$bin),
+                                     rep(1, length(p$bin)), grid_edges)
+                p$bin <- matrix(v, nrow(p$bin), K)
+              } else {
+                for (jj in seq_len(nrow(p$bin))) {
+                  p$bin[jj, ] <- .isotonic_poset(p$bin[jj, ], unit_w,
+                                                 order_edges)
+                }
               }
               p$bin <- pmin(pmax(p$bin, 1e-6), 1 - 1e-6)
             }
-            if (length(gau_idx)) {
+            if (length(gau_idx) && ordering) {
               for (jj in seq_len(nrow(p$mu))) {
                 p$mu[jj, ] <- .isotonic_poset(p$mu[jj, ], unit_w,
                                               order_edges)
@@ -359,6 +404,7 @@ fit_lca_em <- function(Y, nclass, item_type, n_cats, weights = NULL,
         }
       }
       step_prev_norm <- step_norm
+      }
     }
     list(p = p, loglik = loglik, converged = converged, iter = iter)
   }
@@ -379,4 +425,26 @@ fit_lca_em <- function(Y, nclass, item_type, n_cats, weights = NULL,
   list(params = p, loglik = best$loglik, posterior = posterior,
        converged = best$converged, iterations = best$iter,
        bin_idx = bin_idx, cat_idx = cat_idx, gau_idx = gau_idx)
+}
+
+
+#' Weighted logistic M-step for the located latent class (Rasch) model
+#'
+#' Given expected success counts and totals per item x class cell, fits
+#' logit pi_jc = theta_c - delta_j by weighted binomial GLM (the
+#' complete-data M-step of the latent class Rasch model of Lindsay,
+#' Clogg & Grego 1991) and returns the fitted probability matrix.
+#'
+#' @keywords internal
+.rasch_mstep <- function(num, den) {
+  J <- nrow(num)
+  K <- ncol(num)
+  yprop <- as.vector(num / den)
+  w <- as.vector(den)
+  item_f <- factor(rep(seq_len(J), K))
+  class_f <- factor(rep(seq_len(K), each = J))
+  X <- stats::model.matrix(~ item_f + class_f)
+  fit <- suppressWarnings(
+    stats::glm.fit(X, yprop, weights = w, family = stats::binomial()))
+  matrix(stats::plogis(as.numeric(X %*% fit$coefficients)), J, K)
 }

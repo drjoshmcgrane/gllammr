@@ -11,6 +11,8 @@ fit_lca(
   weights = NULL,
   method = c("em", "tmb"),
   ordering = "none",
+  item_ordering = "none",
+  structure = c("free", "rasch"),
   start = NULL,
   control = list()
 )
@@ -54,6 +56,22 @@ incomparable middle classes of a diamond can swap). Requires
 indicators. Note that likelihood-ratio tests against the unrestricted
 model have a non-standard (chi-bar-square) null distribution, and
 AIC/BIC are reported with the nominal parameter count.}
+
+\item{item_ordering}{Item-monotonicity restriction (invariant item
+ordering; Croon 1991): "none" (default), "increasing" (success
+probabilities nondecreasing across items in column order, within
+every class), or a list/matrix of item index pairs defining a
+partial order over items. Combined with \code{ordering} this gives
+the double monotonicity model. Requires all-binary indicators and
+\code{method = "em"}.}
+
+\item{structure}{"free" (default) or "rasch": the located latent class
+model (latent class Rasch; Lindsay, Clogg & Grego 1991), where
+\code{logit P(x_ic = 1) = theta_c - delta_i} - classes lie on an
+interval scale shared with the items. Classes are reported sorted by
+location; \code{class_locations} and \code{item_difficulties} are
+returned. Implies both monotonicities, so the ordering arguments
+must be left at their defaults. Requires all-binary indicators.}
 
 \item{start}{Optional starting values}
 

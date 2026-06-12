@@ -13,7 +13,9 @@ fit_lca_em(
   n_starts = 3,
   max_iter = 1000,
   tol = 1e-08,
-  order_edges = NULL
+  order_edges = NULL,
+  item_edges = NULL,
+  structure = "free"
 )
 }
 \description{

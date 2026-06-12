@@ -142,6 +142,51 @@ but your hypothesized lattice does not, the classes are ordered but not
 linearly. Fully Q-matrix-structured class spaces are the next step up:
 see `vignette("cognitive-diagnosis")`.
 
+## Categorization, ordering or quantification: comparing latent structures
+
+Torres Irribarra & Diakow propose selecting *the structure of the latent
+variable itself* by comparing six progressively constrained models:
+unconstrained classes (UN), class-monotone ordered classes (MON),
+invariant item ordering (IIO), double monotonicity (DM), located latent
+classes (LCR — the latent class Rasch model, where
+$\mathrm{logit}\,\pi_{ic} = \theta_c - \delta_i$ puts classes on an
+interval scale), and the Rasch model (RM). Successive comparisons
+decompose the order and scale assumptions: UN vs MON/IIO asks whether
+ordering is tenable; the single-monotonicity models vs DM whether
+persons and items share one progression; DM vs LCR isolates the
+interval-scale assumption; LCR vs RM asks whether a continuum beats
+located classes. All six are available here — the item-side constraints
+through `item_ordering`, the located classes through
+`structure = "rasch"` — and one call runs the whole framework:
+
+```{r structures}
+d_loc <- local({
+  set.seed(9)
+  theta <- c(-1.5, -0.5, 0.5, 1.5)
+  delta <- seq(1.4, -1.4, length.out = 8)
+  cls <- sample(1:4, 1000, TRUE)
+  sapply(1:8, function(j) rbinom(1000, 1, plogis(theta[cls] - delta[j])))
+})
+cmp <- latent_structure_comparison(d_loc, nclass = 4, n_starts = 3)
+print(cmp)
+```
+
+These data were generated from four *located* classes, and the framework
+finds quantitative structure: the qualitative and ordinal models buy
+almost no likelihood over LCR despite spending far more parameters. The
+located class model itself reports the interval-scale quantities:
+
+```{r lcr}
+lcr <- attr(cmp, "fits")$LCR
+round(lcr$class_locations, 2)
+round(lcr$item_difficulties, 2)
+```
+
+(A neat identity worth knowing: the located latent class model is
+exactly the Rasch model with a nonparametric, mass-point ability
+distribution — the package's test suite verifies its likelihood against
+`fit_npml()` on the long-format GLMM.)
+
 ## Mixed indicator types and missing data
 
 Indicators are auto-detected: 0/1 columns are binary, integer 1..K

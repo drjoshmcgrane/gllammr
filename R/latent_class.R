@@ -35,6 +35,20 @@
 #'   indicators. Note that likelihood-ratio tests against the unrestricted
 #'   model have a non-standard (chi-bar-square) null distribution, and
 #'   AIC/BIC are reported with the nominal parameter count.
+#' @param item_ordering Item-monotonicity restriction (invariant item
+#'   ordering; Croon 1991): "none" (default), "increasing" (success
+#'   probabilities nondecreasing across items in column order, within
+#'   every class), or a list/matrix of item index pairs defining a
+#'   partial order over items. Combined with \code{ordering} this gives
+#'   the double monotonicity model. Requires all-binary indicators and
+#'   \code{method = "em"}.
+#' @param structure "free" (default) or "rasch": the located latent class
+#'   model (latent class Rasch; Lindsay, Clogg & Grego 1991), where
+#'   \code{logit P(x_ic = 1) = theta_c - delta_i} - classes lie on an
+#'   interval scale shared with the items. Classes are reported sorted by
+#'   location; \code{class_locations} and \code{item_difficulties} are
+#'   returned. Implies both monotonicities, so the ordering arguments
+#'   must be left at their defaults. Requires all-binary indicators.
 #' @param start Optional starting values
 #' @param control Control parameters
 #'
@@ -70,6 +84,8 @@ fit_lca <- function(formula, data = NULL, nclass = 2,
                     weights = NULL,
                     method = c("em", "tmb"),
                     ordering = "none",
+                    item_ordering = "none",
+                    structure = c("free", "rasch"),
                     start = NULL, control = list()) {
 
   method <- match.arg(method)
@@ -114,6 +130,30 @@ fit_lca <- function(formula, data = NULL, nclass = 2,
          "of class index pairs")
   }
   ordered_classes <- !is.null(order_edges)
+  structure <- match.arg(structure)
+
+  # ---- Normalize the item-ordering spec to an edge matrix (or NULL) ----
+  item_edges <- NULL
+  if (is.character(item_ordering) && length(item_ordering) == 1) {
+    item_ordering <- match.arg(item_ordering, c("none", "increasing"))
+  } else if (is.list(item_ordering) || is.matrix(item_ordering)) {
+    ie <- if (is.list(item_ordering)) {
+      if (!all(vapply(item_ordering, length, 0L) == 2)) {
+        stop("item_ordering pairs must each have exactly two item indices")
+      }
+      do.call(rbind, item_ordering)
+    } else {
+      if (ncol(item_ordering) != 2) {
+        stop("an item_ordering matrix must have two columns")
+      }
+      item_ordering
+    }
+    storage.mode(ie) <- "integer"
+    item_edges <- ie
+  } else {
+    stop("item_ordering must be \"none\", \"increasing\", or a ",
+         "list/matrix of item index pairs")
+  }
 
   # Handle formula or matrix input
   if (is.matrix(formula)) {
@@ -171,6 +211,41 @@ fit_lca <- function(formula, data = NULL, nclass = 2,
     }
   }
 
+  rasch_structure <- structure == "rasch"
+  if (rasch_structure || identical(item_ordering, "increasing") ||
+      !is.null(item_edges)) {
+    if (method != "em" || !is.null(start)) {
+      stop("item_ordering and structure restrictions require ",
+           "method = \"em\"")
+    }
+    if (any(item_type != 0L)) {
+      stop("item_ordering and structure = \"rasch\" require all-binary ",
+           "indicators (item monotonicity and Rasch locations compare ",
+           "items on a common response scale)")
+    }
+  }
+  if (rasch_structure &&
+      (ordered_classes || !identical(item_ordering, "none"))) {
+    stop("structure = \"rasch\" already implies class and item ",
+         "monotonicity (classes are reported sorted by location); drop ",
+         "the ordering arguments")
+  }
+  if (identical(item_ordering, "increasing")) {
+    item_edges <- cbind(seq_len(n_items - 1), 2:n_items)
+    storage.mode(item_edges) <- "integer"
+  }
+  if (!is.null(item_edges)) {
+    if (anyNA(item_edges) || any(item_edges < 1) ||
+        any(item_edges > n_items)) {
+      stop("item_ordering indices must be integers in 1..n_items")
+    }
+    if (any(item_edges[, 1] == item_edges[, 2])) {
+      stop("item_ordering pairs must relate two distinct items")
+    }
+    item_edges <- unique(item_edges)
+    .topological_order(n_items, item_edges)   # errors on cycles
+  }
+
   # ---- EM path (default): closed-form M-steps, poLCA algorithm ----
   if (method == "em" && is.null(start)) {
     n_starts <- control$n_starts %||% 3
@@ -179,9 +254,29 @@ fit_lca <- function(formula, data = NULL, nclass = 2,
                      n_starts = n_starts,
                      max_iter = control$max_iter %||% 1000,
                      tol = control$tol %||% 1e-8,
-                     order_edges = order_edges)
+                     order_edges = order_edges,
+                     item_edges = item_edges,
+                     structure = structure)
     pE <- em$params
     item_names <- colnames(Y) %||% paste0("Item", 1:n_items)
+
+    class_locations <- NULL
+    item_difficulties <- NULL
+    if (rasch_structure) {
+      # Decompose the additive logit structure and sort classes by
+      # location (canonical labelling for located classes):
+      # logit p_jc = theta_c - delta_j with sum(delta) = 0
+      L <- qlogis(pE$bin)
+      theta_c <- colMeans(L)
+      delta_j <- mean(theta_c) - rowMeans(L)
+      ord_cls <- order(theta_c)
+      pE$pi <- pE$pi[ord_cls]
+      pE$bin <- pE$bin[, ord_cls, drop = FALSE]
+      em$posterior <- em$posterior[, ord_cls, drop = FALSE]
+      class_locations <- setNames(theta_c[ord_cls],
+                                  paste0("Class", 1:nclass))
+      item_difficulties <- setNames(delta_j, item_names)
+    }
 
     item_probs_matrix <- matrix(NA_real_, n_items, nclass,
                                 dimnames = list(item_names,
@@ -213,15 +308,24 @@ fit_lca <- function(formula, data = NULL, nclass = 2,
     class_probs <- pE$pi
     names(class_probs) <- paste0("Class", 1:nclass)
 
-    n_par <- (nclass - 1) + length(em$bin_idx) * nclass +
-      sum(pmax(n_cats[em$cat_idx] - 1, 0)) * nclass +
-      2 * length(em$gau_idx) * nclass
+    n_par <- if (rasch_structure) {
+      (nclass - 1) + (n_items + nclass - 1)
+    } else {
+      (nclass - 1) + length(em$bin_idx) * nclass +
+        sum(pmax(n_cats[em$cat_idx] - 1, 0)) * nclass +
+        2 * length(em$gau_idx) * nclass
+    }
 
     result <- list(
       nclass = nclass,
       method = "EM",
       ordering = ordering,
       order_edges = order_edges,
+      item_ordering = item_ordering,
+      item_edges = item_edges,
+      structure = structure,
+      class_locations = class_locations,
+      item_difficulties = item_difficulties,
       class_probs = class_probs,
       item_probs = item_probs_matrix,
       cat_probs = cat_probs,
@@ -479,7 +583,18 @@ fit_lca <- function(formula, data = NULL, nclass = 2,
 #' @export
 print.gllamm_lca <- function(x, ...) {
   cat("Latent Class Analysis\n\n")
-  if (identical(x$ordering, "increasing")) {
+  if (identical(x$structure, "rasch")) {
+    cat("Located latent classes (latent class Rasch):\n")
+    cat("logit P = theta_c - delta_i; classes sorted by location\n")
+    cat("Class locations:", round(x$class_locations, 3), "\n")
+  } else if (identical(x$ordering, "increasing") &&
+             !identical(x$item_ordering, "none")) {
+    cat("Double monotonicity: probabilities nondecreasing across classes\n")
+    cat("and across the item ordering\n")
+  } else if (!identical(x$item_ordering %||% "none", "none")) {
+    cat("Invariant item ordering: probabilities nondecreasing across\n")
+    cat("items within every class\n")
+  } else if (identical(x$ordering, "increasing")) {
     cat("Order-restricted classes (Croon): item probabilities and means\n")
     cat("nondecreasing across classes\n")
   } else if (!is.null(x$order_edges)) {
