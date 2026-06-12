@@ -88,7 +88,7 @@ fit_npml <- function(formula, data, k = 2, family = stats::gaussian(),
   for (s in seq_len(n_starts)) {
     tmb_params <- if (!is.null(start)) start else make_params(jitter = (s - 1) * 0.4)
     obj <- TMB::MakeADFun(data = tmb_data, parameters = tmb_params,
-                          map = tmb_map, DLL = "GLLAMMR", silent = TRUE)
+                          map = tmb_map, DLL = "gllammr", silent = TRUE)
     control_defaults <- list(eval.max = 3000, iter.max = 1500, trace = 0)
     ctl <- modifyList(control_defaults, control)
     opt <- try(nlminb(obj$par, obj$fn, obj$gr, control = ctl), silent = TRUE)

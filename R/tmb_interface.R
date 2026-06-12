@@ -78,7 +78,7 @@ fit_tmb_gllamm <- function(model_data, family, start_params = NULL, control = li
       data = tmb_data,
       parameters = tmb_params,
       random = "u",  # Integrate out random effects
-      DLL = "GLLAMMR",
+      DLL = "gllammr",
       silent = TRUE
     )
   }, error = function(e) {

@@ -1,10 +1,10 @@
 ---
-title: "Multilevel GLMMs with GLLAMMR"
-author: "GLLAMMR Team"
+title: "Multilevel GLMMs with gllammr"
+author: "gllammr Team"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Multilevel GLMMs with GLLAMMR}
+  %\VignetteIndexEntry{Multilevel GLMMs with gllammr}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -28,7 +28,7 @@ This vignette covers multilevel generalized linear mixed models (GLMMs) for hier
 ### Random Intercept
 
 ```{r}
-library(GLLAMMR)
+library(gllammr)
 
 # Students in schools
 fit1 <- gllamm(math_score ~ ses + (1 | school),

@@ -166,7 +166,7 @@ dif_irt <- function(response_matrix, dif, person_data = NULL,
 
     obj <- TMB::MakeADFun(data = tmb_data, parameters = tmb_params,
                           random = "theta", map = tmb_map,
-                          DLL = "GLLAMMR", silent = TRUE)
+                          DLL = "gllammr", silent = TRUE)
     ctl <- modifyList(list(eval.max = 2000, iter.max = 1000, trace = 0),
                       control)
     opt <- nlminb(obj$par, obj$fn, obj$gr, control = ctl)

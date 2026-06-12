@@ -415,7 +415,7 @@ fit_eirt <- function(response_matrix,
     parameters = tmb_params,
     random = random_effects,
     map = map_list,
-    DLL = "GLLAMMR",
+    DLL = "gllammr",
     silent = TRUE
   )
 

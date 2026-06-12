@@ -5,7 +5,7 @@
 # on the facets) should approximately reproduce the one-stage estimates.
 
 suppressMessages({
-  library(GLLAMMR)
+  library(gllammr)
   library(lme4)
 })
 

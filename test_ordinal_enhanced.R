@@ -1,8 +1,8 @@
 # Enhanced Ordinal Models Test Suite
 # Tests for ACL, CRL, and PPO implementations
 
-library(GLLAMMR)
-dyn.load('/Users/josh/Documents/Claude_Code/GLLAMMR/src/gllamm_ordinal.so')
+library(gllammr)
+dyn.load('/Users/josh/Documents/Claude_Code/gllammr/src/gllamm_ordinal.so')
 
 cat("========================================\n")
 cat("Enhanced Ordinal Models Test Suite\n")

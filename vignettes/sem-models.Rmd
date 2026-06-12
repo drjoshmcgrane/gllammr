@@ -36,7 +36,7 @@ each factor is the marker (loading fixed at 1); exogenous factors covary
 freely, as in lavaan.
 
 ```{r cfa}
-library(GLLAMMR)
+library(gllammr)
 set.seed(2026)
 n <- 500
 f1 <- rnorm(n)

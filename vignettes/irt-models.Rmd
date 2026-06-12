@@ -1,10 +1,10 @@
 ---
-title: "Item Response Theory Models with GLLAMMR"
-author: "GLLAMMR Team"
+title: "Item Response Theory Models with gllammr"
+author: "gllammr Team"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Item Response Theory Models with GLLAMMR}
+  %\VignetteIndexEntry{Item Response Theory Models with gllammr}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -21,7 +21,7 @@ knitr::opts_chunk$set(
 
 Item Response Theory (IRT) provides a framework for analyzing test and survey data. IRT models relate person abilities (latent traits) to item responses through mathematical functions.
 
-GLLAMMR implements the major IRT models:
+gllammr implements the major IRT models:
 
 - **Dichotomous**: Rasch (1PL), 2PL, 3PL
 - **Polytomous**: Graded Response Model (GRM), Partial Credit Model (PCM), Generalized Partial Credit Model (GPCM), Nominal Response Model (NRM)
@@ -44,7 +44,7 @@ where:
 ### Simulating Rasch Data
 
 ```{r rasch-simulation}
-library(GLLAMMR)
+library(gllammr)
 
 set.seed(123)
 n_persons <- 300

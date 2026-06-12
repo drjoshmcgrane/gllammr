@@ -1,4 +1,4 @@
-#' Enhanced interface to TMB for GLLAMMR models
+#' Enhanced interface to TMB for gllammr models
 #'
 #' Supports random intercepts, random slopes, and multiple GLM families
 #'
@@ -162,7 +162,7 @@ fit_tmb_gllamm_v2 <- function(model_data, family, random_terms, start_params = N
       parameters = tmb_params,
       random = "u",
       map = tmb_map,
-      DLL = "GLLAMMR",
+      DLL = "gllammr",
       silent = TRUE
     )
   }, error = function(e) {
@@ -434,7 +434,7 @@ fit_tmb_gllamm_multi <- function(model_data, family, random_terms,
     parameters = tmb_params,
     random = "u",
     map = tmb_map,
-    DLL = "GLLAMMR",
+    DLL = "gllammr",
     silent = TRUE
   )
 

@@ -1,10 +1,10 @@
 ---
-title: "Multi-Level IRT Models in GLLAMMR"
-author: "GLLAMMR Development Team"
+title: "Multi-Level IRT Models in gllammr"
+author: "gllammr Development Team"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Multi-Level IRT Models in GLLAMMR}
+  %\VignetteIndexEntry{Multi-Level IRT Models in gllammr}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -23,7 +23,7 @@ knitr::opts_chunk$set(
 
 Note: the code in this vignette is illustrative and is not evaluated when the vignette is built.
 
-This vignette demonstrates how to fit multi-level (hierarchical) Item Response Theory (IRT) models using GLLAMMR. Multi-level IRT models are essential when test-takers are clustered within groups (e.g., students within classrooms, patients within hospitals, or repeated measurements within individuals).
+This vignette demonstrates how to fit multi-level (hierarchical) Item Response Theory (IRT) models using gllammr. Multi-level IRT models are essential when test-takers are clustered within groups (e.g., students within classrooms, patients within hospitals, or repeated measurements within individuals).
 
 ### Why Multi-Level IRT?
 
@@ -62,7 +62,7 @@ where the total ability $\theta_i$ includes both person and group components.
 Let's simulate data from 200 students nested in 20 classes:
 
 ```{r simulate-data}
-library(GLLAMMR)
+library(gllammr)
 set.seed(42)
 
 # Setup
@@ -380,7 +380,7 @@ If the model fails to converge:
 
 ## Summary
 
-Multi-level IRT in GLLAMMR:
+Multi-level IRT in gllammr:
 
 - **Syntax**: Use `person_data` + `random = ~ (1 | group)` with any IRT model
 - **Structures**: Supports nested, crossed, and partially nested designs

@@ -5,7 +5,7 @@
 #' @name families
 NULL
 
-# Register the S4 inheritance so objects from GLLAMMR's binomial() remain
+# Register the S4 inheritance so objects from gllammr's binomial() remain
 # usable by S4-based consumers (e.g. lme4 slots typed "family")
 methods::setOldClass(c("binomial_family", "family"))
 methods::setOldClass(c("ordinal_family", "family"))
@@ -189,7 +189,7 @@ binomial <- function(link = c("logit", "probit", "cloglog")) {
   link <- match.arg(link)
 
   # Build on the full stats family object so the result remains usable by
-  # other packages (lme4, glm, ...) when GLLAMMR masks stats::binomial
+  # other packages (lme4, glm, ...) when gllammr masks stats::binomial
   f <- stats::binomial(link = link)
   f$link_code <- switch(link,
     logit = 1L,

@@ -1,8 +1,8 @@
 ---
-title: "Latent Class Analysis with GLLAMMR"
+title: "Latent Class Analysis with gllammr"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Latent Class Analysis with GLLAMMR}
+  %\VignetteIndexEntry{Latent Class Analysis with gllammr}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -35,7 +35,7 @@ simulations, at 2–3x poLCA's speed).
 ## A basic two-class model
 
 ```{r simulate}
-library(GLLAMMR)
+library(gllammr)
 set.seed(2026)
 n <- 800
 true_class <- rbinom(n, 1, 0.4) + 1

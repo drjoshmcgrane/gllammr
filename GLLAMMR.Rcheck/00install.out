@@ -1,0 +1,161 @@
+* installing *source* package ‘GLLAMMR’ ...
+** this is package ‘GLLAMMR’ version ‘1.2.0’
+** using staged installation
+** libs
+using C++ compiler: ‘Apple clang version 17.0.0 (clang-1700.0.13.5)’
+using SDK: ‘MacOSX15.5.sdk’
+clang++ -arch arm64 -std=gnu++17 -I"/Library/Frameworks/R.framework/Resources/include" -DNDEBUG -DTMB_EIGEN_DISABLE_WARNINGS -I'/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library/TMB/include' -I'/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library/RcppEigen/include' -I/opt/R/arm64/include    -fPIC  -falign-functions=64 -Wall -g -O2   -c GLLAMMR.cpp -o GLLAMMR.o
+In file included from GLLAMMR.cpp:5:
+In file included from /Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library/TMB/include/TMB.hpp:96:
+In file included from /Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library/RcppEigen/include/Eigen/Sparse:26:
+In file included from /Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library/RcppEigen/include/Eigen/SparseCore:61:
+/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library/RcppEigen/include/Eigen/src/SparseCore/TriangularSolver.h:273:13: warning: variable 'count' set but not used [-Wunused-but-set-variable]
+  273 |       Index count = 0;
+      |             ^
+In file included from GLLAMMR.cpp:5:
+In file included from /Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library/TMB/include/TMB.hpp:96:
+In file included from /Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library/RcppEigen/include/Eigen/Sparse:29:
+In file included from /Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library/RcppEigen/include/Eigen/SparseLU:35:
+/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library/RcppEigen/include/Eigen/src/SparseLU/SparseLU_heap_relax_snode.h:78:9: warning: variable 'nsuper_et_post' set but not used [-Wunused-but-set-variable]
+   78 |   Index nsuper_et_post = 0; // Number of relaxed snodes in postordered etree 
+      |         ^
+/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library/RcppEigen/include/Eigen/src/SparseLU/SparseLU_heap_relax_snode.h:79:9: warning: variable 'nsuper_et' set but not used [-Wunused-but-set-variable]
+   79 |   Index nsuper_et = 0; // Number of relaxed snodes in the original etree 
+      |         ^
+In file included from GLLAMMR.cpp:7:
+./include/gllamm_gaussian.hpp:20:16: warning: unused variable 'n_fixed' [-Wunused-variable]
+   20 |   DATA_INTEGER(n_fixed);       // Number of fixed effects
+      |                ^~~~~~~
+/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library/TMB/include/tmb_core.hpp:261:32: note: expanded from macro 'DATA_INTEGER'
+  261 | #define DATA_INTEGER(name) int name(CppAD::Integer(asVector<Type>(      \
+      |                                ^~~~
+In file included from GLLAMMR.cpp:10:
+./include/gllamm_binomial.hpp:40:9: warning: unused variable 'n_theta' [-Wunused-variable]
+   40 |     int n_theta = n_random * (n_random - 1) / 2;
+      |         ^~~~~~~
+./include/gllamm_binomial.hpp:20:16: warning: unused variable 'n_fixed' [-Wunused-variable]
+   20 |   DATA_INTEGER(n_fixed);       // Number of fixed effects
+      |                ^~~~~~~
+/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library/TMB/include/tmb_core.hpp:261:32: note: expanded from macro 'DATA_INTEGER'
+  261 | #define DATA_INTEGER(name) int name(CppAD::Integer(asVector<Type>(      \
+      |                                ^~~~
+In file included from GLLAMMR.cpp:11:
+./include/gllamm_poisson.hpp:39:9: warning: unused variable 'n_theta' [-Wunused-variable]
+   39 |     int n_theta = n_random * (n_random - 1) / 2;
+      |         ^~~~~~~
+./include/gllamm_poisson.hpp:20:16: warning: unused variable 'n_fixed' [-Wunused-variable]
+   20 |   DATA_INTEGER(n_fixed);       // Number of fixed effects
+      |                ^~~~~~~
+/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library/TMB/include/tmb_core.hpp:261:32: note: expanded from macro 'DATA_INTEGER'
+  261 | #define DATA_INTEGER(name) int name(CppAD::Integer(asVector<Type>(      \
+      |                                ^~~~
+In file included from GLLAMMR.cpp:14:
+./include/gllamm_irt.hpp:18:16: warning: unused variable 'n_items' [-Wunused-variable]
+   18 |   DATA_INTEGER(n_items);       // Number of items
+      |                ^~~~~~~
+/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library/TMB/include/tmb_core.hpp:261:32: note: expanded from macro 'DATA_INTEGER'
+  261 | #define DATA_INTEGER(name) int name(CppAD::Integer(asVector<Type>(      \
+      |                                ^~~~
+In file included from GLLAMMR.cpp:15:
+./include/gllamm_irt_multilevel.hpp:26:16: warning: unused variable 'n_items' [-Wunused-variable]
+   26 |   DATA_INTEGER(n_items);       // Number of items
+      |                ^~~~~~~
+/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library/TMB/include/tmb_core.hpp:261:32: note: expanded from macro 'DATA_INTEGER'
+  261 | #define DATA_INTEGER(name) int name(CppAD::Integer(asVector<Type>(      \
+      |                                ^~~~
+In file included from GLLAMMR.cpp:15:
+./include/gllamm_irt_multilevel.hpp:38:16: warning: unused variable 'max_n_groups' [-Wunused-variable]
+   38 |   DATA_INTEGER(max_n_groups);      // Maximum groups across levels
+      |                ^~~~~~~~~~~~
+/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library/TMB/include/tmb_core.hpp:261:32: note: expanded from macro 'DATA_INTEGER'
+  261 | #define DATA_INTEGER(name) int name(CppAD::Integer(asVector<Type>(      \
+      |                                ^~~~
+In file included from GLLAMMR.cpp:16:
+./include/gllamm_irt_poly.hpp:21:16: warning: unused variable 'max_categories' [-Wunused-variable]
+   21 |   DATA_INTEGER(max_categories);       // Maximum K across all items
+      |                ^~~~~~~~~~~~~~
+/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library/TMB/include/tmb_core.hpp:261:32: note: expanded from macro 'DATA_INTEGER'
+  261 | #define DATA_INTEGER(name) int name(CppAD::Integer(asVector<Type>(      \
+      |                                ^~~~
+In file included from GLLAMMR.cpp:16:
+./include/gllamm_irt_poly.hpp:23:16: warning: unused variable 'n_items' [-Wunused-variable]
+   23 |   DATA_INTEGER(n_items);              // Number of items
+      |                ^~~~~~~
+/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library/TMB/include/tmb_core.hpp:261:32: note: expanded from macro 'DATA_INTEGER'
+  261 | #define DATA_INTEGER(name) int name(CppAD::Integer(asVector<Type>(      \
+      |                                ^~~~
+In file included from GLLAMMR.cpp:17:
+./include/gllamm_irt_poly_multilevel.hpp:26:16: warning: unused variable 'max_categories' [-Wunused-variable]
+   26 |   DATA_INTEGER(max_categories);           // Maximum number of categories
+      |                ^~~~~~~~~~~~~~
+/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library/TMB/include/tmb_core.hpp:261:32: note: expanded from macro 'DATA_INTEGER'
+  261 | #define DATA_INTEGER(name) int name(CppAD::Integer(asVector<Type>(      \
+      |                                ^~~~
+In file included from GLLAMMR.cpp:17:
+./include/gllamm_irt_poly_multilevel.hpp:28:16: warning: unused variable 'n_items' [-Wunused-variable]
+   28 |   DATA_INTEGER(n_items);                  // Number of items
+      |                ^~~~~~~
+/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library/TMB/include/tmb_core.hpp:261:32: note: expanded from macro 'DATA_INTEGER'
+  261 | #define DATA_INTEGER(name) int name(CppAD::Integer(asVector<Type>(      \
+      |                                ^~~~
+In file included from GLLAMMR.cpp:17:
+./include/gllamm_irt_poly_multilevel.hpp:39:16: warning: unused variable 'max_n_groups' [-Wunused-variable]
+   39 |   DATA_INTEGER(max_n_groups);             // Maximum groups across levels
+      |                ^~~~~~~~~~~~
+/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library/TMB/include/tmb_core.hpp:261:32: note: expanded from macro 'DATA_INTEGER'
+  261 | #define DATA_INTEGER(name) int name(CppAD::Integer(asVector<Type>(      \
+      |                                ^~~~
+In file included from GLLAMMR.cpp:18:
+./include/gllamm_eirt.hpp:44:16: warning: unused variable 'max_categories' [-Wunused-variable]
+   44 |   DATA_INTEGER(max_categories);          // Maximum K
+      |                ^~~~~~~~~~~~~~
+/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library/TMB/include/tmb_core.hpp:261:32: note: expanded from macro 'DATA_INTEGER'
+  261 | #define DATA_INTEGER(name) int name(CppAD::Integer(asVector<Type>(      \
+      |                                ^~~~
+In file included from GLLAMMR.cpp:19:
+./include/gllamm_latent_class.hpp:22:16: warning: unused variable 'max_cats' [-Wunused-variable]
+   22 |   DATA_INTEGER(max_cats);      // max categories across categorical items (>= 2)
+      |                ^~~~~~~~
+/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library/TMB/include/tmb_core.hpp:261:32: note: expanded from macro 'DATA_INTEGER'
+  261 | #define DATA_INTEGER(name) int name(CppAD::Integer(asVector<Type>(      \
+      |                                ^~~~
+In file included from GLLAMMR.cpp:16:
+./include/gllamm_irt_poly.hpp:160:14: warning: variable 'prob_cat' is used uninitialized whenever 'if' condition is false [-Wsometimes-uninitialized]
+  160 |     else if (model_type == 4) {
+      |              ^~~~~~~~~~~~~~~
+GLLAMMR.cpp:41:56: note: in instantiation of function template specialization 'gllamm_irt_poly<double>' requested here
+   41 |   else if (model_name == "irt_poly")            return gllamm_irt_poly(this);
+      |                                                        ^
+/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library/TMB/include/tmb_core.hpp:2035:34: note: in instantiation of member function 'objective_function<double>::operator()' requested here
+ 2035 |       PROTECT( res = asSEXP( pf->operator()() ) );
+      |                                  ^
+./include/gllamm_irt_poly.hpp:192:22: note: uninitialized use occurs here
+  192 |     nll -= w_i * log(prob_cat + Type(1e-10));
+      |                      ^~~~~~~~
+./include/gllamm_irt_poly.hpp:160:10: note: remove the 'if' if its condition is always true
+  160 |     else if (model_type == 4) {
+      |          ^~~~~~~~~~~~~~~~~~~~
+./include/gllamm_irt_poly.hpp:70:18: note: initialize the variable 'prob_cat' to silence this warning
+   70 |     Type prob_cat;
+      |                  ^
+      |                   = 0.0
+19 warnings generated.
+clang++ -arch arm64 -std=gnu++17 -I"/Library/Frameworks/R.framework/Resources/include" -DNDEBUG -DTMB_EIGEN_DISABLE_WARNINGS -I'/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library/TMB/include' -I'/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library/RcppEigen/include' -I/opt/R/arm64/include    -fPIC  -falign-functions=64 -Wall -g -O2   -c em_poly.cpp -o em_poly.o
+em_poly.cpp:348:11: warning: unused variable 'K' [-Wunused-variable]
+  348 |       int K = Kvec[j];
+      |           ^
+1 warning generated.
+clang++ -arch arm64 -std=gnu++17 -dynamiclib -Wl,-headerpad_max_install_names -undefined dynamic_lookup -L/Library/Frameworks/R.framework/Resources/lib -L/opt/R/arm64/lib -o GLLAMMR.so GLLAMMR.o em_poly.o -L/Library/Frameworks/R.framework/Resources/lib -lRlapack -L/Library/Frameworks/R.framework/Resources/lib -lRblas -F/Library/Frameworks/R.framework/.. -framework R
+installing to /Users/josh/Documents/Claude_Code/GLLAMMR/GLLAMMR.Rcheck/00LOCK-GLLAMMR/00new/GLLAMMR/libs
+** R
+** inst
+** byte-compile and prepare package for lazy loading
+** help
+*** installing help indices
+** building package indices
+** installing vignettes
+** testing if installed package can be loaded from temporary location
+** checking absolute paths in shared objects and dynamic libraries
+** testing if installed package can be loaded from final location
+** testing if installed package keeps a record of temporary installation path
+* DONE (GLLAMMR)

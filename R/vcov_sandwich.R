@@ -147,7 +147,7 @@ fit_tmb_objective_only <- function(model_data, family, random_terms) {
     parameters = tmb_params,
     random = "u",
     map = tmb_map,
-    DLL = "GLLAMMR",
+    DLL = "gllammr",
     silent = TRUE
   )
 }

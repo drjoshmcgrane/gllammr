@@ -1,0 +1,60 @@
+
+R version 4.5.1 (2025-06-13) -- "Great Square Root"
+Copyright (C) 2025 The R Foundation for Statistical Computing
+Platform: aarch64-apple-darwin20
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> library(testthat)
+Warning message:
+package 'testthat' was built under R version 4.5.2 
+> library(GLLAMMR)
+
+Attaching package: 'GLLAMMR'
+
+The following object is masked from 'package:stats':
+
+    binomial
+
+> 
+> test_check("GLLAMMR")
+Intraclass Correlation Coefficients (ICC):
+  Level1 : 0 
+
+Proportion of variance:
+  Random effects: 0 
+  Residual: 1 
+Approximate ICC (binomial):
+Level1 
+0.0114 
+[ FAIL 0 | WARN 9 | SKIP 17 | PASS 930 ]
+
+══ Skipped tests (17) ══════════════════════════════════════════════════════════
+• IRT plotting requires fitted IRT model with specific structure (1):
+  'test-plotting.R:141:3'
+• LCA plotting requires fitted LCA model with specific structure (1):
+  'test-plotting.R:154:3'
+• On CRAN (9): 'test-binomial.R:25:3', 'test-binomial.R:67:3',
+  'test-binomial.R:99:3', 'test-binomial.R:134:3', 'test-binomial.R:168:3',
+  'test-binomial.R:195:3', 'test-binomial.R:213:3', 'test-irt-em.R:104:3',
+  'test-validation.R:5:3'
+• Requires polytomous data - implement when testing framework ready (2):
+  'test-eirt-api.R:67:3', 'test-eirt-api.R:75:3'
+• empty test (4): 'test-fit-statistics.R:191:1', 'test-fit-statistics.R:215:1',
+  'test-fit-statistics.R:228:1', 'test-ordinal-new-links.R:172:1'
+
+[ FAIL 0 | WARN 9 | SKIP 17 | PASS 930 ]
+> 
+> proc.time()
+   user  system elapsed 
+ 61.300   1.765  69.197 

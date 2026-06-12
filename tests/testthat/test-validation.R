@@ -1,7 +1,7 @@
 # Cross-package validation: every case must pass its stated tolerance.
 # Skipped on CRAN (reference packages are Suggests and the fits are slow).
 
-test_that("GLLAMMR estimates agree with reference packages", {
+test_that("gllammr estimates agree with reference packages", {
   skip_on_cran()
   skip_if_not_installed("lme4")
 

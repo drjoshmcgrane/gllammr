@@ -1,10 +1,10 @@
 ---
-title: "Marginal vs Conditional Predictions in GLLAMMR"
-author: "GLLAMMR Package"
+title: "Marginal vs Conditional Predictions in gllammr"
+author: "gllammr Package"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Marginal vs Conditional Predictions in GLLAMMR}
+  %\VignetteIndexEntry{Marginal vs Conditional Predictions in gllammr}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -21,7 +21,7 @@ knitr::opts_chunk$set(
 
 ## Introduction
 
-This vignette explains the difference between **conditional** and **marginal** predictions in generalized linear mixed models (GLMMs) and other hierarchical models, and demonstrates how to compute both types of predictions using GLLAMMR.
+This vignette explains the difference between **conditional** and **marginal** predictions in generalized linear mixed models (GLMMs) and other hierarchical models, and demonstrates how to compute both types of predictions using gllammr.
 
 ## What are Marginal Predictions?
 
@@ -59,7 +59,7 @@ For the **identity link** (Gaussian models), they are equal.
 
 ## Computing Marginal Predictions
 
-GLLAMMR uses Monte Carlo integration to compute marginal predictions:
+gllammr uses Monte Carlo integration to compute marginal predictions:
 
 1. Draw S samples from the random effects distribution: u_s ~ N(0, Σ_u)
 2. For each sample, compute: ŷ_s = g^(-1)(X'β + Z'u_s)
@@ -72,7 +72,7 @@ The default is S = 1000 samples (`n_sim = 1000`).
 Let's start with a simple example where the difference between conditional and marginal predictions is clear.
 
 ```{r binomial_example}
-library(GLLAMMR)
+library(gllammr)
 set.seed(123)
 
 # Simulate data: treatment effect with clinic random effects
@@ -348,7 +348,7 @@ Marginal predictions are available for:
 
 - **Marginal predictions** provide population-level inference by averaging over random effects
 - For **nonlinear links**, marginal ≠ conditional (Jensen's inequality)
-- Use `type = "marginal"` with `predict()` for any GLLAMMR model
+- Use `type = "marginal"` with `predict()` for any gllammr model
 - Adjust `n_sim` to balance accuracy and computation time
 
 For more information, see `?predict.gllamm` and the related predict methods.

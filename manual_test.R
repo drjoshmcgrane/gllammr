@@ -1,12 +1,12 @@
 #!/usr/bin/env Rscript
-# Manual testing script for GLLAMMR development
+# Manual testing script for gllammr development
 # Run with: Rscript tests/manual_test.R
 
-cat("GLLAMMR Manual Test Script\n")
+cat("gllammr Manual Test Script\n")
 cat("==========================\n\n")
 
 # Load package (assumes you're in package root)
-cat("Loading GLLAMMR...\n")
+cat("Loading gllammr...\n")
 devtools::load_all()
 
 cat("\n1. Testing formula parser\n")
@@ -21,7 +21,7 @@ test_data <- data.frame(
 
 # Parse simple formula
 formula1 <- y ~ x + (1 | group)
-parsed1 <- GLLAMMR:::parse_formula(formula1, test_data)
+parsed1 <- gllammr:::parse_formula(formula1, test_data)
 cat("Formula:", deparse(formula1), "\n")
 cat("Fixed formula:", deparse(parsed1$fixed_formula), "\n")
 cat("Number of random terms:", length(parsed1$random_terms), "\n")
@@ -30,7 +30,7 @@ cat("Random grouping:", parsed1$random_terms[[1]]$grouping, "\n")
 cat("\n2. Testing model matrices\n")
 cat("---------------------------\n")
 
-mats <- GLLAMMR:::make_model_matrices(parsed1, test_data)
+mats <- gllammr:::make_model_matrices(parsed1, test_data)
 cat("Number of observations:", mats$n_obs, "\n")
 cat("Number of fixed effects:", mats$n_fixed, "\n")
 cat("Number of groups:", mats$n_groups[1], "\n")
@@ -39,14 +39,14 @@ cat("Fixed effects design matrix dimensions:", dim(mats$X), "\n")
 cat("\n3. Testing random term parsing\n")
 cat("---------------------------\n")
 
-rt1 <- GLLAMMR:::parse_random_term("(1|g)", data.frame(g = 1:10))
+rt1 <- gllammr:::parse_random_term("(1|g)", data.frame(g = 1:10))
 cat("Simple random intercept - Grouping:", rt1$grouping, "\n")
 
 test_data_nested <- data.frame(
   school = rep(1:3, each = 6),
   class = rep(1:9, each = 2)
 )
-rt2 <- GLLAMMR:::parse_random_term("(1|school/class)", test_data_nested)
+rt2 <- gllammr:::parse_random_term("(1|school/class)", test_data_nested)
 cat("Nested random effects - Nested:", rt2$nested, "\n")
 cat("Nested random effects - Grouping vars:", paste(rt2$grouping, collapse = ", "), "\n")
 
@@ -55,7 +55,7 @@ cat("---------------------------\n")
 
 # Should work
 valid_result <- tryCatch({
-  GLLAMMR:::validate_formula(y ~ x + (1|group), test_data)
+  gllammr:::validate_formula(y ~ x + (1|group), test_data)
   "PASS"
 }, error = function(e) {
   paste("FAIL:", e$message)
@@ -64,7 +64,7 @@ cat("Valid formula:", valid_result, "\n")
 
 # Should fail - no response
 invalid_result <- tryCatch({
-  GLLAMMR:::validate_formula(~ x + (1|group), test_data)
+  gllammr:::validate_formula(~ x + (1|group), test_data)
   "FAIL: Should have errored"
 }, error = function(e) {
   "PASS: Correctly caught error"
@@ -73,7 +73,7 @@ cat("Invalid formula (no response):", invalid_result, "\n")
 
 # Should fail - missing variable
 invalid_result2 <- tryCatch({
-  GLLAMMR:::validate_formula(y ~ z + (1|group), test_data)
+  gllammr:::validate_formula(y ~ z + (1|group), test_data)
   "FAIL: Should have errored"
 }, error = function(e) {
   "PASS: Correctly caught error"

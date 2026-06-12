@@ -10,9 +10,6 @@
 #include "include/gllamm_binomial.hpp"
 #include "include/gllamm_poisson.hpp"
 #include "include/gllamm_ordinal.hpp"
-#include "include/gllamm_ordinal_multi.hpp"
-#include "include/gllamm_irt_dif.hpp"
-#include "include/gllamm_multinomial_multi.hpp"
 #include "include/gllamm_multinomial.hpp"
 #include "include/gllamm_irt.hpp"
 #include "include/gllamm_irt_multilevel.hpp"
@@ -38,11 +35,8 @@ Type objective_function<Type>::operator() ()
   else if (model_name == "binomial")            return gllamm_binomial(this);
   else if (model_name == "poisson")             return gllamm_poisson(this);
   else if (model_name == "ordinal")             return gllamm_ordinal(this);
-  else if (model_name == "ordinal_multi")       return gllamm_ordinal_multi(this);
   else if (model_name == "multinomial")         return gllamm_multinomial(this);
-  else if (model_name == "multinomial_multi")   return gllamm_multinomial_multi(this);
   else if (model_name == "irt")                 return gllamm_irt(this);
-  else if (model_name == "irt_dif")             return gllamm_irt_dif(this);
   else if (model_name == "irt_multilevel")      return gllamm_irt_multilevel(this);
   else if (model_name == "irt_poly")            return gllamm_irt_poly(this);
   else if (model_name == "irt_poly_multilevel") return gllamm_irt_poly_multilevel(this);
@@ -65,12 +59,10 @@ Type objective_function<Type>::operator() ()
 extern "C" {
 
 SEXP C_em_poly(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
-SEXP C_em_cdm(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 
 static const R_CallMethodDef CallEntries[] = {
   TMB_CALLDEFS,
   {"C_em_poly", (DL_FUNC) &C_em_poly, 9},
-  {"C_em_cdm", (DL_FUNC) &C_em_cdm, 10},
   {NULL, NULL, 0}
 };
 

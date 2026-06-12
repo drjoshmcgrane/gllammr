@@ -37,7 +37,7 @@ Three skills, 15 items: single-skill items plus items requiring two or
 all three skills (conjunctively — the DINA rule).
 
 ```{r simulate}
-library(GLLAMMR)
+library(gllammr)
 set.seed(2026)
 A <- 3
 Q <- rbind(diag(3), diag(3), diag(3),
@@ -118,7 +118,7 @@ fit_g$item_params[[10]]
 By default (`monotone = TRUE`) mastering more of an item's skills can
 never *lower* the success probability — enforced by isotonic regression
 over the skill lattice in the M-step, the same machinery behind
-GLLAMMR's order-restricted latent class models. Set `monotone = FALSE`
+gllammr's order-restricted latent class models. Set `monotone = FALSE`
 for the unconstrained saturated model; the constrained fit can never
 beat it on likelihood, and a large gap flags items whose kernels violate
 the ordering.
@@ -141,7 +141,7 @@ pair lists; cycles are rejected.
 ## Connection to the GLLAMM framework
 
 A CDM is a structured latent class model: with one attribute, the
-unconstrained G-DINA *is* a two-class LCA (GLLAMMR's test suite verifies
+unconstrained G-DINA *is* a two-class LCA (gllammr's test suite verifies
 the log-likelihoods agree to 1e-11). The Q-matrix supplies the equality
 structure (items depend only on their measured skills) and monotonicity
 the order structure — both restrictions of the GLLAMM parameter space,

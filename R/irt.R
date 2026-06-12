@@ -373,7 +373,7 @@ fit_irt_dichotomous <- function(response_matrix, model, weights, mc_items, re_in
       parameters = tmb_params,
       random = c("theta_0", "u_random"),
       map = map_list,
-      DLL = "GLLAMMR",
+      DLL = "gllammr",
       silent = TRUE
     )
   } else {
@@ -384,7 +384,7 @@ fit_irt_dichotomous <- function(response_matrix, model, weights, mc_items, re_in
       parameters = tmb_params,
       random = "theta",
       map = map_list,
-      DLL = "GLLAMMR",
+      DLL = "gllammr",
       silent = TRUE
     )
   }
@@ -881,7 +881,7 @@ fit_irt_polytomous <- function(response_matrix, model, weights, re_info, se, sta
       parameters = tmb_params,
       random = c("theta_0", "u_random"),
       map = map_list,
-      DLL = "GLLAMMR",
+      DLL = "gllammr",
       silent = TRUE
     )
   } else {
@@ -892,7 +892,7 @@ fit_irt_polytomous <- function(response_matrix, model, weights, re_info, se, sta
       parameters = tmb_params,
       random = "theta",
       map = map_list,
-      DLL = "GLLAMMR",
+      DLL = "gllammr",
       silent = TRUE
     )
   }

@@ -330,7 +330,7 @@ fit_lca <- function(formula, data = NULL, nclass = 2,
     data = tmb_data,
     parameters = tmb_params,
     map = tmb_map,
-    DLL = "GLLAMMR",
+    DLL = "gllammr",
     silent = TRUE
   )
 
@@ -349,7 +349,7 @@ fit_lca <- function(formula, data = NULL, nclass = 2,
         data = tmb_data,
         parameters = tmb_params,
         map = tmb_map,
-        DLL = "GLLAMMR",
+        DLL = "gllammr",
         silent = TRUE
       )
     }

@@ -1,0 +1,4872 @@
+\nonstopmode{}
+\documentclass[a4paper]{book}
+\usepackage[times,inconsolata,hyper]{Rd}
+\usepackage{makeidx}
+\makeatletter\@ifl@t@r\fmtversion{2018/04/01}{}{\usepackage[utf8]{inputenc}}\makeatother
+% \usepackage{graphicx} % @USE GRAPHICX@
+\makeindex{}
+\begin{document}
+\chapter*{}
+\begin{center}
+{\textbf{\huge Package `GLLAMMR'}}
+\par\bigskip{\large \today}
+\end{center}
+\ifthenelse{\boolean{Rd@use@hyper}}{\hypersetup{pdftitle = {GLLAMMR: Generalized Linear Latent and Mixed Models}}}{}
+\ifthenelse{\boolean{Rd@use@hyper}}{\hypersetup{pdfauthor = {Josh McGrane}}}{}
+\begin{description}
+\raggedright{}
+\item[Type]\AsIs{Package}
+\item[Title]\AsIs{Generalized Linear Latent and Mixed Models}
+\item[Version]\AsIs{1.2.0}
+\item[Description]\AsIs{Comprehensive implementation of Generalized Linear Latent and Mixed
+Models following the 'Stata' 'GLLAMM' framework by Rabe-Hesketh, Skrondal,
+and Pickles (2004) <}\Rhref{https://doi.org/10.1007/BF02295939}{doi:10.1007/BF02295939}\AsIs{>. Supports multilevel generalized
+linear models with Gaussian, binomial, Poisson, ordinal, and multinomial
+responses; item response theory models including dichotomous (Rasch, 2PL,
+3PL) and polytomous (GRM, PCM, GPCM, NRM) models; differential item
+functioning analysis; explanatory item response models with item covariates;
+latent class analysis; structural equation models; mixed response models;
+and survival models. All models support frequency and probability weights
+for survey data and aggregated observations. Provides marginal
+(population-averaged) predictions via Monte Carlo integration. Uses
+'TMB' (Template Model Builder) for efficient computation via automatic
+differentiation and Laplace approximation. Provides comprehensive
+diagnostics, visualization, and model comparison tools.}
+\item[License]\AsIs{GPL-3}
+\item[Depends]\AsIs{R (>= 4.0.0)}
+\item[Imports]\AsIs{TMB (>= 1.9.0), Matrix (>= 1.5.0), stats, methods, graphics,
+grDevices, utils}
+\item[LinkingTo]\AsIs{TMB, RcppEigen}
+\item[Suggests]\AsIs{testthat (>= 3.0.0), knitr, rmarkdown, ggplot2, lme4, mirt,
+TAM, MASS, lavaan, npmlreg, glmmTMB, ordinal, poLCA, survival,
+HSAUR3, ltm}
+\item[Encoding]\AsIs{UTF-8}
+\item[RoxygenNote]\AsIs{7.3.3}
+\item[VignetteBuilder]\AsIs{knitr}
+\item[NeedsCompilation]\AsIs{yes}
+\item[Author]\AsIs{Josh McGrane [aut, cre]}
+\item[Maintainer]\AsIs{Josh McGrane }\email{drjoshmcgrane@gmail.com}\AsIs{}
+\end{description}
+\Rdcontents{Contents}
+\HeaderA{GLLAMMR-package}{GLLAMMR: Generalized Linear Latent and Mixed Models}{GLLAMMR.Rdash.package}
+\aliasA{GLLAMMR}{GLLAMMR-package}{GLLAMMR}
+\keyword{internal}{GLLAMMR-package}
+%
+\begin{Description}
+Comprehensive implementation of Generalized Linear Latent and Mixed Models following the 'Stata' 'GLLAMM' framework by Rabe-Hesketh, Skrondal, and Pickles (2004) \Rhref{https://doi.org/10.1007/BF02295939}{doi:10.1007\slash{}BF02295939}. Supports multilevel generalized linear models with Gaussian, binomial, Poisson, ordinal, and multinomial responses; item response theory models including dichotomous (Rasch, 2PL, 3PL) and polytomous (GRM, PCM, GPCM, NRM) models; differential item functioning analysis; explanatory item response models with item covariates; latent class analysis; structural equation models; mixed response models; and survival models. All models support frequency and probability weights for survey data and aggregated observations. Provides marginal (population-averaged) predictions via Monte Carlo integration. Uses 'TMB' (Template Model Builder) for efficient computation via automatic differentiation and Laplace approximation. Provides comprehensive diagnostics, visualization, and model comparison tools.
+\end{Description}
+%
+\begin{Author}
+\strong{Maintainer}: Josh McGrane \email{drjoshmcgrane@gmail.com}
+
+\end{Author}
+\HeaderA{.val\_row}{Build one validation result row}{.val.Rul.row}
+\keyword{internal}{.val\_row}
+%
+\begin{Description}
+Build one validation result row
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+.val_row(
+  case,
+  statistic,
+  gllammr,
+  reference,
+  tolerance,
+  relative = TRUE,
+  note = ""
+)
+\end{verbatim}
+\end{Usage}
+\HeaderA{abilities}{Extract Person Abilities from IRT Models}{abilities}
+%
+\begin{Description}
+Extract estimated person abilities (theta) from IRT models.
+For multi-level models, this returns the person-level deviations (theta\_0).
+Use \code{composite\_theta} to get total abilities including random effects.
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+abilities(object, ...)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{object}] A fitted IRT model
+(theta\_0 + random effects) instead of just theta\_0. Default FALSE.
+
+\item[\code{...}] Additional arguments (not used)
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+A named vector of person abilities
+\end{Value}
+%
+\begin{Examples}
+\begin{ExampleCode}
+## Not run: 
+# Person-level deviations
+abilities(fit)
+
+# Total abilities (including class effects)
+abilities(fit, composite = TRUE)
+
+## End(Not run)
+
+\end{ExampleCode}
+\end{Examples}
+\HeaderA{abilities.gllamm\_irt\_multilevel}{Total abilities for multi-level IRT fits}{abilities.gllamm.Rul.irt.Rul.multilevel}
+%
+\begin{Description}
+Total abilities for multi-level IRT fits
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+## S3 method for class 'gllamm_irt_multilevel'
+abilities(object, composite = FALSE, ...)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{object}] A fitted multi-level IRT model
+
+\item[\code{composite}] If TRUE, return person deviation plus group effects
+(total ability); if FALSE (default), the person deviation only
+
+\item[\code{...}] Additional arguments (not used)
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+A named vector of person abilities
+\end{Value}
+\HeaderA{aghq}{Adaptive quadrature integration specification}{aghq}
+%
+\begin{Description}
+Use as \code{gllamm(..., integration = aghq(k))} to integrate the random
+intercept by adaptive Gauss-Hermite quadrature with \code{k} nodes
+instead of the Laplace approximation. Currently supports two-level
+random-intercept models with gaussian, binomial, or poisson families.
+Laplace (the default) is equivalent to \code{aghq(1)}.
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+aghq(k = 15)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{k}] Number of quadrature nodes (default 15)
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+An object of class \code{gllamm\_integration}
+\end{Value}
+\HeaderA{binomial}{Binomial Family for Binary and Binomial Outcomes}{binomial}
+%
+\begin{Description}
+Create a family object for binomial regression models with various link functions
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+binomial(link = c("logit", "probit", "cloglog"))
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{link}] Link function to use:
+\begin{description}
+
+\item["logit"] Logistic regression (default) - symmetric S-curve
+\item["probit"] Probit regression - based on normal distribution
+\item["cloglog"] Complementary log-log - asymmetric, suitable for rare events and survival data
+
+\end{description}
+
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+The binomial family is used for binary (0/1) or binomial (count/total) responses.
+
+\strong{Logit Link (default):}
+\deqn{P(Y=1|x) = \frac{1}{1 + \exp(-x'\beta)}}{}
+This is the standard logistic regression. The logit link is symmetric and
+appropriate when the probability of success and failure are equally likely
+to change with covariates.
+
+\strong{Probit Link:}
+\deqn{P(Y=1|x) = \Phi(x'\beta)}{}
+where \eqn{\Phi}{} is the standard normal CDF. This link is also symmetric
+and yields similar results to logit but with slightly different tail behavior.
+
+\strong{Complementary Log-Log (cloglog) Link:}
+\deqn{P(Y=1|x) = 1 - \exp(-\exp(x'\beta))}{}
+This link is \emph{asymmetric} and is particularly useful for:
+\begin{itemize}
+
+\item{} Rare events (when P(Y=1) is small)
+\item{} Survival analysis with discrete time intervals
+\item{} Gompertz or extreme value distributions
+\item{} When the hazard is proportional (as in survival models)
+
+\end{itemize}
+
+
+The cloglog link arises naturally when modeling grouped survival data
+or when events follow a Poisson process over time intervals.
+\end{Details}
+%
+\begin{Value}
+A family object of class \code{binomial\_family} with components:
+\begin{ldescription}
+\item[\code{family}] Character: "binomial"
+\item[\code{link}] Character: name of link function
+\item[\code{link\_code}] Integer: numeric code for TMB (1-3)
+\end{ldescription}
+\end{Value}
+%
+\begin{SeeAlso}
+\code{\LinkA{gllamm}{gllamm}}, \code{\LinkA{ordinal}{ordinal}}
+\end{SeeAlso}
+%
+\begin{Examples}
+\begin{ExampleCode}
+## Not run: 
+# Logistic regression (default)
+family1 <- binomial()
+family2 <- binomial(link = "logit")
+
+# Probit regression
+family3 <- binomial(link = "probit")
+
+# Complementary log-log for rare events
+family4 <- binomial(link = "cloglog")
+
+# Use with gllamm() - recommended interface
+fit <- gllamm(outcome ~ age + treatment + (1 | clinic),
+              data = mydata,
+              family = binomial(link = "logit"))
+
+# Rare event with cloglog
+fit_rare <- gllamm(rare_disease ~ exposure + (1 | region),
+                   data = epi_data,
+                   family = binomial(link = "cloglog"))
+
+## End(Not run)
+
+\end{ExampleCode}
+\end{Examples}
+\HeaderA{coef.gllamm\_eirt}{Extract Item Parameters from EIRT Model}{coef.gllamm.Rul.eirt}
+%
+\begin{Description}
+Extract item parameters with standard errors (if available)
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+## S3 method for class 'gllamm_eirt'
+coef(object, se = FALSE, ...)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{object}] A gllamm\_eirt object
+
+\item[\code{se}] Logical; include standard errors?
+
+\item[\code{...}] Additional arguments (ignored)
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+A data frame with item parameters
+\end{Value}
+\HeaderA{coef.gllamm\_irt}{Extract Coefficients from IRT Models}{coef.gllamm.Rul.irt}
+%
+\begin{Description}
+Extract item parameters from fitted IRT models
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+## S3 method for class 'gllamm_irt'
+coef(object, type = c("item", "person"), ...)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{object}] A fitted IRT model
+
+\item[\code{type}] Type of coefficients: "item" for item parameters,
+"person" for person abilities, "random" for random effects (multi-level only)
+
+\item[\code{...}] Additional arguments passed to specific methods
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+Item parameters (data frame), person abilities (vector),
+or random effects (list)
+\end{Value}
+%
+\begin{Examples}
+\begin{ExampleCode}
+## Not run: 
+# Item parameters
+coef(fit, type = "item")
+
+# Person abilities
+coef(fit, type = "person")
+
+# Random effects (multi-level only)
+coef(fit, type = "random")
+
+## End(Not run)
+
+\end{ExampleCode}
+\end{Examples}
+\HeaderA{compare\_eirt}{Compare Explanatory IRT Models}{compare.Rul.eirt}
+%
+\begin{Description}
+Compare two or more EIRT models using likelihood ratio tests and information criteria
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+compare_eirt(..., test = c("LRT", "none"))
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{...}] Two or more gllamm\_eirt objects to compare
+
+\item[\code{test}] Type of test: "LRT" for likelihood ratio test, "none" for just IC comparison
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+This function compares EIRT models to test the importance of item covariates.
+Models are compared using:
+\begin{itemize}
+
+\item{} Log-likelihood
+\item{} AIC and BIC
+\item{} Likelihood ratio test (if nested models)
+
+\end{itemize}
+
+
+For nested models (e.g., with and without a predictor), the LRT tests
+whether adding the predictor significantly improves fit.
+\end{Details}
+%
+\begin{Value}
+A data frame with model comparison statistics
+\end{Value}
+%
+\begin{Examples}
+\begin{ExampleCode}
+## Not run: 
+# Fit model with predictor
+fit1 <- fit_eirt(responses, item_data,
+                 difficulty_formula = ~ word_freq,
+                 model = "Rasch")
+
+# Fit model without predictor
+fit0 <- fit_eirt(responses, item_data,
+                 difficulty_formula = ~ 1,
+                 model = "Rasch")
+
+# Compare models
+compare_eirt(fit0, fit1)
+
+## End(Not run)
+
+\end{ExampleCode}
+\end{Examples}
+\HeaderA{compute\_dif\_effect\_size}{Compute effect size for DIF}{compute.Rul.dif.Rul.effect.Rul.size}
+\keyword{internal}{compute\_dif\_effect\_size}
+%
+\begin{Description}
+Compute effect size for DIF
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+compute_dif_effect_size(fit1, fit2, item)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{fit1}] Fitted model for group 1
+
+\item[\code{fit2}] Fitted model for group 2
+
+\item[\code{item}] Item index
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+Effect size (ETS Delta scale)
+\end{Value}
+\HeaderA{compute\_irt\_reliability}{Compute IRT reliability}{compute.Rul.irt.Rul.reliability}
+\keyword{internal}{compute\_irt\_reliability}
+%
+\begin{Description}
+Compute IRT reliability
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+compute_irt_reliability(object)
+\end{verbatim}
+\end{Usage}
+\HeaderA{compute\_item\_fit\_sx2}{Compute S-X\textasciicircum{}2 item fit statistic}{compute.Rul.item.Rul.fit.Rul.sx2}
+\keyword{internal}{compute\_item\_fit\_sx2}
+%
+\begin{Description}
+Compute S-X\textasciicircum{}2 item fit statistic
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+compute_item_fit_sx2(object)
+\end{verbatim}
+\end{Usage}
+\HeaderA{compute\_multinomial\_probs}{Compute multinomial probabilities}{compute.Rul.multinomial.Rul.probs}
+\keyword{internal}{compute\_multinomial\_probs}
+%
+\begin{Description}
+Compute multinomial probabilities
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+compute_multinomial_probs(X, beta, eta_random, n_categories)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{X}] Fixed effects design matrix
+
+\item[\code{beta}] Beta matrix (K-1) × p
+
+\item[\code{eta\_random}] Random effects contribution (vector of length n\_obs)
+
+\item[\code{n\_categories}] Number of categories
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+Matrix of probabilities (n\_obs × n\_categories)
+\end{Value}
+\HeaderA{compute\_person\_fit\_outfit\_infit}{Compute outfit/infit person fit statistics}{compute.Rul.person.Rul.fit.Rul.outfit.Rul.infit}
+\keyword{internal}{compute\_person\_fit\_outfit\_infit}
+%
+\begin{Description}
+Compute outfit/infit person fit statistics
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+compute_person_fit_outfit_infit(object)
+\end{verbatim}
+\end{Usage}
+\HeaderA{compute\_test\_information\_summary}{Compute test information summary}{compute.Rul.test.Rul.information.Rul.summary}
+\keyword{internal}{compute\_test\_information\_summary}
+%
+\begin{Description}
+Compute test information summary
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+compute_test_information_summary(object)
+\end{verbatim}
+\end{Usage}
+\HeaderA{construct\_Z\_matrix}{Construct random effects design matrix for newdata}{construct.Rul.Z.Rul.matrix}
+\keyword{internal}{construct\_Z\_matrix}
+%
+\begin{Description}
+Construct random effects design matrix for newdata
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+construct_Z_matrix(newdata, random_terms, group_var = NULL)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{newdata}] New data frame
+
+\item[\code{random\_terms}] Parsed random effects terms from original model
+
+\item[\code{group\_var}] Name of grouping variable
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+Random effects design matrix Z
+\end{Value}
+\HeaderA{cooks.distance.gllamm}{Group-level Cook's distance for GLLAMM models}{cooks.distance.gllamm}
+%
+\begin{Description}
+Influence of each cluster on the fixed effects, computed by refitting the
+model with the cluster deleted: D\_j = (beta - beta\_(-j))' V\textasciicircum{}(-1)
+(beta - beta\_(-j)) / p, with V the estimated covariance of the fixed
+effects. Case deletion at the cluster level is the standard influence
+measure for mixed models; observation-level deletion would break the
+random-effects structure.
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+## S3 method for class 'gllamm'
+cooks.distance(model, max_groups = 50, ...)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{model}] A fitted \code{gllamm} object (from \code{gllamm()})
+
+\item[\code{max\_groups}] Refuse to run for more clusters than this (each cluster
+costs one model refit); raise the limit explicitly for large data
+
+\item[\code{...}] Additional arguments (currently unused)
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+Named vector of Cook's distances, one per cluster. Clusters whose
+deletion refit fails get \code{NA}.
+\end{Value}
+\HeaderA{create\_grouping\_matrix}{Create grouping factor matrix}{create.Rul.grouping.Rul.matrix}
+\keyword{internal}{create\_grouping\_matrix}
+%
+\begin{Description}
+Create grouping factor matrix
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+create_grouping_matrix(terms, data)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{terms}] Parsed random effects terms
+
+\item[\code{data}] Person-level data
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+List with group\_ids matrix and group information
+\end{Value}
+\HeaderA{diagnostics}{Diagnostic Methods for GLLAMM Models}{diagnostics}
+%
+\begin{Description}
+Comprehensive diagnostics for model checking
+\end{Description}
+\HeaderA{dif\_plot}{Plot Item Characteristic Curves by group}{dif.Rul.plot}
+%
+\begin{Description}
+Plot Item Characteristic Curves by group
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+dif_plot(dif_result, item, ...)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{dif\_result}] Object of class dif\_analysis
+
+\item[\code{item}] Item index to plot
+
+\item[\code{...}] Additional plotting parameters
+\end{ldescription}
+\end{Arguments}
+\HeaderA{dif\_test}{Test for Differential Item Functioning (DIF)}{dif.Rul.test}
+%
+\begin{Description}
+Detect whether item parameters differ systematically across groups
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+dif_test(
+  irt_fit,
+  group,
+  items = NULL,
+  type = c("both", "uniform", "nonuniform"),
+  method = c("lr", "wald", "both"),
+  alpha = 0.05
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{irt\_fit}] A fitted IRT model from fit\_irt()
+
+\item[\code{group}] Vector of group indicators (must have exactly 2 unique values)
+
+\item[\code{items}] Vector of item indices to test. If NULL, tests all items.
+
+\item[\code{type}] Type of DIF to test: "uniform" (difficulty), "nonuniform" (discrimination), or "both"
+
+\item[\code{method}] Test method: "lr" (likelihood ratio), "wald", or "both"
+
+\item[\code{alpha}] Significance level for flagging items (default 0.05)
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+An object of class \code{dif\_analysis} with components:
+\begin{ldescription}
+\item[\code{dif\_results}] Data frame with test statistics for each item
+\item[\code{flagged\_items}] Vector of item indices that show significant DIF
+\item[\code{group\_fits}] List of fitted models for each group
+\item[\code{baseline\_fit}] The original fitted model
+\end{ldescription}
+\end{Value}
+%
+\begin{Examples}
+\begin{ExampleCode}
+## Not run: 
+# Fit IRT model
+fit <- fit_irt(responses, model = "2PL")
+
+# Test for DIF across gender
+dif_result <- dif_test(fit, group = gender)
+print(dif_result)
+
+# Plot ICCs for flagged items
+dif_plot(dif_result, item = 5)
+
+## End(Not run)
+
+\end{ExampleCode}
+\end{Examples}
+\HeaderA{dif\_test\_with\_data}{Test for DIF with explicit response data}{dif.Rul.test.Rul.with.Rul.data}
+%
+\begin{Description}
+Test for DIF with explicit response data
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+dif_test_with_data(
+  response_matrix,
+  group,
+  model = c("Rasch", "2PL", "3PL", "GRM", "PCM", "GPCM"),
+  items = NULL,
+  type = c("both", "uniform", "nonuniform"),
+  method = c("lr", "wald", "both"),
+  alpha = 0.05
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{response\_matrix}] Matrix of item responses (persons x items)
+
+\item[\code{group}] Vector of group indicators
+
+\item[\code{model}] IRT model type
+
+\item[\code{items}] Items to test (default: all)
+
+\item[\code{type}] Type of DIF
+
+\item[\code{method}] Test method
+
+\item[\code{alpha}] Significance level
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+Object of class \code{dif\_analysis}
+\end{Value}
+%
+\begin{Examples}
+\begin{ExampleCode}
+## Not run: 
+dif_result <- dif_test_with_data(responses, group = gender, model = "2PL")
+
+## End(Not run)
+
+\end{ExampleCode}
+\end{Examples}
+\HeaderA{drop\_intercept\_column}{Drop the intercept column from a fixed-effects design matrix}{drop.Rul.intercept.Rul.column}
+\keyword{internal}{drop\_intercept\_column}
+%
+\begin{Description}
+Cumulative-link (ordinal) models absorb the location into the thresholds;
+keeping a free intercept alongside free thresholds leaves the model
+unidentified (only their difference enters the likelihood).
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+drop_intercept_column(X)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{X}] Design matrix from model.matrix()
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+X without its "(Intercept)" column
+\end{Value}
+\HeaderA{eirt\_item\_thresholds}{Reconstruct per-item threshold parameters from a fitted polytomous EIRT model}{eirt.Rul.item.Rul.thresholds}
+\keyword{internal}{eirt\_item\_thresholds}
+%
+\begin{Description}
+Mirrors the threshold construction in the TMB template (gllamm\_eirt.hpp):
+GRM uses the first-offset + log-spacing parameterization, PCM/GPCM use
+sum-to-zero step deviations around the item location, LPCM uses the
+threshold regression plus step residuals.
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+eirt_item_thresholds(object)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{object}] Fitted gllamm\_eirt model (polytomous)
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+List of per-item threshold vectors on the absolute scale
+\end{Value}
+\HeaderA{eirt\_poly\_model\_name}{Map an EIRT poly\_model\_type code to the shared probability helper's model name}{eirt.Rul.poly.Rul.model.Rul.name}
+\keyword{internal}{eirt\_poly\_model\_name}
+%
+\begin{Description}
+Map an EIRT poly\_model\_type code to the shared probability helper's model name
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+eirt_poly_model_name(poly_model_type)
+\end{verbatim}
+\end{Usage}
+\HeaderA{eirt\_r\_squared}{Compute R-squared for Item Parameter Regression}{eirt.Rul.r.Rul.squared}
+%
+\begin{Description}
+Calculate proportion of variance in item parameters explained by covariates
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+eirt_r_squared(object, parameter = c("difficulty", "discrimination"))
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{object}] A gllamm\_eirt object
+
+\item[\code{parameter}] Which parameter: "difficulty" or "discrimination"
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+R-squared value
+\end{Value}
+\HeaderA{expand\_nested\_random\_term}{Expand a nested random-effects term into one term per level}{expand.Rul.nested.Rul.random.Rul.term}
+\keyword{internal}{expand\_nested\_random\_term}
+%
+\begin{Description}
+(x | a/b/c) becomes the lme4-equivalent (x | a) + (x | a:b) + (x | a:b:c).
+Each expanded term carries an interaction grouping over the levels above it.
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+expand_nested_random_term(parsed_term)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{parsed\_term}] Output of parse\_random\_term()
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+List of parsed terms (length 1 for non-nested input)
+\end{Value}
+\HeaderA{expand\_nested\_terms}{Expand nested terms}{expand.Rul.nested.Rul.terms}
+\keyword{internal}{expand\_nested\_terms}
+%
+\begin{Description}
+Expand nested terms
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+expand_nested_terms(terms, data)
+\end{verbatim}
+\end{Usage}
+\HeaderA{extract\_random\_terms}{Extract random effects terms from formula}{extract.Rul.random.Rul.terms}
+\keyword{internal}{extract\_random\_terms}
+%
+\begin{Description}
+Extract random effects terms from formula
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+extract_random_terms(formula)
+\end{verbatim}
+\end{Usage}
+\HeaderA{extract\_random\_vcov}{Extract random effects variance-covariance matrix from fitted model}{extract.Rul.random.Rul.vcov}
+\keyword{internal}{extract\_random\_vcov}
+%
+\begin{Description}
+Extract random effects variance-covariance matrix from fitted model
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+extract_random_vcov(object)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{object}] Fitted gllamm object
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+Variance-covariance matrix of random effects
+\end{Value}
+\HeaderA{families}{Family Objects for GLLAMM Models}{families}
+%
+\begin{Description}
+Family constructors for generalized linear latent and mixed models
+\end{Description}
+\HeaderA{find\_outliers}{Outlier detection for GLLAMM}{find.Rul.outliers}
+%
+\begin{Description}
+Outlier detection for GLLAMM
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+find_outliers(object, threshold = 3, ...)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{object}] A gllamm object
+
+\item[\code{threshold}] Threshold for standardized residuals (default: 3)
+
+\item[\code{...}] Additional arguments
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+Indices of potential outliers
+\end{Value}
+\HeaderA{fit}{Generic Fit Statistics Function}{fit}
+%
+\begin{Description}
+Compute model-specific fit statistics for GLLAMM objects
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+fit(object, ...)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{object}] A fitted model object
+
+\item[\code{...}] Additional arguments passed to methods
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+The \code{fit()} function provides comprehensive, model-specific fit statistics:
+
+\strong{GLMM models:}
+\begin{itemize}
+
+\item{} Log-likelihood, AIC, BIC
+\item{} R-squared (marginal and conditional for Gaussian models)
+\item{} Intraclass correlation coefficient (ICC)
+
+\end{itemize}
+
+
+\strong{IRT models:}
+\begin{itemize}
+
+\item{} Log-likelihood, AIC, BIC
+\item{} Item fit statistics (S-X\textasciicircum{}2)
+\item{} Person fit statistics (outfit/infit)
+\item{} Reliability estimates
+\item{} Test information function
+
+\end{itemize}
+
+
+\strong{Latent Class Analysis:}
+\begin{itemize}
+
+\item{} Log-likelihood, AIC, BIC
+\item{} Entropy (classification quality)
+\item{} Class proportions
+\item{} Average posterior probabilities (APPA)
+
+\end{itemize}
+
+
+\strong{Ordinal models:}
+\begin{itemize}
+
+\item{} Log-likelihood, AIC, BIC
+\item{} Pseudo-R\textasciicircum{}2 (McFadden)
+\item{} Proportional odds test (for PO/probit models)
+
+\end{itemize}
+
+\end{Details}
+%
+\begin{Value}
+An object of class \code{fit\_statistics} with model-specific components
+\end{Value}
+%
+\begin{Examples}
+\begin{ExampleCode}
+## Not run: 
+# GLMM
+fit1 <- gllamm(y ~ x + (1 | group), data = data)
+fit(fit1)
+
+# IRT
+fit2 <- fit_irt(responses, model = "2PL")
+fit(fit2, compute_item_fit = TRUE)
+
+# LCA
+fit3 <- fit_lca(indicators, nclass = 3)
+fit(fit3)
+
+# Ordinal
+fit4 <- fit_ordinal(rating ~ x + (1 | id), data = data)
+fit(fit4, test_po = TRUE)
+
+## End(Not run)
+
+\end{ExampleCode}
+\end{Examples}
+\HeaderA{fit.gllamm}{Fit Statistics for Standard GLLAMM Models}{fit.gllamm}
+%
+\begin{Description}
+Fit Statistics for Standard GLLAMM Models
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+## S3 method for class 'gllamm'
+fit(object, quiet = FALSE, ...)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{object}] A gllamm object
+
+\item[\code{quiet}] Suppress ICC computation messages (default: FALSE)
+
+\item[\code{...}] Additional arguments (not currently used)
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+Object of class \code{fit\_gllamm} with fit statistics
+\end{Value}
+\HeaderA{fit.gllamm\_eirt}{Fit Statistics for Explanatory IRT Models}{fit.gllamm.Rul.eirt}
+%
+\begin{Description}
+Fit Statistics for Explanatory IRT Models
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+## S3 method for class 'gllamm_eirt'
+fit(object, ...)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{object}] A gllamm\_eirt object
+
+\item[\code{...}] Additional arguments
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+Object of class \code{fit\_eirt} with EIRT-specific fit statistics
+\end{Value}
+\HeaderA{fit.gllamm\_irt}{Fit Statistics for IRT Models}{fit.gllamm.Rul.irt}
+%
+\begin{Description}
+Fit Statistics for IRT Models
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+## S3 method for class 'gllamm_irt'
+fit(object, compute_item_fit = TRUE, compute_person_fit = TRUE, ...)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{object}] A gllamm\_irt object
+
+\item[\code{compute\_item\_fit}] Compute item fit statistics (S-X\textasciicircum{}2) (default: TRUE)
+
+\item[\code{compute\_person\_fit}] Compute person fit statistics (outfit/infit) (default: TRUE)
+
+\item[\code{...}] Additional arguments
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+Object of class \code{fit\_irt} with IRT-specific fit statistics
+\end{Value}
+\HeaderA{fit.gllamm\_lca}{Fit Statistics for Latent Class Analysis}{fit.gllamm.Rul.lca}
+%
+\begin{Description}
+Fit Statistics for Latent Class Analysis
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+## S3 method for class 'gllamm_lca'
+fit(object, ...)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{object}] A gllamm\_lca object
+
+\item[\code{...}] Additional arguments
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+Object of class \code{fit\_lca} with LCA-specific fit statistics
+\end{Value}
+\HeaderA{fit.gllamm\_multinomial}{Fit Statistics for Multinomial Regression Models}{fit.gllamm.Rul.multinomial}
+%
+\begin{Description}
+Fit Statistics for Multinomial Regression Models
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+## S3 method for class 'gllamm_multinomial'
+fit(object, ...)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{object}] A gllamm\_multinomial object
+
+\item[\code{...}] Additional arguments
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+Object of class \code{fit\_multinomial} with multinomial-specific fit statistics
+\end{Value}
+\HeaderA{fit.gllamm\_ordinal}{Fit Statistics for Ordinal Regression Models}{fit.gllamm.Rul.ordinal}
+%
+\begin{Description}
+Fit Statistics for Ordinal Regression Models
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+## S3 method for class 'gllamm_ordinal'
+fit(object, test_po = TRUE, ...)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{object}] A gllamm\_ordinal object
+
+\item[\code{test\_po}] Test proportional odds assumption (default: TRUE for logit/probit)
+
+\item[\code{...}] Additional arguments
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+Object of class \code{fit\_ordinal} with ordinal-specific fit statistics
+\end{Value}
+\HeaderA{fit\_binomial}{Fit Binomial Regression Models with Random Effects}{fit.Rul.binomial}
+%
+\begin{Description}
+Fit logistic, probit, or complementary log-log models for binary or binomial
+responses. This function can be called directly or through \code{gllamm()} with
+\code{family = binomial()}. The \code{gllamm()} interface is recommended
+for consistency with other model types.
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+fit_binomial(
+  formula,
+  data,
+  link = c("logit", "probit", "cloglog"),
+  weights = NULL,
+  start = NULL,
+  control = list()
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{formula}] Formula with syntax: y \textasciitilde{} x + (terms | group)
+
+\item[\code{data}] Data frame
+
+\item[\code{link}] Link function: "logit" (default), "probit", or "cloglog"
+
+\item[\code{weights}] Optional vector of case weights (one per observation)
+
+\item[\code{start}] Optional starting values
+
+\item[\code{control}] Control parameters for optimization
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+For binary response Y in \{0, 1\} or binomial response Y/n, the model is:
+
+\strong{Logit link (default - logistic regression):}
+\deqn{P(Y=1|x) = \frac{1}{1 + \exp(-x'\beta - Z'u)}}{}
+
+\strong{Probit link:}
+\deqn{P(Y=1|x) = \Phi(x'\beta + Z'u)}{}
+where \eqn{\Phi}{} is the standard normal CDF.
+
+\strong{Complementary log-log (cloglog) link:}
+\deqn{P(Y=1|x) = 1 - \exp(-\exp(x'\beta + Z'u))}{}
+
+The cloglog link is asymmetric and particularly useful for:
+\begin{itemize}
+
+\item{} Rare events (when baseline probability is low)
+\item{} Survival analysis with discrete time
+\item{} When modeling hazards that are proportional
+\item{} Grouped survival data from an underlying Poisson process
+
+\end{itemize}
+
+
+Random effects u are assumed multivariate normal with mean 0.
+\end{Details}
+%
+\begin{Value}
+An object of class \code{gllamm\_binomial} with components:
+\begin{ldescription}
+\item[\code{coefficients}] List of fixed effects and random effect variances
+\item[\code{logLik}] Log-likelihood at convergence
+\item[\code{AIC}] Akaike Information Criterion
+\item[\code{BIC}] Bayesian Information Criterion
+\item[\code{convergence}] Convergence information
+\item[\code{link}] Link function used
+\item[\code{n\_obs}] Number of observations
+\item[\code{fitted\_values}] Fitted probabilities
+\item[\code{tmb\_obj}] TMB object for further inference
+\item[\code{tmb\_opt}] Optimization result
+\item[\code{tmb\_sdr}] Standard errors via sdreport
+\end{ldescription}
+\end{Value}
+%
+\begin{Note}
+The recommended interface is \code{gllamm(formula, data, family = binomial(link))}.
+This function is also available for direct use with the \code{link} argument.
+\end{Note}
+%
+\begin{SeeAlso}
+\code{\LinkA{gllamm}{gllamm}}, \code{\LinkA{binomial}{binomial}}, \code{\LinkA{ordinal}{ordinal}}
+\end{SeeAlso}
+%
+\begin{Examples}
+\begin{ExampleCode}
+## Not run: 
+# Simulate binary data
+set.seed(123)
+n_groups <- 20
+n_per_group <- 10
+data <- data.frame(
+  group = rep(1:n_groups, each = n_per_group),
+  x = rnorm(n_groups * n_per_group),
+  y = rbinom(n_groups * n_per_group, 1, 0.5)
+)
+
+# Recommended: Use gllamm() with binomial() family
+fit1 <- gllamm(y ~ x + (1 | group),
+               data = data,
+               family = binomial(link = "logit"))
+summary(fit1)
+
+# Probit link
+fit2 <- gllamm(y ~ x + (1 | group),
+               data = data,
+               family = binomial(link = "probit"))
+
+# Complementary log-log for rare events
+data$rare_event <- rbinom(nrow(data), 1, 0.05)
+fit3 <- gllamm(rare_event ~ x + (1 | group),
+               data = data,
+               family = binomial(link = "cloglog"))
+summary(fit3)
+
+# Alternative: Call fit_binomial() directly
+fit4 <- fit_binomial(y ~ x + (1 | group),
+                     data = data,
+                     link = "logit")
+
+## End(Not run)
+
+\end{ExampleCode}
+\end{Examples}
+\HeaderA{fit\_eirt}{Fit Explanatory Item Response Theory Models}{fit.Rul.eirt}
+%
+\begin{Description}
+Fit IRT models where item parameters are modeled as functions of item covariates.
+For polytomous models, supports GRM (cumulative logit), PCM (adjacent-categories),
+and GPCM (adjacent-categories with discrimination). PCM can include optional
+threshold-level predictors via threshold\_formula.
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+fit_eirt(
+  response_matrix,
+  item_data,
+  difficulty_formula = ~1,
+  discrimination_formula = ~1,
+  threshold_formula = NULL,
+  person_data = NULL,
+  random = NULL,
+  weights = NULL,
+  model = c("Rasch", "2PL", "GRM", "PCM", "GPCM"),
+  item_residuals = TRUE,
+  start = NULL,
+  control = list()
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{response\_matrix}] Matrix of item responses (persons x items)
+
+\item[\code{item\_data}] Data frame of item-level covariates (must have n\_items rows)
+
+\item[\code{difficulty\_formula}] Formula for item location/difficulty regression (e.g., \textasciitilde{} word\_freq).
+Model: b\_i = W\_diff \%*\% gamma + epsilon\_b (if item\_residuals = TRUE)
+
+\item[\code{discrimination\_formula}] Formula for discrimination regression (e.g., \textasciitilde{} item\_type).
+Applies to 2PL, GRM, and GPCM models.
+Model: log(a\_i) = W\_disc \%*\% delta + epsilon\_a (if item\_residuals = TRUE)
+
+\item[\code{threshold\_formula}] Formula for threshold-specific regression (e.g., \textasciitilde{} abstractness).
+Only used for PCM/GPCM models. When specified, enables threshold-difficulty regression
+(Kim \& Wilson 2019 LPCM framework): delta\_im = b\_i + sum\_k xi\_km * x\_ik + e\_im
+
+\item[\code{person\_data}] Optional data frame with person-level variables for multi-level models
+
+\item[\code{random}] Optional random effects formula (e.g., \textasciitilde{} (1 | class))
+
+\item[\code{weights}] Optional vector of case weights (fweights or pweights).
+Length must equal number of persons. Default: all observations weighted equally.
+Weights are expanded to observation-level (person-item) internally.
+
+\item[\code{model}] IRT model type: "Rasch" or "2PL" (dichotomous), or
+"GRM", "PCM", "GPCM" (polytomous)
+
+\item[\code{item\_residuals}] Logical. If TRUE (default), includes item-specific residuals
+(LLTM + error). If FALSE, uses pure LLTM where item parameters are exactly
+predicted by covariates with no residuals.
+
+\item[\code{start}] Optional starting values list
+
+\item[\code{control}] Control parameters for nlminb optimization
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+**Dichotomous models:**
+- **Rasch**: P(Y=1) = logit\textasciicircum{}(-1)(theta - b\_i), where b\_i = W\_diff \%*\% gamma [+ epsilon\_b]
+- **2PL**: P(Y=1) = logit\textasciicircum{}(-1)(a\_i * (theta - b\_i)), where log(a\_i) = W\_disc \%*\% delta [+ epsilon\_a]
+
+**Polytomous models (Kim \& Wilson 2019; De Boeck \& Wilson 2004 framework):**
+- **GRM**: Cumulative logit with ordered thresholds. b\_i provides item location;
+step\_param provides threshold spacing. Supports discrimination\_formula.
+- **PCM**: Adjacent-categories logit, two-fold parameterization (MFRM approach):
+delta\_im = b\_i + s\_im, where sum(s\_im) = 0 across steps for each item.
+When threshold\_formula is specified, uses threshold regression:
+delta\_im = b\_i + sum\_k xi\_km * x\_ik + e\_im (Kim \& Wilson LPCM framework)
+- **GPCM**: As PCM with item-specific discrimination a\_i.
+Supports both discrimination\_formula and threshold\_formula.
+
+**Item residuals:** When item\_residuals = TRUE (default), item parameters include
+residual terms epsilon\_b and epsilon\_a (LLTM + error). When FALSE, uses pure LLTM
+where parameters are exactly determined by covariates.
+\end{Details}
+%
+\begin{Value}
+An object of class \code{gllamm\_eirt}
+\end{Value}
+%
+\begin{Examples}
+\begin{ExampleCode}
+## Not run: 
+# Dichotomous EIRT with item and discrimination predictors
+item_chars <- data.frame(
+  word_frequency = rnorm(20),
+  item_length = rpois(20, 5),
+  item_type = factor(sample(c("concrete", "abstract"), 20, replace = TRUE))
+)
+fit_2pl <- fit_eirt(responses, item_data = item_chars,
+                    difficulty_formula = ~ word_frequency + item_length,
+                    discrimination_formula = ~ item_type,
+                    model = "2PL")
+
+# Pure LLTM (no residuals)
+fit_lltm <- fit_eirt(responses, item_data = item_chars,
+                     difficulty_formula = ~ word_frequency,
+                     model = "Rasch",
+                     item_residuals = FALSE)
+
+# Polytomous PCM (adjacent-categories logit, Rasch family)
+fit_pcm <- fit_eirt(poly_responses, item_data = item_chars,
+                    difficulty_formula = ~ abstractness,
+                    model = "PCM")
+
+# PCM with threshold predictors (LPCM framework)
+fit_pcm_thresh <- fit_eirt(poly_responses, item_data = item_chars,
+                           difficulty_formula = ~ abstractness,
+                           threshold_formula = ~ cognitive_level,
+                           model = "PCM")
+
+# GPCM with all predictors
+fit_gpcm <- fit_eirt(poly_responses, item_data = item_chars,
+                     difficulty_formula = ~ word_frequency,
+                     discrimination_formula = ~ item_type,
+                     threshold_formula = ~ cognitive_level,
+                     model = "GPCM")
+
+## End(Not run)
+
+\end{ExampleCode}
+\end{Examples}
+\HeaderA{fit\_irt}{Fit Item Response Theory Models}{fit.Rul.irt}
+%
+\begin{Description}
+Fit dichotomous (Rasch, 2PL, 3PL) or polytomous (GRM, PCM, GPCM, NRM) IRT models.
+Optionally include multi-level random effects for hierarchical or clustered data.
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+fit_irt(
+  response_matrix,
+  model = c("Rasch", "2PL", "3PL", "GRM", "PCM", "GPCM", "NRM"),
+  person_data = NULL,
+  random = NULL,
+  weights = NULL,
+  mc_items = NULL,
+  method = c("auto", "em", "laplace"),
+  quad_points = 61,
+  se = FALSE,
+  start = NULL,
+  control = list()
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{response\_matrix}] Matrix of item responses (persons x items).
+For dichotomous models: coded 0/1.
+For polytomous models: coded 1, 2, ..., K (ordered categories).
+
+\item[\code{model}] Type of IRT model:
+Dichotomous: "Rasch", "2PL", "3PL"
+Polytomous: "GRM" (Graded Response), "PCM" (Partial Credit),
+"GPCM" (Generalized Partial Credit), "NRM" (Nominal Response)
+
+\item[\code{person\_data}] Optional data frame with person-level variables for multi-level models.
+Must have one row per person (rows correspond to rows in response\_matrix).
+Used to specify grouping variables in the random effects formula.
+
+\item[\code{random}] Optional random effects formula using lme4-style syntax.
+Examples: \code{\textasciitilde{} (1 | class)}, \code{\textasciitilde{} (1 | school/class)},
+\code{\textasciitilde{} (1 | student) + (1 | time)}.
+Requires person\_data to contain the grouping variables.
+
+\item[\code{weights}] Optional vector of case weights. Length must equal number of persons.
+
+\item[\code{mc\_items}] For 3PL model only: which items have guessing parameters.
+Can be: NULL (default, all items have guessing), logical vector (length = n\_items),
+or integer vector (indices of MC items). Non-MC items use 2PL likelihood (no guessing).
+
+\item[\code{method}] Estimation method. "auto" (default) uses "em" for
+single-level models and "laplace" whenever multi-level structure
+(\code{random}) or standard errors (\code{se = TRUE}) require it.
+"em" is Bock-Aitkin marginal maximum likelihood with fixed
+Gauss-Hermite quadrature (the mirt/TAM algorithm; typically 20-50x
+faster and evaluates the marginal likelihood more exactly than the
+Laplace approximation). "laplace" is the TMB path, required for
+multi-level models. EM person abilities are EAP scores; Laplace
+abilities are posterior modes.
+
+\item[\code{quad\_points}] Number of quadrature nodes for method = "em"
+(default 61)
+
+\item[\code{se}] Compute parameter standard errors via TMB::sdreport (default
+FALSE, matching the default behavior of mirt; SE computation roughly
+doubles the fitting time for large person samples)
+
+\item[\code{start}] Optional starting values
+
+\item[\code{control}] Control parameters for optimization
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+An object of class \code{gllamm\_irt}
+\end{Value}
+%
+\begin{Examples}
+\begin{ExampleCode}
+## Not run: 
+# Dichotomous example (Rasch)
+set.seed(123)
+n_persons <- 500
+n_items <- 20
+theta <- rnorm(n_persons, 0, 1)
+difficulty <- rnorm(n_items, 0, 1)
+
+# Generate binary responses
+responses <- matrix(NA, n_persons, n_items)
+for (i in 1:n_persons) {
+  for (j in 1:n_items) {
+    p <- plogis(theta[i] - difficulty[j])
+    responses[i, j] <- rbinom(1, 1, p)
+  }
+}
+
+# Fit Rasch model
+fit_rasch <- fit_irt(responses, model = "Rasch")
+summary(fit_rasch)
+
+# Polytomous example (GRM)
+# Generate 5-category responses
+responses_poly <- matrix(NA, n_persons, n_items)
+thresholds <- matrix(seq(-2, 2, length.out = 4), n_items, 4, byrow = TRUE)
+for (i in 1:n_persons) {
+  for (j in 1:n_items) {
+    probs <- c(plogis(theta[i] - thresholds[j, 1]),
+               diff(plogis(theta[i] - thresholds[j, ])),
+               1 - plogis(theta[i] - thresholds[j, 4]))
+    responses_poly[i, j] <- sample(1:5, 1, prob = probs)
+  }
+}
+
+# Fit GRM model
+fit_grm <- fit_irt(responses_poly, model = "GRM")
+summary(fit_grm)
+
+# 3PL with selective guessing (mixed MC and non-MC items)
+# Assessment: 20 items, first 15 are MC, last 5 are open-ended
+fit_3pl <- fit_irt(responses, model = "3PL", mc_items = 1:15)
+# Only items 1-15 get guessing parameters
+# Items 16-20 use 2PL likelihood (no guessing)
+
+# Multi-level IRT: students nested in classes
+person_data <- data.frame(
+  person_id = 1:n_persons,
+  class_id = rep(1:10, each = 50)
+)
+fit_multilevel <- fit_irt(responses, model = "2PL",
+                           person_data = person_data,
+                           random = ~ (1 | class_id))
+# theta_i = theta_0i + u_class[class[i]]
+
+## End(Not run)
+
+\end{ExampleCode}
+\end{Examples}
+\HeaderA{fit\_irt\_dichotomous}{Internal function for dichotomous IRT models}{fit.Rul.irt.Rul.dichotomous}
+\keyword{internal}{fit\_irt\_dichotomous}
+%
+\begin{Description}
+Internal function for dichotomous IRT models
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+fit_irt_dichotomous(
+  response_matrix,
+  model,
+  weights,
+  mc_items,
+  re_info,
+  se,
+  start,
+  control
+)
+\end{verbatim}
+\end{Usage}
+\HeaderA{fit\_irt\_em}{MML-EM estimation for IRT models (Bock-Aitkin)}{fit.Rul.irt.Rul.em}
+\keyword{internal}{fit\_irt\_em}
+%
+\begin{Description}
+Marginal maximum likelihood via the EM algorithm with fixed Gauss-Hermite
+quadrature over the ability distribution - the algorithm class used by
+mirt and TAM. The E-step computes person-by-node posterior weights in one
+matrix product; M-steps are independent small optimizations per item.
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+fit_irt_em(
+  response_matrix,
+  model,
+  weights = NULL,
+  mc_items = NULL,
+  quad_points = 61,
+  max_iter = 500,
+  tol = 1e-04,
+  control = list()
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Details}
+Identification matches the Laplace path: 2PL/3PL/GRM/GPCM/NRM fix the
+ability SD at 1; Rasch and PCM keep a free ability SD via the
+common-slope equivalence (theta \textasciitilde{} N(0, sigma) with unit slope is
+theta \textasciitilde{} N(0,1) with shared slope sigma; difficulties back-transform as
+b = d * sigma).
+\end{Details}
+\HeaderA{fit\_irt\_polytomous}{Internal function for polytomous IRT models}{fit.Rul.irt.Rul.polytomous}
+\keyword{internal}{fit\_irt\_polytomous}
+%
+\begin{Description}
+Internal function for polytomous IRT models
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+fit_irt_polytomous(
+  response_matrix,
+  model,
+  weights,
+  re_info,
+  se,
+  start,
+  control
+)
+\end{verbatim}
+\end{Usage}
+\HeaderA{fit\_lca}{Fit Latent Class Analysis Models}{fit.Rul.lca}
+%
+\begin{Description}
+Fit latent class models to categorical data
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+fit_lca(
+  formula,
+  data = NULL,
+  nclass = 2,
+  weights = NULL,
+  method = c("em", "tmb"),
+  start = NULL,
+  control = list()
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{formula}] Formula specifying manifest variables (can be a matrix)
+
+\item[\code{data}] Data frame containing variables
+
+\item[\code{nclass}] Number of latent classes
+
+\item[\code{weights}] Optional vector of case weights (one per observation)
+
+\item[\code{method}] Estimation method: "em" (default; closed-form EM with
+Ramsay acceleration, the poLCA algorithm) or "tmb" (direct
+quasi-Newton on the marginal likelihood via TMB)
+
+\item[\code{start}] Optional starting values
+
+\item[\code{control}] Control parameters
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+An object of class \code{gllamm\_lca}
+\end{Value}
+%
+\begin{Examples}
+\begin{ExampleCode}
+## Not run: 
+# Simulate 2-class data
+set.seed(123)
+n <- 500
+
+# Class 1: high probability of yes
+class1_probs <- c(0.8, 0.7, 0.9, 0.75)
+# Class 2: low probability of yes
+class2_probs <- c(0.2, 0.3, 0.1, 0.25)
+
+# Generate data
+true_class <- sample(1:2, n, replace = TRUE, prob = c(0.6, 0.4))
+data <- matrix(NA, n, 4)
+for (i in 1:n) {
+  probs <- if (true_class[i] == 1) class1_probs else class2_probs
+  data[i, ] <- rbinom(4, 1, probs)
+}
+colnames(data) <- paste0("Item", 1:4)
+
+# Fit 2-class model
+fit <- fit_lca(data, nclass = 2)
+summary(fit)
+
+## End(Not run)
+
+\end{ExampleCode}
+\end{Examples}
+\HeaderA{fit\_lca\_em}{EM estimation for latent class models}{fit.Rul.lca.Rul.em}
+\keyword{internal}{fit\_lca\_em}
+%
+\begin{Description}
+Classic EM for finite mixtures with conditionally independent indicators
+(the poLCA algorithm). All M-steps are closed-form (weighted proportions
+for binary/categorical indicators, weighted moments for gaussian ones),
+so each iteration is one N x K posterior computation plus a handful of
+cross-products - the E-step runs on BLAS matrix products.
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+fit_lca_em(
+  Y,
+  nclass,
+  item_type,
+  n_cats,
+  weights = NULL,
+  n_starts = 3,
+  max_iter = 1000,
+  tol = 1e-08
+)
+\end{verbatim}
+\end{Usage}
+\HeaderA{fit\_mixed}{Fit Joint Models for Mixed Response Types}{fit.Rul.mixed}
+%
+\begin{Description}
+Fits a joint model for up to three outcomes of different types
+(gaussian, binomial, poisson) measured on the same observations and
+sharing a common random effect. The shared random effect induces
+association between the outcomes.
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+fit_mixed(formulas, random, data, start = NULL, control = list())
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{formulas}] Named list of up to three fixed-effects formulas, with
+names among "gaussian", "binomial", "poisson", e.g.
+\code{list(gaussian = y1 \textasciitilde{} x1, binomial = y2 \textasciitilde{} x2)}.
+
+\item[\code{random}] One-sided random-intercept formula, e.g. \code{\textasciitilde{} (1 | group)}
+
+\item[\code{data}] Data frame containing all outcome and covariate variables;
+rows must be complete for every supplied outcome
+
+\item[\code{start}] Optional starting values
+
+\item[\code{control}] Optimization control list
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+The shared random effect enters every outcome's linear predictor with
+loading 1 (a common-intercept joint model). Outcome-specific loadings
+are not yet supported.
+\end{Details}
+%
+\begin{Value}
+An object of class \code{gllamm\_mixed}
+\end{Value}
+%
+\begin{Examples}
+\begin{ExampleCode}
+## Not run: 
+fit <- fit_mixed(
+  formulas = list(gaussian = biomarker ~ age,
+                  binomial = event ~ age + treatment),
+  random = ~ (1 | patient),
+  data = d)
+
+## End(Not run)
+
+\end{ExampleCode}
+\end{Examples}
+\HeaderA{fit\_multinomial}{Fit Multinomial Regression Models with Random Effects}{fit.Rul.multinomial}
+%
+\begin{Description}
+Fit baseline category logit models for nominal (unordered) responses
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+fit_multinomial(
+  formula,
+  data,
+  reference = NULL,
+  start = NULL,
+  control = list()
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{formula}] Formula with syntax: y \textasciitilde{} x + (terms | group)
+
+\item[\code{data}] Data frame
+
+\item[\code{reference}] Reference category (default: first level)
+
+\item[\code{start}] Optional starting values
+
+\item[\code{control}] Control parameters
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+For nominal response Y with K categories, using baseline category logit:
+
+\deqn{P(Y = k | x) = \frac{\exp(x'\beta_k)}{1 + \sum_{j=1}^{K-1} \exp(x'\beta_j)}}{}
+
+where category 0 is the reference with \eqn{\beta_0 = 0}{}.
+\end{Details}
+%
+\begin{Value}
+An object of class \code{gllamm\_multinomial}
+\end{Value}
+%
+\begin{Examples}
+\begin{ExampleCode}
+## Not run: 
+# Simulate multinomial data
+data$choice <- factor(sample(c("A", "B", "C"), 100, replace = TRUE))
+
+# Fit multinomial model
+fit <- fit_multinomial(choice ~ price + quality + (1 | person),
+                       data = data)
+summary(fit)
+
+## End(Not run)
+
+\end{ExampleCode}
+\end{Examples}
+\HeaderA{fit\_npml}{Fit Two-Level GLMMs by Nonparametric Maximum Likelihood (NPML)}{fit.Rul.npml}
+%
+\begin{Description}
+Replaces the normal random-intercept distribution with a discrete
+distribution on \code{k} estimated mass points (locations and masses).
+The marginal likelihood is an exact finite mixture - no integral
+approximation - making NPML robust to misspecification of the
+random-effects distribution.
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+fit_npml(
+  formula,
+  data,
+  k = 2,
+  family = stats::gaussian(),
+  weights = NULL,
+  n_starts = 3,
+  start = NULL,
+  control = list()
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{formula}] Model formula \code{y \textasciitilde{} x + (1 | group)}
+
+\item[\code{data}] Data frame
+
+\item[\code{k}] Number of mass points (default 2)
+
+\item[\code{family}] gaussian(), binomial(), or poisson()
+
+\item[\code{weights}] Optional observation weights
+
+\item[\code{n\_starts}] Random restarts (mixtures are prone to local optima)
+
+\item[\code{start}] Optional starting values
+
+\item[\code{control}] Optimization control list
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+The fixed-effects design drops its intercept: the mass-point locations
+play the role of component intercepts (the usual NPML identification,
+as in \pkg{npmlreg}). Masses are softmax-parameterized.
+\end{Details}
+%
+\begin{Value}
+An object of class \code{gllamm\_npml}
+\end{Value}
+%
+\begin{Examples}
+\begin{ExampleCode}
+## Not run: 
+fit <- fit_npml(y ~ x + (1 | group), data = d, k = 3,
+                family = stats::binomial())
+
+## End(Not run)
+
+\end{ExampleCode}
+\end{Examples}
+\HeaderA{fit\_ordinal}{Fit Ordinal Regression Models with Random Effects}{fit.Rul.ordinal}
+%
+\begin{Description}
+Fit proportional odds or cumulative probit models for ordinal responses.
+This function can be called directly or through \code{gllamm()} with
+\code{family = ordinal()}. The \code{gllamm()} interface is recommended
+for consistency with other model types.
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+fit_ordinal(
+  formula,
+  data,
+  link = c("logit", "probit", "acl", "crl_forward", "crl_backward", "ppo"),
+  weights = NULL,
+  start = NULL,
+  control = list()
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{formula}] Formula with syntax: y \textasciitilde{} x + (terms | group)
+
+\item[\code{data}] Data frame
+
+\item[\code{link}] Link function: "logit" (proportional odds) or "probit"
+
+\item[\code{weights}] Optional vector of case weights (one per observation)
+
+\item[\code{start}] Optional starting values
+
+\item[\code{control}] Control parameters
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+For ordinal response Y with K categories (1, 2, ..., K), the model is:
+
+Proportional odds (logit link):
+\deqn{P(Y \le k | x) = \frac{1}{1 + \exp(-(\tau_k - x'\beta))}}{}
+
+Cumulative probit:
+\deqn{P(Y \le k | x) = \Phi(\tau_k - x'\beta)}{}
+
+where \eqn{\tau_1 < \tau_2 < ... < \tau_{K-1}}{} are threshold parameters.
+\end{Details}
+%
+\begin{Value}
+An object of class \code{gllamm\_ordinal}
+\end{Value}
+%
+\begin{Note}
+The recommended interface is \code{gllamm(formula, data, family = ordinal(link))}.
+This function is also available for direct use with the \code{link} argument.
+\end{Note}
+%
+\begin{Examples}
+\begin{ExampleCode}
+## Not run: 
+# Simulate ordinal data
+data$satisfaction <- factor(sample(1:5, 100, replace = TRUE),
+                            ordered = TRUE,
+                            levels = 1:5)
+
+# Recommended: Use gllamm() with ordinal() family
+fit1 <- gllamm(satisfaction ~ age + (1 | clinic),
+               data = data,
+               family = ordinal(link = "logit"))
+summary(fit1)
+
+# Alternative: Call fit_ordinal() directly
+fit2 <- fit_ordinal(satisfaction ~ age + (1 | clinic),
+                    data = data,
+                    link = "logit")
+summary(fit2)
+
+## End(Not run)
+
+\end{ExampleCode}
+\end{Examples}
+\HeaderA{fit\_rank}{Fit Rank-Ordered Logit Models with Taste Heterogeneity}{fit.Rul.rank}
+%
+\begin{Description}
+Fits an exploded (rank-ordered) logit model for ranking data, with an
+optional group-level random coefficient on one alternative attribute
+(a "taste shifter"). A constant-within-case random intercept cancels in
+ranking likelihoods, so heterogeneity must attach to an attribute that
+varies across alternatives.
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+fit_rank(
+  formula,
+  case,
+  data,
+  random = NULL,
+  weights = NULL,
+  start = NULL,
+  control = list()
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{formula}] Model formula \code{rank \textasciitilde{} x1 + x2} where the response is
+the rank of each alternative within its case (1 = most preferred).
+Unranked alternatives may be coded \code{NA}; they remain in every
+choice set without contributing a stage.
+
+\item[\code{case}] One-sided formula naming the case identifier, e.g. \code{\textasciitilde{} id}
+
+\item[\code{data}] Data frame in long format (one row per alternative per case)
+
+\item[\code{random}] Optional one-sided formula \code{\textasciitilde{} (0 + attribute | group)}
+giving the attribute carrying the random coefficient and the grouping
+variable. NULL fits a fixed-effects rank-ordered logit (the random SD
+is fixed near zero).
+
+\item[\code{weights}] Optional one weight per case (matched via the case id)
+
+\item[\code{start}] Optional starting values
+
+\item[\code{control}] Optimization control list
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+An object of class \code{gllamm\_rank}
+\end{Value}
+%
+\begin{Examples}
+\begin{ExampleCode}
+## Not run: 
+fit <- fit_rank(rank ~ price + quality, case = ~ subject,
+                random = ~ (0 + price | region), data = d)
+
+## End(Not run)
+
+\end{ExampleCode}
+\end{Examples}
+\HeaderA{fit\_sem}{Fit Structural Equation Models with Latent Variables}{fit.Rul.sem}
+%
+\begin{Description}
+Fits a SEM with continuous indicators: a measurement model defining each
+latent variable by its indicators (marker-variable identification: the
+first indicator's loading is fixed at 1) and an optional recursive
+structural model of regressions among latent variables.
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+fit_sem(
+  measurement,
+  structural = NULL,
+  data,
+  method = c("ml", "laplace"),
+  start = NULL,
+  control = list()
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{measurement}] Named list of one-sided formulas defining each latent
+variable, e.g. \code{list(ability = \textasciitilde{} y1 + y2 + y3,
+motivation = \textasciitilde{} y4 + y5 + y6)}.
+
+\item[\code{structural}] Optional list of formulas among latent variables, e.g.
+\code{list(motivation \textasciitilde{} ability)}. Must be recursive (no cycles).
+
+\item[\code{data}] Data frame with the indicator variables
+
+\item[\code{method}] Estimation method: "ml" (default; Wishart maximum
+likelihood on the sample covariance matrix, the lavaan/LISREL
+approach - fitting cost independent of N) or "laplace" (full-data
+TMB Laplace estimation). Both give the same ML estimates for
+complete data.
+
+\item[\code{start}] Optional starting values (laplace method only)
+
+\item[\code{control}] Optimization control list
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+An object of class \code{gllamm\_sem}
+\end{Value}
+%
+\begin{Examples}
+\begin{ExampleCode}
+## Not run: 
+fit <- fit_sem(
+  measurement = list(f1 = ~ x1 + x2 + x3, f2 = ~ y1 + y2 + y3),
+  structural = list(f2 ~ f1),
+  data = d)
+
+## End(Not run)
+
+\end{ExampleCode}
+\end{Examples}
+\HeaderA{fit\_sem\_ml}{Covariance-based ML estimation for SEM (Wishart likelihood)}{fit.Rul.sem.Rul.ml}
+\keyword{internal}{fit\_sem\_ml}
+%
+\begin{Description}
+Fits the measurement + recursive structural model from the sample
+covariance matrix by minimizing the ML discrepancy
+F = log|Sigma(theta)| + tr(S Sigma\textasciicircum{}-1) - log|S| - p,
+the lavaan/LISREL approach. The data reduce to S and the mean vector, so
+fitting cost is independent of N. For complete data this yields the same
+ML estimates as the full-data marginal likelihood.
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+fit_sem_ml(Y, lambda_pattern, beta_pattern, control = list())
+\end{verbatim}
+\end{Usage}
+\HeaderA{fit\_statistics}{Model Fit Statistics}{fit.Rul.statistics}
+%
+\begin{Description}
+Extract comprehensive fit statistics from GLLAMM models
+\end{Description}
+\HeaderA{fit\_survival}{Fit Parametric Survival Models with Random Effects (Frailty)}{fit.Rul.survival}
+%
+\begin{Description}
+Fits exponential or Weibull proportional-hazards models with log-normal
+frailty (normally distributed random effects on the log-hazard scale),
+supporting right censoring.
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+fit_survival(
+  formula,
+  data,
+  distribution = c("weibull", "exponential"),
+  weights = NULL,
+  start = NULL,
+  control = list()
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{formula}] Formula of the form \code{Surv(time, event) \textasciitilde{} x + (1 | group)}.
+The left-hand side names the time and event (1 = event, 0 = censored)
+variables; the \pkg{survival} package is not required.
+
+\item[\code{data}] Data frame
+
+\item[\code{distribution}] "weibull" (default) or "exponential"
+
+\item[\code{weights}] Optional case weights
+
+\item[\code{start}] Optional starting values
+
+\item[\code{control}] Optimization control list
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+The cumulative hazard is \eqn{H(t \mid x, u) = (\lambda t)^{shape}}{} with
+\eqn{\lambda = \exp(x'\beta + z'u)}{}; the exponential model fixes
+shape = 1. Under this parameterization the accelerated-failure-time
+coefficients of \code{survival::survreg} correspond to \eqn{-\beta}{} and
+its scale to \eqn{1/shape}{}.
+
+The exponential frailty model is likelihood-equivalent to a Poisson GLMM
+on the event indicator with offset \eqn{\log(t)}{}, which is used in the
+package validation suite.
+\end{Details}
+%
+\begin{Value}
+An object of class \code{gllamm\_survival}
+\end{Value}
+%
+\begin{Examples}
+\begin{ExampleCode}
+## Not run: 
+fit <- fit_survival(Surv(time, status) ~ age + (1 | center),
+                    data = d, distribution = "weibull")
+
+## End(Not run)
+
+\end{ExampleCode}
+\end{Examples}
+\HeaderA{fit\_tmb\_gllamm}{Interface to TMB for GLLAMM models}{fit.Rul.tmb.Rul.gllamm}
+\keyword{internal}{fit\_tmb\_gllamm}
+%
+\begin{Description}
+Prepares data and parameters for TMB, compiles and runs optimization
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+fit_tmb_gllamm(
+  model_data,
+  family,
+  start_params = NULL,
+  control = list(),
+  weights = NULL
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{model\_data}] List from make\_model\_matrices()
+
+\item[\code{family}] GLM family object
+
+\item[\code{start\_params}] Optional starting values
+
+\item[\code{control}] Control parameters for optimization
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+TMB fit object with parameter estimates
+\end{Value}
+\HeaderA{fit\_tmb\_gllamm\_aghq}{Fit a two-level GLMM by adaptive Gauss-Hermite quadrature}{fit.Rul.tmb.Rul.gllamm.Rul.aghq}
+\keyword{internal}{fit\_tmb\_gllamm\_aghq}
+%
+\begin{Description}
+R driver for the glmm\_aghq TMB objective: alternates parameter
+optimization with updates of the per-group adaptation centers and scales
+(posterior modes and curvatures), the classic adaptive quadrature scheme.
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+fit_tmb_gllamm_aghq(
+  model_data,
+  family,
+  random_terms,
+  k = 15,
+  start_params = NULL,
+  control = list(),
+  weights = NULL,
+  max_adapt = 5,
+  adapt_tol = 1e-04
+)
+\end{verbatim}
+\end{Usage}
+\HeaderA{fit\_tmb\_gllamm\_multi}{GLMM engine for multiple random-effects terms (crossed/nested)}{fit.Rul.tmb.Rul.gllamm.Rul.multi}
+\keyword{internal}{fit\_tmb\_gllamm\_multi}
+%
+\begin{Description}
+Builds the lme4-style combined sparse Z mapping the full term-major
+random-effects vector to observations, and fits via the glmm\_multi
+TMB model.
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+fit_tmb_gllamm_multi(
+  model_data,
+  family,
+  random_terms,
+  start_params = NULL,
+  control = list(),
+  weights = NULL
+)
+\end{verbatim}
+\end{Usage}
+\HeaderA{fit\_tmb\_gllamm\_v2}{Enhanced interface to TMB for GLLAMMR models}{fit.Rul.tmb.Rul.gllamm.Rul.v2}
+\keyword{internal}{fit\_tmb\_gllamm\_v2}
+%
+\begin{Description}
+Supports random intercepts, random slopes, and multiple GLM families
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+fit_tmb_gllamm_v2(
+  model_data,
+  family,
+  random_terms,
+  start_params = NULL,
+  control = list(),
+  weights = NULL
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{model\_data}] List from make\_model\_matrices()
+
+\item[\code{family}] GLM family object
+
+\item[\code{random\_terms}] Parsed random effects terms
+
+\item[\code{start\_params}] Optional starting values
+
+\item[\code{control}] Control parameters for optimization
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+TMB fit object with parameter estimates
+\end{Value}
+\HeaderA{fit\_tmb\_objective\_only}{Build a TMB objective (no optimization) for one cluster}{fit.Rul.tmb.Rul.objective.Rul.only}
+\keyword{internal}{fit\_tmb\_objective\_only}
+%
+\begin{Description}
+Mirrors the single-term v2 engine's data/parameter construction so the
+cluster objective is evaluated under exactly the same model.
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+fit_tmb_objective_only(model_data, family, random_terms)
+\end{verbatim}
+\end{Usage}
+\HeaderA{fixef}{Generic fixef}{fixef}
+%
+\begin{Description}
+Generic fixef
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+fixef(object, ...)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{object}] A fitted model object
+
+\item[\code{...}] Additional arguments
+\end{ldescription}
+\end{Arguments}
+\HeaderA{fixef.gllamm}{Extract fixed effects}{fixef.gllamm}
+%
+\begin{Description}
+Extract fixed effects
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+## S3 method for class 'gllamm'
+fixef(object, ...)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{object}] A gllamm object
+
+\item[\code{...}] Additional arguments (ignored)
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+Named vector of fixed effects coefficients
+\end{Value}
+\HeaderA{gauss\_hermite}{Gauss-Hermite nodes and weights (Golub-Welsch)}{gauss.Rul.hermite}
+\keyword{internal}{gauss\_hermite}
+%
+\begin{Description}
+Gauss-Hermite nodes and weights (Golub-Welsch)
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+gauss_hermite(n)
+\end{verbatim}
+\end{Usage}
+\HeaderA{get\_inverse\_link}{Get inverse link function for a family}{get.Rul.inverse.Rul.link}
+\keyword{internal}{get\_inverse\_link}
+%
+\begin{Description}
+Get inverse link function for a family
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+get_inverse_link(family)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{family}] Family object (standard R family or custom)
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+Inverse link function
+\end{Value}
+\HeaderA{gllamm}{Fit Generalized Linear Latent and Mixed Models}{gllamm}
+%
+\begin{Description}
+Main function for fitting GLLAMM models. Supports multilevel generalized
+linear models, factor models, IRT models, latent class models, and more.
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+gllamm(
+  formula,
+  data,
+  family = gaussian(),
+  weights = NULL,
+  random = NULL,
+  integration = NULL,
+  start = NULL,
+  control = list(),
+  ...
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{formula}] A two-sided formula with syntax: \code{y \textasciitilde{} x + (terms | group)}.
+The right-hand side contains fixed effects and random effects specifications.
+Random effects are specified using \code{(term | group)} for correlated
+random effects or \code{(term || group)} for uncorrelated random effects.
+Nested random effects can be specified as \code{(1 | level1/level2)}.
+
+\item[\code{data}] A data frame containing the variables in the formula.
+
+\item[\code{family}] A GLM family object specifying the error distribution and link
+function. Supports:
+\begin{itemize}
+
+\item{} \code{gaussian()} - Normal distribution (default)
+\item{} \code{binomial()} - Binary/binomial outcomes
+\item{} \code{poisson()} - Count data
+\item{} \code{ordinal()} - Ordered categorical responses (see \code{?ordinal})
+
+\end{itemize}
+
+
+\item[\code{weights}] Optional case weights: a numeric vector of observation
+(level-1) weights, or a list with elements \code{level1} and/or
+\code{level2} for survey designs with weights at both levels.
+
+\item[\code{random}] For matrix-response families (\code{irt()}, \code{lca()}):
+an optional person-level random-effects formula such as
+\code{\textasciitilde{} (1 | class)}.
+
+\item[\code{integration}] Optional integration specification; \code{aghq(k)}
+selects adaptive Gauss-Hermite quadrature with \code{k} nodes for
+two-level random-intercept models (default is the Laplace
+approximation).
+
+\item[\code{start}] Optional named list of starting values for parameters.
+
+\item[\code{control}] A list of control parameters for the optimization algorithm:
+\begin{description}
+
+\item[eval.max] Maximum number of function evaluations (default: 1000)
+\item[iter.max] Maximum number of iterations (default: 500)
+\item[trace] Integer controlling printed output (default: 0)
+
+\end{description}
+
+
+\item[\code{...}] Additional arguments (reserved for future use).
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+GLLAMMR uses Template Model Builder (TMB) for efficient computation via
+automatic differentiation. The random effects are integrated out using
+Laplace approximation, providing fast and accurate inference.
+
+The formula syntax follows lme4 conventions:
+\begin{itemize}
+
+\item{} \code{(1 | group)} - Random intercept for group
+\item{} \code{(x | group)} - Random intercept and slope for x
+\item{} \code{(x || group)} - Uncorrelated random intercept and slope
+\item{} \code{(1 | level1/level2)} - Nested random effects
+\item{} \code{(1 | group1) + (1 | group2)} - Crossed random effects
+
+\end{itemize}
+
+\end{Details}
+%
+\begin{Value}
+An object of class \code{gllamm} with components:
+\begin{ldescription}
+\item[\code{coefficients}] List with \code{fixed} (fixed effects coefficients)
+and \code{random\_var} (random effects variance components)
+\item[\code{vcov}] List with \code{fixed} (variance-covariance matrix of fixed
+effects) and \code{all} (full variance-covariance matrix)
+\item[\code{random\_effects}] List of random effects predictions by group
+\item[\code{fitted.values}] Fitted values on the response scale
+\item[\code{residuals}] Response residuals
+\item[\code{y}] Response vector
+\item[\code{X}] Fixed effects design matrix
+\item[\code{logLik}] Log-likelihood at convergence
+\item[\code{AIC}] Akaike Information Criterion
+\item[\code{BIC}] Bayesian Information Criterion
+\item[\code{n\_obs}] Number of observations
+\item[\code{n\_params}] Number of parameters
+\item[\code{n\_groups}] Number of groups for each random effects term
+\item[\code{convergence}] List with convergence information
+\item[\code{call}] The matched call
+\item[\code{formula}] The model formula
+\item[\code{family}] The GLM family
+\item[\code{data}] The data frame (if requested)
+\item[\code{random\_terms}] List of random effects specifications
+\end{ldescription}
+\end{Value}
+%
+\begin{References}
+Rabe-Hesketh, S., Skrondal, A., \& Pickles, A. (2004). GLLAMM Manual.
+U.C. Berkeley Division of Biostatistics Working Paper Series.
+
+Skrondal, A., \& Rabe-Hesketh, S. (2004). Generalized Latent Variable
+Modeling: Multilevel, Longitudinal, and Structural Equation Models.
+Chapman \& Hall/CRC.
+\end{References}
+%
+\begin{Examples}
+\begin{ExampleCode}
+## Not run: 
+# Basic random intercept model
+data(sleepstudy, package = "lme4")
+fit1 <- gllamm(Reaction ~ Days + (1 | Subject),
+               data = sleepstudy)
+summary(fit1)
+
+# Random intercept and slope
+fit2 <- gllamm(Reaction ~ Days + (Days | Subject),
+               data = sleepstudy)
+summary(fit2)
+
+# Extract components
+fixef(fit2)        # Fixed effects
+ranef(fit2)        # Random effects
+VarCorr(fit2)      # Variance components
+fitted(fit2)       # Fitted values
+residuals(fit2)    # Residuals
+
+# Ordinal regression (proportional odds)
+data$satisfaction <- ordered(sample(1:5, nrow(data), replace = TRUE))
+fit3 <- gllamm(satisfaction ~ x + (1 | group),
+               data = data,
+               family = ordinal(link = "logit"))
+
+# Ordinal with adjacent category logit
+fit4 <- gllamm(satisfaction ~ x + (1 | group),
+               data = data,
+               family = ordinal(link = "acl"))
+
+## End(Not run)
+
+\end{ExampleCode}
+\end{Examples}
+\HeaderA{gllamm-class}{GLLAMM model object class}{gllamm.Rdash.class}
+\aliasA{coef.gllamm}{gllamm-class}{coef.gllamm}
+\aliasA{fitted.gllamm}{gllamm-class}{fitted.gllamm}
+\aliasA{logLik.gllamm}{gllamm-class}{logLik.gllamm}
+\aliasA{print.gllamm}{gllamm-class}{print.gllamm}
+\aliasA{residuals.gllamm}{gllamm-class}{residuals.gllamm}
+\aliasA{summary.gllamm}{gllamm-class}{summary.gllamm}
+\aliasA{vcov.gllamm}{gllamm-class}{vcov.gllamm}
+%
+\begin{Description}
+S3 class for fitted GLLAMM models
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+## S3 method for class 'gllamm'
+print(x, ...)
+
+## S3 method for class 'gllamm'
+summary(object, ...)
+
+## S3 method for class 'gllamm'
+coef(object, ...)
+
+## S3 method for class 'gllamm'
+vcov(object, which = "fixed", type = c("model", "sandwich"), ...)
+
+## S3 method for class 'gllamm'
+logLik(object, ...)
+
+## S3 method for class 'gllamm'
+fitted(object, ...)
+
+## S3 method for class 'gllamm'
+residuals(object, type = c("response", "pearson", "deviance"), ...)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{x}] A gllamm object
+
+\item[\code{...}] Additional arguments
+
+\item[\code{object}] A gllamm object
+
+\item[\code{which}] Which covariance block to return: "fixed" (default) or "all"
+
+\item[\code{type}] Covariance type: "model" (default) or "sandwich"
+(cluster-robust)
+\end{ldescription}
+\end{Arguments}
+\HeaderA{gllammr\_validate}{Cross-package validation of GLLAMMR estimates}{gllammr.Rul.validate}
+%
+\begin{Description}
+Fits canonical benchmark datasets with GLLAMMR and with established
+reference packages, and reports the agreement. Reference packages that use
+the same Laplace approximation (lme4 with nAGQ = 1, ordinal::clmm) should
+agree to numerical precision; packages using different integration schemes
+(mirt, ltm EM quadrature) agree within small tolerances.
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+gllammr_validate(
+  cases = "all",
+  scale = c("standard", "large", "all"),
+  verbose = TRUE
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{cases}] Character vector of case names to run, or "all" (default).
+Available: "gaussian\_sleepstudy", "binomial\_toenail",
+"poisson\_grouseticks", "ordinal\_wine", "rasch\_lsat", "twopl\_simulated",
+"lca\_carcinoma", "grm\_science", "gamma\_simulated",
+"survival\_exponential", "sem\_lavaan", "lca\_polytomous",
+"npml\_binomial", "aghq\_binomial", "twopl\_lsat\_em".
+
+\item[\code{scale}] "standard" (default) runs the canonical-dataset cases;
+"large" runs the large-scale tier (n in the tens of thousands, long
+item batteries - sizes where quadrature grids and tolerances can fail
+silently); "all" runs both.
+
+\item[\code{verbose}] Print progress messages (default TRUE)
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+All reference packages are Suggests; cases whose reference package is not
+installed are skipped.
+\end{Details}
+%
+\begin{Value}
+Data frame with one row per compared statistic: case, statistic,
+GLLAMMR value, reference value, absolute and relative difference,
+tolerance, and pass/fail.
+\end{Value}
+%
+\begin{Examples}
+\begin{ExampleCode}
+
+if (requireNamespace("lme4", quietly = TRUE)) {
+  gllammr_validate(cases = "gaussian_sleepstudy")
+}
+
+
+\end{ExampleCode}
+\end{Examples}
+\HeaderA{gof.gllamm}{Goodness-of-fit tests for GLLAMM}{gof.gllamm}
+%
+\begin{Description}
+Goodness-of-fit tests for GLLAMM
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+gof.gllamm(object, ...)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{object}] A gllamm object
+
+\item[\code{...}] Additional arguments
+\end{ldescription}
+\end{Arguments}
+\HeaderA{icc}{Compute Intraclass Correlation Coefficients}{icc}
+%
+\begin{Description}
+Calculate ICCs for multi-level IRT models
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+icc(x, ...)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{x}] A fitted multi-level IRT model
+
+\item[\code{...}] Additional arguments (not used; methods may add \code{level})
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+A named vector of ICCs, or a single ICC if level specified
+\end{Value}
+%
+\begin{Examples}
+\begin{ExampleCode}
+## Not run: 
+# All ICCs
+icc(fit)
+
+# Specific level
+icc(fit, level = "class")
+
+## End(Not run)
+
+\end{ExampleCode}
+\end{Examples}
+\HeaderA{icc.gllamm}{Variance decomposition (ICC)}{icc.gllamm}
+%
+\begin{Description}
+Variance decomposition (ICC)
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+## S3 method for class 'gllamm'
+icc(x, quiet = FALSE, ...)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{x}] A gllamm object
+
+\item[\code{quiet}] Suppress printed output and messages (default: FALSE)
+
+\item[\code{...}] Additional arguments
+\end{ldescription}
+\end{Arguments}
+\HeaderA{influence.gllamm}{Influence diagnostics for GLLAMM}{influence.gllamm}
+%
+\begin{Description}
+Influence diagnostics for GLLAMM
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+## S3 method for class 'gllamm'
+influence(model, ...)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{model}] A gllamm object
+
+\item[\code{...}] Additional arguments
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+Data frame with influence measures
+\end{Value}
+\HeaderA{irt}{IRT Family for Item Response Theory Models}{irt}
+%
+\begin{Description}
+Create a family object for fitting IRT models through the unified
+\code{gllamm()} interface. The response is a persons x items matrix
+passed as the first argument of \code{gllamm()}.
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+irt(
+  model = c("Rasch", "2PL", "3PL", "GRM", "PCM", "GPCM", "NRM"),
+  mc_items = NULL
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{model}] IRT model type: "Rasch", "2PL", "3PL" (dichotomous) or
+"GRM", "PCM", "GPCM", "NRM" (polytomous)
+
+\item[\code{mc\_items}] For 3PL only: which items have guessing parameters
+(NULL = all; logical or integer index vector)
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+A family object of class \code{irt\_family}
+\end{Value}
+%
+\begin{Examples}
+\begin{ExampleCode}
+## Not run: 
+fit <- gllamm(response_matrix, family = irt("2PL"))
+# Multi-level IRT: persons nested in classes
+fit_ml <- gllamm(response_matrix, data = person_data,
+                 family = irt("Rasch"), random = ~ (1 | class))
+
+## End(Not run)
+
+\end{ExampleCode}
+\end{Examples}
+\HeaderA{irt\_category\_probs}{Category response probabilities for polytomous IRT models}{irt.Rul.category.Rul.probs}
+\keyword{internal}{irt\_category\_probs}
+%
+\begin{Description}
+Single source of truth for the category probability math, mirroring the
+likelihood in the TMB template (gllamm\_irt\_poly.hpp / gllamm\_eirt.hpp).
+Used by plotting, DIF displays, and marginal predictions so the formulas
+cannot drift apart.
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+irt_category_probs(model, theta, thresholds, discrimination = 1)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{model}] One of "GRM", "PCM", "GPCM", "NRM"
+
+\item[\code{theta}] Numeric vector of ability values
+
+\item[\code{thresholds}] Numeric vector of item parameters: ordered thresholds
+(GRM), free step difficulties (PCM/GPCM), or category intercepts (NRM,
+reference category omitted)
+
+\item[\code{discrimination}] Item discrimination (ignored for PCM)
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+Matrix [length(theta) x K] of category probabilities; rows sum to 1
+\end{Value}
+\HeaderA{lca}{Latent Class Family for Finite Mixture Models}{lca}
+%
+\begin{Description}
+Create a family object for fitting latent class models through the unified
+\code{gllamm()} interface. The response is a matrix of binary manifest
+variables passed as the first argument of \code{gllamm()}.
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+lca(nclass = 2)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{nclass}] Number of latent classes (default 2)
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+A family object of class \code{lca\_family}
+\end{Value}
+%
+\begin{Examples}
+\begin{ExampleCode}
+## Not run: 
+fit <- gllamm(indicator_matrix, family = lca(nclass = 3))
+
+## End(Not run)
+
+\end{ExampleCode}
+\end{Examples}
+\HeaderA{make\_model\_matrices}{Extract model matrices}{make.Rul.model.Rul.matrices}
+\keyword{internal}{make\_model\_matrices}
+%
+\begin{Description}
+Create design matrices for fixed and random effects
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+make_model_matrices(parsed_formula, data)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{parsed\_formula}] Parsed formula object from parse\_formula()
+
+\item[\code{data}] Data frame
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+List with X (fixed effects), Z (random effects), and grouping info
+\end{Value}
+\HeaderA{marginal\_utils}{Utility Functions for Marginal Predictions}{marginal.Rul.utils}
+\keyword{internal}{marginal\_utils}
+%
+\begin{Description}
+Internal functions for computing population-averaged (marginal) predictions
+via Monte Carlo integration over random effects distribution
+\end{Description}
+\HeaderA{mc\_integrate\_fixed\_samples}{Monte Carlo integration for marginal predictions}{mc.Rul.integrate.Rul.fixed.Rul.samples}
+\keyword{internal}{mc\_integrate\_fixed\_samples}
+%
+\begin{Description}
+Computes E[g\textasciicircum{}(-1)(X'beta + Z'u)] by averaging over draws from u \textasciitilde{} N(0, Sigma\_u)
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+mc_integrate_fixed_samples(X, Z, beta, u_samples, inv_link_fn)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{X}] Fixed effects design matrix (n x p)
+
+\item[\code{Z}] Random effects design matrix (n x q) for a single observation
+
+\item[\code{beta}] Fixed effects coefficients (p x 1)
+
+\item[\code{u\_samples}] Matrix of random effects samples (n\_sim x q)
+
+\item[\code{inv\_link\_fn}] Inverse link function
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+Vector of marginal predictions (length n)
+\end{Value}
+\HeaderA{mc\_integrate\_marginal}{Monte Carlo integration for marginal predictions (one sample at a time)}{mc.Rul.integrate.Rul.marginal}
+\keyword{internal}{mc\_integrate\_marginal}
+%
+\begin{Description}
+More memory-efficient version that processes samples sequentially
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+mc_integrate_marginal(X, Z, beta, Sigma_u, inv_link_fn, n_sim = 1000)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{X}] Fixed effects design matrix
+
+\item[\code{Z}] Random effects design matrix
+
+\item[\code{beta}] Fixed effects coefficients
+
+\item[\code{Sigma\_u}] Random effects variance-covariance matrix
+
+\item[\code{inv\_link\_fn}] Inverse link function
+
+\item[\code{n\_sim}] Number of Monte Carlo samples
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+List with fit and se
+\end{Value}
+\HeaderA{multinomial}{Multinomial Family for Unordered Categorical Outcomes}{multinomial}
+%
+\begin{Description}
+Create a family object for baseline-category multinomial logit models
+through the unified \code{gllamm()} interface.
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+multinomial(reference = NULL)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{reference}] Reference category (default: first level)
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+A family object of class \code{multinomial\_family}
+\end{Value}
+%
+\begin{Examples}
+\begin{ExampleCode}
+## Not run: 
+fit <- gllamm(choice ~ x + (1 | region), data = d, family = multinomial())
+
+## End(Not run)
+
+\end{ExampleCode}
+\end{Examples}
+\HeaderA{ordinal}{Ordinal Family for Proportional and Non-Proportional Odds Models}{ordinal}
+%
+\begin{Description}
+Create a family object for ordinal regression models with various link functions
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+ordinal(
+  link = c("logit", "probit", "acl", "crl_forward", "crl_backward", "ppo")
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{link}] Link function to use:
+\begin{description}
+
+\item["logit"] Proportional odds (cumulative logit) - default
+\item["probit"] Cumulative probit
+\item["acl"] Adjacent category logit
+\item["crl\_forward"] Forward continuation ratio logit
+\item["crl\_backward"] Backward continuation ratio logit
+\item["ppo"] Partial proportional odds (non-proportional)
+
+\end{description}
+
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+The ordinal family supports several models for ordered categorical responses:
+
+\strong{Proportional Odds (logit):}
+\deqn{P(Y \le k | x) = \frac{1}{1 + \exp(-(\tau_k - x'\beta))}}{}
+
+\strong{Cumulative Probit:}
+\deqn{P(Y \le k | x) = \Phi(\tau_k - x'\beta)}{}
+
+\strong{Adjacent Category Logit (ACL):}
+Models the log-odds of adjacent categories:
+\deqn{\log\frac{P(Y=k)}{P(Y=k-1)} = \alpha_k + x'\beta}{}
+
+\strong{Continuation Ratio Logit (CRL):}
+Forward version models sequential decisions:
+\deqn{\log\frac{P(Y=k | Y \ge k)}{P(Y>k | Y \ge k)} = \tau_k - x'\beta}{}
+
+Backward version reverses the conditioning.
+
+\strong{Partial Proportional Odds (PPO):}
+Relaxes the proportional odds assumption by allowing different
+covariate effects per threshold:
+\deqn{P(Y \le k | x) = F(\tau_k - x'\beta_k)}{}
+\end{Details}
+%
+\begin{Value}
+A family object of class \code{ordinal\_family} with components:
+\begin{ldescription}
+\item[\code{family}] Character: "ordinal"
+\item[\code{link}] Character: name of link function
+\item[\code{link\_code}] Integer: numeric code for TMB (1-6)
+\end{ldescription}
+\end{Value}
+%
+\begin{Examples}
+\begin{ExampleCode}
+## Not run: 
+# Proportional odds model (default)
+family1 <- ordinal()
+family2 <- ordinal(link = "logit")
+
+# Adjacent category logit
+family3 <- ordinal(link = "acl")
+
+# Partial proportional odds
+family4 <- ordinal(link = "ppo")
+
+# Use with gllamm() - recommended interface
+fit <- gllamm(rating ~ temp + (1 | judge),
+              data = wine,
+              family = ordinal(link = "logit"))
+
+# Or use fit_ordinal() directly
+fit2 <- fit_ordinal(rating ~ temp + (1 | judge),
+                    data = wine,
+                    link = "acl")
+
+## End(Not run)
+
+\end{ExampleCode}
+\end{Examples}
+\HeaderA{parse\_formula}{Parse GLLAMM formula}{parse.Rul.formula}
+\keyword{internal}{parse\_formula}
+%
+\begin{Description}
+Parses a formula into fixed effects and random effects components.
+Supports lme4-style syntax without requiring lme4.
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+parse_formula(formula, data)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{formula}] A formula object with syntax: y \textasciitilde{} x + (terms | group)
+
+\item[\code{data}] A data frame containing the variables
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+A list with components:
+\begin{ldescription}
+\item[\code{fixed\_formula}] Formula for fixed effects
+\item[\code{random\_terms}] List of random effects specifications
+\item[\code{response\_name}] Name of response variable
+\end{ldescription}
+\end{Value}
+\HeaderA{parse\_level\_weights}{Parse observation-level and group-level survey weights}{parse.Rul.level.Rul.weights}
+\keyword{internal}{parse\_level\_weights}
+%
+\begin{Description}
+GLLAMM-style level-specific weights: \code{weights} may be a numeric
+vector (level-1 / observation weights, as before) or a list with elements
+\code{level1} (length n\_obs) and/or \code{level2} (one weight per group,
+or per observation but constant within group). Level-2 weights scale each
+group's full likelihood contribution including its random-effects prior
+(pseudo-likelihood for two-stage sampling designs).
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+parse_level_weights(weights, n_obs, groups, n_groups)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{weights}] NULL, numeric vector, or list(level1=, level2=)
+
+\item[\code{n\_obs}] Number of observations
+
+\item[\code{groups}] 0-indexed group index per observation
+
+\item[\code{n\_groups}] Number of groups
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+list(level1 = numeric(n\_obs), level2 = numeric(n\_groups))
+\end{Value}
+\HeaderA{parse\_random\_formula}{Parse Random Effects Formula}{parse.Rul.random.Rul.formula}
+\keyword{internal}{parse\_random\_formula}
+%
+\begin{Description}
+Internal function to parse lme4-style random effects formulas
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+parse_random_formula(formula, data)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{formula}] Random effects formula (e.g., \textasciitilde{} (1 | class) + (1 | school))
+
+\item[\code{data}] Data frame containing grouping variables
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+List of parsed random effects terms
+\end{Value}
+\HeaderA{parse\_random\_term}{Parse a single random effects term}{parse.Rul.random.Rul.term}
+\keyword{internal}{parse\_random\_term}
+%
+\begin{Description}
+Parse a single random effects term
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+parse_random_term(term, data)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{term}] Character string with format "(terms | group)"
+
+\item[\code{data}] Data frame for checking variables
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+List with parsed random effects structure
+\end{Value}
+\HeaderA{parse\_single\_random\_term}{Parse a single random effects term}{parse.Rul.single.Rul.random.Rul.term}
+\keyword{internal}{parse\_single\_random\_term}
+%
+\begin{Description}
+Parse a single random effects term
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+parse_single_random_term(term, data)
+\end{verbatim}
+\end{Usage}
+\HeaderA{plot.gllamm}{Plot diagnostics for GLLAMM models}{plot.gllamm}
+%
+\begin{Description}
+Plot diagnostics for GLLAMM models
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+## S3 method for class 'gllamm'
+plot(x, which = c(1, 2, 3, 5), ...)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{x}] A gllamm object
+
+\item[\code{which}] Which plots to produce (1-6)
+
+\item[\code{...}] Additional arguments
+\end{ldescription}
+\end{Arguments}
+\HeaderA{plot.gllamm\_irt}{Plot IRT Model Diagnostics}{plot.gllamm.Rul.irt}
+%
+\begin{Description}
+Create diagnostic plots for IRT models including item characteristic curves,
+item information functions, test information, and ability distributions
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+## S3 method for class 'gllamm_irt'
+plot(x, which = 1:4, items = NULL, ...)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{x}] A gllamm\_irt object
+
+\item[\code{which}] Which plots to produce (1=ICC, 2=IIF, 3=TIF, 4=Ability)
+
+\item[\code{items}] Which items to plot (default: first 6 items)
+
+\item[\code{...}] Additional arguments passed to plotting functions
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+Plot types:
+\begin{itemize}
+
+\item{} \code{which = 1}: Item Characteristic Curves (ICC)
+\item{} \code{which = 2}: Item Information Functions (IIF)
+\item{} \code{which = 3}: Test Information Function (TIF)
+\item{} \code{which = 4}: Person Ability Distribution
+
+\end{itemize}
+
+\end{Details}
+%
+\begin{Examples}
+\begin{ExampleCode}
+## Not run: 
+# Fit 2PL model
+fit <- fit_irt(responses, model = "2PL")
+
+# Plot all diagnostics for items 1-3
+plot(fit, which = 1:4, items = 1:3)
+
+# Plot only ICCs
+plot(fit, which = 1, items = 1:5)
+
+## End(Not run)
+
+\end{ExampleCode}
+\end{Examples}
+\HeaderA{plot.gllamm\_lca}{Plot Latent Class Analysis Results}{plot.gllamm.Rul.lca}
+%
+\begin{Description}
+Create diagnostic plots for latent class models including class profiles,
+item probability heatmaps, and classification summaries
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+## S3 method for class 'gllamm_lca'
+plot(x, which = 1:3, ...)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{x}] A gllamm\_lca object
+
+\item[\code{which}] Which plots to produce (1=profiles, 2=heatmap, 3=classification)
+
+\item[\code{...}] Additional arguments passed to plotting functions
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+Plot types:
+\begin{itemize}
+
+\item{} \code{which = 1}: Class Profiles (line plot of item probabilities by class)
+\item{} \code{which = 2}: Item Probability Heatmap
+\item{} \code{which = 3}: Classification Summary (barplot of class assignments)
+
+\end{itemize}
+
+\end{Details}
+%
+\begin{Examples}
+\begin{ExampleCode}
+## Not run: 
+# Fit LCA model
+fit <- fit_lca(indicators, nclass = 3)
+
+# Plot all diagnostics
+plot(fit, which = 1:3)
+
+# Plot only class profiles
+plot(fit, which = 1)
+
+## End(Not run)
+
+\end{ExampleCode}
+\end{Examples}
+\HeaderA{plot.gllamm\_ordinal}{Plot Ordinal Regression Model Diagnostics}{plot.gllamm.Rul.ordinal}
+%
+\begin{Description}
+Create diagnostic plots for ordinal models including cumulative probabilities,
+category probabilities, threshold parameters, and covariate effects
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+## S3 method for class 'gllamm_ordinal'
+plot(x, which = 1:3, covariate = NULL, covariate_values = NULL, ...)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{x}] A gllamm\_ordinal object
+
+\item[\code{which}] Which plots to produce (1=cumulative, 2=category, 3=thresholds, 4=effects)
+
+\item[\code{covariate}] Name of covariate to plot (default: first non-intercept covariate)
+
+\item[\code{covariate\_values}] Optional vector of covariate values to plot (default: -2 to 2)
+
+\item[\code{...}] Additional arguments passed to plotting functions
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+Plot types:
+\begin{itemize}
+
+\item{} \code{which = 1}: Cumulative Probabilities P(Y <= k) vs covariate
+\item{} \code{which = 2}: Category Probabilities P(Y = k) vs covariate
+\item{} \code{which = 3}: Threshold Parameters on latent scale
+\item{} \code{which = 4}: Covariate Effects (shows non-proportional effects for PPO)
+
+\end{itemize}
+
+\end{Details}
+%
+\begin{Examples}
+\begin{ExampleCode}
+## Not run: 
+# Fit ordinal model
+fit <- fit_ordinal(rating ~ temp + contact + (1 | judge),
+                   data = wine, link = "logit")
+
+# Plot all diagnostics for 'temp' covariate
+plot(fit, which = 1:4, covariate = "temp")
+
+# Plot only cumulative probabilities
+plot(fit, which = 1, covariate = "contact")
+
+## End(Not run)
+
+\end{ExampleCode}
+\end{Examples}
+\HeaderA{plot\_ability\_distribution\_irt}{Plot Person Ability Distribution}{plot.Rul.ability.Rul.distribution.Rul.irt}
+\keyword{internal}{plot\_ability\_distribution\_irt}
+%
+\begin{Description}
+Plot Person Ability Distribution
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+plot_ability_distribution_irt(x, ...)
+\end{verbatim}
+\end{Usage}
+\HeaderA{plot\_category\_probs\_ordinal}{Plot Category Probabilities}{plot.Rul.category.Rul.probs.Rul.ordinal}
+\keyword{internal}{plot\_category\_probs\_ordinal}
+%
+\begin{Description}
+Plot Category Probabilities
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+plot_category_probs_ordinal(x, covariate, covariate_values, ...)
+\end{verbatim}
+\end{Usage}
+\HeaderA{plot\_classification\_lca}{Plot Classification Summary}{plot.Rul.classification.Rul.lca}
+\keyword{internal}{plot\_classification\_lca}
+%
+\begin{Description}
+Plot Classification Summary
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+plot_classification_lca(x, ...)
+\end{verbatim}
+\end{Usage}
+\HeaderA{plot\_classification\_uncertainty}{Plot Individual Classification Uncertainty}{plot.Rul.classification.Rul.uncertainty}
+%
+\begin{Description}
+Visualize posterior probabilities for individual cases
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+plot_classification_uncertainty(
+  x,
+  cases = 1:min(20, nrow(x$posterior)),
+  sort_by = c("entropy", "modal", "index"),
+  ...
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{x}] A gllamm\_lca object
+
+\item[\code{cases}] Which cases to plot (default: first 20)
+
+\item[\code{sort\_by}] Sort cases by: "entropy" (default), "modal", or "index"
+
+\item[\code{...}] Additional arguments
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Examples}
+\begin{ExampleCode}
+## Not run: 
+fit <- fit_lca(data, nclass = 3)
+plot_classification_uncertainty(fit, cases = 1:30)
+
+## End(Not run)
+
+\end{ExampleCode}
+\end{Examples}
+\HeaderA{plot\_class\_profiles\_lca}{Plot Class Profiles}{plot.Rul.class.Rul.profiles.Rul.lca}
+\keyword{internal}{plot\_class\_profiles\_lca}
+%
+\begin{Description}
+Plot Class Profiles
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+plot_class_profiles_lca(x, ...)
+\end{verbatim}
+\end{Usage}
+\HeaderA{plot\_covariate\_effects\_ordinal}{Plot Covariate Effects}{plot.Rul.covariate.Rul.effects.Rul.ordinal}
+\keyword{internal}{plot\_covariate\_effects\_ordinal}
+%
+\begin{Description}
+Plot Covariate Effects
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+plot_covariate_effects_ordinal(x, covariate, ...)
+\end{verbatim}
+\end{Usage}
+\HeaderA{plot\_cumulative\_probs\_ordinal}{Plot Cumulative Probabilities}{plot.Rul.cumulative.Rul.probs.Rul.ordinal}
+\keyword{internal}{plot\_cumulative\_probs\_ordinal}
+%
+\begin{Description}
+Plot Cumulative Probabilities
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+plot_cumulative_probs_ordinal(x, covariate, covariate_values, ...)
+\end{verbatim}
+\end{Usage}
+\HeaderA{plot\_icc\_irt}{Plot Item Characteristic Curves}{plot.Rul.icc.Rul.irt}
+\keyword{internal}{plot\_icc\_irt}
+%
+\begin{Description}
+Plot Item Characteristic Curves
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+plot_icc_irt(x, items, ...)
+\end{verbatim}
+\end{Usage}
+\HeaderA{plot\_iif\_irt}{Plot Item Information Functions}{plot.Rul.iif.Rul.irt}
+\keyword{internal}{plot\_iif\_irt}
+%
+\begin{Description}
+Plot Item Information Functions
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+plot_iif_irt(x, items, ...)
+\end{verbatim}
+\end{Usage}
+\HeaderA{plot\_irt}{Plotting Functions for IRT Models}{plot.Rul.irt}
+%
+\begin{Description}
+Visualize item response theory models
+\end{Description}
+\HeaderA{plot\_item\_covariates}{Plot Item Covariate Effects}{plot.Rul.item.Rul.covariates}
+%
+\begin{Description}
+Visualize the relationship between item covariates and item parameters
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+plot_item_covariates(
+  object,
+  covariate,
+  parameter = c("difficulty", "discrimination"),
+  ...
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{object}] A gllamm\_eirt object
+
+\item[\code{covariate}] Name of covariate to plot
+
+\item[\code{parameter}] Which parameter to plot: "difficulty" or "discrimination"
+
+\item[\code{...}] Additional arguments passed to plot
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Examples}
+\begin{ExampleCode}
+## Not run: 
+fit <- fit_eirt(responses, item_data,
+                difficulty_formula = ~ word_freq)
+
+plot_item_covariates(fit, covariate = "word_freq")
+
+## End(Not run)
+
+\end{ExampleCode}
+\end{Examples}
+\HeaderA{plot\_item\_probabilities\_lca}{Plot Item Probability Heatmap}{plot.Rul.item.Rul.probabilities.Rul.lca}
+\keyword{internal}{plot\_item\_probabilities\_lca}
+%
+\begin{Description}
+Plot Item Probability Heatmap
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+plot_item_probabilities_lca(x, ...)
+\end{verbatim}
+\end{Usage}
+\HeaderA{plot\_lca}{Plotting Functions for Latent Class Analysis}{plot.Rul.lca}
+%
+\begin{Description}
+Visualize latent class analysis results
+\end{Description}
+\HeaderA{plot\_ordinal}{Plotting Functions for Ordinal Regression Models}{plot.Rul.ordinal}
+%
+\begin{Description}
+Visualize ordinal regression model results
+\end{Description}
+\HeaderA{plot\_ordinal\_effects}{Plot Ordinal Model Effects for Multiple Covariates}{plot.Rul.ordinal.Rul.effects}
+%
+\begin{Description}
+Compare effects across multiple covariates in an ordinal model
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+plot_ordinal_effects(
+  object,
+  covariates = NULL,
+  sort_by = c("magnitude", "name", "none"),
+  ...
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{object}] A gllamm\_ordinal object
+
+\item[\code{covariates}] Vector of covariate names (default: all non-intercept)
+
+\item[\code{sort\_by}] Sort covariates by: "magnitude", "name", or "none"
+
+\item[\code{...}] Additional arguments
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Examples}
+\begin{ExampleCode}
+## Not run: 
+fit <- fit_ordinal(rating ~ temp + contact + (1 | judge), data = wine)
+plot_ordinal_effects(fit)
+
+## End(Not run)
+
+\end{ExampleCode}
+\end{Examples}
+\HeaderA{plot\_thresholds\_ordinal}{Plot Threshold Parameters}{plot.Rul.thresholds.Rul.ordinal}
+\keyword{internal}{plot\_thresholds\_ordinal}
+%
+\begin{Description}
+Plot Threshold Parameters
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+plot_thresholds_ordinal(x, ...)
+\end{verbatim}
+\end{Usage}
+\HeaderA{plot\_tif\_irt}{Plot Test Information Function}{plot.Rul.tif.Rul.irt}
+\keyword{internal}{plot\_tif\_irt}
+%
+\begin{Description}
+Plot Test Information Function
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+plot_tif_irt(x, ...)
+\end{verbatim}
+\end{Usage}
+\HeaderA{predict.gllamm}{Predict method for GLLAMM models}{predict.gllamm}
+%
+\begin{Description}
+Obtain predictions from a fitted GLLAMM model
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+## S3 method for class 'gllamm'
+predict(
+  object,
+  newdata = NULL,
+  type = c("response", "link", "random", "marginal"),
+  re.form = NULL,
+  n_sim = 1000,
+  se.fit = FALSE,
+  ...
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{object}] A fitted \code{gllamm} object
+
+\item[\code{newdata}] Optional new data frame for predictions. If omitted, fitted
+values from the original data are returned.
+
+\item[\code{type}] Type of prediction:
+\begin{description}
+
+\item[response] Predictions on the response scale (default)
+\item[link] Predictions on the link scale (linear predictor)
+\item[random] Random effects only
+\item[marginal] Population-averaged predictions (integrating over random effects)
+
+\end{description}
+
+
+\item[\code{re.form}] Formula for random effects to include. Use \code{NA} or
+\code{\textasciitilde{}0} to exclude all random effects (population-level predictions).
+Ignored when \code{type = "marginal"}.
+
+\item[\code{n\_sim}] Number of Monte Carlo samples for marginal predictions (default: 1000).
+Only used when \code{type = "marginal"}.
+
+\item[\code{se.fit}] Logical; return standard errors for marginal predictions? (default: FALSE).
+Only used when \code{type = "marginal"}.
+
+\item[\code{...}] Additional arguments (currently unused)
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+A vector of predictions
+\end{Value}
+%
+\begin{Examples}
+\begin{ExampleCode}
+## Not run: 
+fit <- gllamm(y ~ x + (1 | group), data = mydata)
+
+# Fitted values (default - conditional on random effects)
+pred1 <- predict(fit)
+
+# Population-level predictions (fixed effects only, u=0)
+pred2 <- predict(fit, re.form = NA)
+
+# Marginal predictions (population-averaged, integrating over u)
+pred3 <- predict(fit, type = "marginal")
+
+# Marginal predictions with standard errors
+pred4 <- predict(fit, type = "marginal", se.fit = TRUE)
+
+# Marginal predictions for new data
+pred5 <- predict(fit, newdata = newdata, type = "marginal")
+
+## End(Not run)
+
+\end{ExampleCode}
+\end{Examples}
+\HeaderA{predict.gllamm\_eirt}{Predict method for EIRT models}{predict.gllamm.Rul.eirt}
+%
+\begin{Description}
+Obtain predictions from a fitted Explanatory IRT model.
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+## S3 method for class 'gllamm_eirt'
+predict(
+  object,
+  newdata = NULL,
+  type = c("probability", "ability", "difficulty", "discrimination", "marginal"),
+  ability = NULL,
+  n_sim = 1000,
+  ...
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{object}] A fitted EIRT model (class gllamm\_eirt)
+
+\item[\code{newdata}] Optional data frame with item covariates for new items.
+Must include all variables used in the difficulty and discrimination
+formulas. For polytomous models, new-item predictions use the predicted
+item location with step deviations at their population value of zero
+(PCM/GPCM) or the threshold regression (LPCM); GRM threshold spacing is
+item-specific and cannot be predicted for new items.
+
+\item[\code{type}] Type of prediction:
+\begin{description}
+
+\item[probability] Item response probabilities. Dichotomous: persons x
+items matrix of P(Y=1). Polytomous: list of persons x categories
+matrices, one per item.
+\item[ability] Person ability estimates (theta)
+\item[difficulty] Predicted item difficulties
+\item[discrimination] Predicted item discriminations
+\item[marginal] Marginal response probabilities, integrating ability
+over its population distribution. Dichotomous: vector of E[P(Y=1)].
+Polytomous: items x categories matrix of E[P(Y=k)].
+
+\end{description}
+
+
+\item[\code{ability}] Optional vector of ability values. If NULL, uses estimated abilities.
+
+\item[\code{n\_sim}] Number of Monte Carlo samples for marginal predictions (default: 1000)
+
+\item[\code{...}] Additional arguments (currently unused)
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+Depends on \code{type}
+\end{Value}
+\HeaderA{predict.gllamm\_irt}{Predict method for IRT models}{predict.gllamm.Rul.irt}
+%
+\begin{Description}
+Obtain predictions from a fitted IRT model
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+## S3 method for class 'gllamm_irt'
+predict(
+  object,
+  newdata = NULL,
+  type = c("probability", "ability", "marginal"),
+  ability = NULL,
+  n_sim = 1000,
+  ...
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{object}] A fitted IRT model (class gllamm\_irt)
+
+\item[\code{newdata}] Optional specification of items/persons for predictions.
+Can be:
+\begin{itemize}
+
+\item{} NULL: Predict for all original items
+\item{} Numeric vector: Item indices to predict
+\item{} Data frame with 'item' column: Specific items
+
+\end{itemize}
+
+
+\item[\code{type}] Type of prediction:
+\begin{description}
+
+\item[probability] Item response probabilities P(Y=1|θ)
+\item[ability] Person ability estimates (θ)
+\item[marginal] Marginal item response probabilities E[P(Y=1|θ)]
+
+\end{description}
+
+
+\item[\code{ability}] Optional vector of ability values for which to compute probabilities.
+If NULL and type="probability", uses estimated abilities from fitted model.
+
+\item[\code{n\_sim}] Number of Monte Carlo samples for marginal predictions (default: 1000)
+
+\item[\code{...}] Additional arguments (currently unused)
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+Depends on \code{type}:
+\begin{itemize}
+
+\item{} probability: Matrix of probabilities (n\_persons × n\_items) or vector if ability specified
+\item{} ability: Vector of person abilities
+\item{} marginal: Vector of marginal probabilities (one per item)
+
+\end{itemize}
+
+\end{Value}
+%
+\begin{Examples}
+\begin{ExampleCode}
+## Not run: 
+# Fit 2PL model
+responses <- matrix(rbinom(1000, 1, 0.6), 100, 10)
+fit <- fit_irt(responses, model = "2PL")
+
+# Person abilities
+abilities <- predict(fit, type = "ability")
+
+# Item response probabilities for each person
+probs <- predict(fit, type = "probability")
+
+# Marginal item response probabilities (population-level)
+marg_probs <- predict(fit, type = "marginal")
+
+## End(Not run)
+
+\end{ExampleCode}
+\end{Examples}
+\HeaderA{predict.gllamm\_multinomial}{Predict method for multinomial models}{predict.gllamm.Rul.multinomial}
+%
+\begin{Description}
+Obtain predictions from a fitted multinomial logit model with random effects
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+## S3 method for class 'gllamm_multinomial'
+predict(
+  object,
+  newdata = NULL,
+  type = c("class", "probs", "marginal"),
+  n_sim = 1000,
+  ...
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{object}] A fitted multinomial model
+
+\item[\code{newdata}] Optional new data frame for predictions
+
+\item[\code{type}] Type of prediction:
+\begin{description}
+
+\item[class] Predicted class (modal category)
+\item[probs] Conditional probabilities for each category
+\item[marginal] Marginal probabilities (population-averaged)
+
+\end{description}
+
+
+\item[\code{n\_sim}] Number of Monte Carlo samples for marginal predictions (default: 1000)
+
+\item[\code{...}] Additional arguments (currently unused)
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+Depends on \code{type}:
+\begin{itemize}
+
+\item{} class: Vector of predicted classes
+\item{} probs: Matrix of probabilities (n\_obs × n\_categories)
+\item{} marginal: Matrix of marginal probabilities (n\_obs × n\_categories)
+
+\end{itemize}
+
+\end{Value}
+\HeaderA{predict.gllamm\_ordinal}{Predict method for ordinal models}{predict.gllamm.Rul.ordinal}
+%
+\begin{Description}
+Obtain predictions from a fitted ordinal regression model
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+## S3 method for class 'gllamm_ordinal'
+predict(
+  object,
+  newdata = NULL,
+  type = c("class", "probs", "cumprobs", "marginal"),
+  n_sim = 1000,
+  ...
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{object}] A fitted ordinal model (class gllamm with ordinal\_family)
+
+\item[\code{newdata}] Optional new data frame for predictions
+
+\item[\code{type}] Type of prediction:
+\begin{description}
+
+\item[class] Predicted class (modal category)
+\item[probs] Conditional probabilities for each category
+\item[cumprobs] Conditional cumulative probabilities
+\item[marginal] Marginal probabilities (population-averaged)
+
+\end{description}
+
+
+\item[\code{n\_sim}] Number of Monte Carlo samples for marginal predictions (default: 1000)
+
+\item[\code{...}] Additional arguments (currently unused)
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+Depends on \code{type}:
+\begin{itemize}
+
+\item{} class: Vector of predicted classes
+\item{} probs: Matrix of probabilities (n\_obs × n\_categories)
+\item{} cumprobs: Matrix of cumulative probabilities
+\item{} marginal: Matrix of marginal probabilities (n\_obs × n\_categories)
+
+\end{itemize}
+
+\end{Value}
+%
+\begin{Examples}
+\begin{ExampleCode}
+## Not run: 
+# Fit ordinal model
+fit <- gllamm(rating ~ temp + (1 | judge),
+              data = wine,
+              family = ordinal(link = "logit"))
+
+# Predicted classes
+pred_class <- predict(fit, type = "class")
+
+# Conditional probabilities
+pred_probs <- predict(fit, type = "probs")
+
+# Marginal probabilities (population-averaged)
+pred_marg <- predict(fit, type = "marginal")
+
+## End(Not run)
+
+\end{ExampleCode}
+\end{Examples}
+\HeaderA{predict.gllamm\_survival}{Predict method for survival models}{predict.gllamm.Rul.survival}
+%
+\begin{Description}
+Obtain predictions from a fitted survival model with random effects
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+## S3 method for class 'gllamm_survival'
+predict(
+  object,
+  newdata = NULL,
+  type = c("lp", "risk", "survival", "hazard", "marginal_survival", "marginal_hazard"),
+  times = NULL,
+  n_sim = 1000,
+  ...
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{object}] A fitted survival model
+
+\item[\code{newdata}] Optional new data frame for predictions
+
+\item[\code{type}] Type of prediction:
+\begin{description}
+
+\item[lp] Linear predictor (η)
+\item[risk] Relative risk exp(η)
+\item[survival] Survival probability at specified times
+\item[hazard] Hazard at specified times
+\item[marginal\_survival] Marginal survival probability (population-averaged)
+\item[marginal\_hazard] Marginal hazard (population-averaged)
+
+\end{description}
+
+
+\item[\code{times}] Times at which to evaluate survival/hazard (required for survival/hazard types)
+
+\item[\code{n\_sim}] Number of Monte Carlo samples for marginal predictions (default: 1000)
+
+\item[\code{...}] Additional arguments (currently unused)
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+Depends on \code{type}
+\end{Value}
+\HeaderA{predict\_difficulty}{Predict Item Difficulties from Covariates}{predict.Rul.difficulty}
+%
+\begin{Description}
+Compute predicted difficulties based on item covariate model
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+predict_difficulty(object, newdata = NULL)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{object}] A gllamm\_eirt object
+
+\item[\code{newdata}] Optional new item data for predictions
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+Vector of predicted difficulties (fixed effects only, no residuals)
+\end{Value}
+%
+\begin{Examples}
+\begin{ExampleCode}
+## Not run: 
+fit <- fit_eirt(responses, item_data,
+                difficulty_formula = ~ word_freq)
+
+# Predicted difficulties for fitted data
+pred_diff <- predict_difficulty(fit)
+
+# Predicted difficulties for new items
+new_items <- data.frame(word_freq = c(-1, 0, 1))
+pred_new <- predict_difficulty(fit, newdata = new_items)
+
+## End(Not run)
+
+\end{ExampleCode}
+\end{Examples}
+\HeaderA{predict\_marginal\_gllamm}{Internal function for marginal predictions}{predict.Rul.marginal.Rul.gllamm}
+\keyword{internal}{predict\_marginal\_gllamm}
+%
+\begin{Description}
+Computes population-averaged predictions by integrating over random effects
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+predict_marginal_gllamm(object, newdata = NULL, n_sim = 1000, se.fit = FALSE)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{object}] Fitted gllamm object
+
+\item[\code{newdata}] New data for predictions (NULL = use original data)
+
+\item[\code{n\_sim}] Number of Monte Carlo samples
+
+\item[\code{se.fit}] Return standard errors?
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+Vector of marginal predictions, or list with fit and se.fit
+\end{Value}
+\HeaderA{predict\_marginal\_irt}{Internal function for marginal IRT predictions}{predict.Rul.marginal.Rul.irt}
+\keyword{internal}{predict\_marginal\_irt}
+%
+\begin{Description}
+Computes E[P(Y=1|θ)] where θ \textasciitilde{} N(0, σ²\_θ)
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+predict_marginal_irt(object, items, n_sim = 1000)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{object}] Fitted IRT model
+
+\item[\code{items}] Item indices to predict
+
+\item[\code{n\_sim}] Number of MC samples
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+Vector of marginal probabilities (one per item)
+\end{Value}
+\HeaderA{predict\_marginal\_ordinal}{Internal function for marginal ordinal predictions}{predict.Rul.marginal.Rul.ordinal}
+\keyword{internal}{predict\_marginal\_ordinal}
+%
+\begin{Description}
+Internal function for marginal ordinal predictions
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+predict_marginal_ordinal(object, X, Z, n_sim = 1000)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{object}] Fitted ordinal model
+
+\item[\code{X}] Fixed effects design matrix
+
+\item[\code{Z}] Random effects design matrix
+
+\item[\code{n\_sim}] Number of MC samples
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+Matrix of marginal probabilities (n\_obs × n\_categories)
+\end{Value}
+\HeaderA{print.binomial\_family}{Print method for binomial family}{print.binomial.Rul.family}
+\keyword{internal}{print.binomial\_family}
+%
+\begin{Description}
+Print method for binomial family
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+## S3 method for class 'binomial_family'
+print(x, ...)
+\end{verbatim}
+\end{Usage}
+\HeaderA{print.dif\_analysis}{Print DIF analysis results}{print.dif.Rul.analysis}
+%
+\begin{Description}
+Print DIF analysis results
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+## S3 method for class 'dif_analysis'
+print(x, ...)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{x}] Object of class dif\_analysis
+
+\item[\code{...}] Additional arguments (not used)
+\end{ldescription}
+\end{Arguments}
+\HeaderA{print.eirt\_comparison}{Print EIRT comparison}{print.eirt.Rul.comparison}
+\keyword{internal}{print.eirt\_comparison}
+%
+\begin{Description}
+Print EIRT comparison
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+## S3 method for class 'eirt_comparison'
+print(x, ...)
+\end{verbatim}
+\end{Usage}
+\HeaderA{print.eirt\_test}{Print EIRT test results}{print.eirt.Rul.test}
+\keyword{internal}{print.eirt\_test}
+%
+\begin{Description}
+Print EIRT test results
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+## S3 method for class 'eirt_test'
+print(x, ...)
+\end{verbatim}
+\end{Usage}
+\HeaderA{print.fit\_statistics}{Print Method for Fit Statistics}{print.fit.Rul.statistics}
+%
+\begin{Description}
+Print Method for Fit Statistics
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+## S3 method for class 'fit_statistics'
+print(x, ...)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{x}] A fit\_statistics object
+
+\item[\code{...}] Additional arguments
+\end{ldescription}
+\end{Arguments}
+\HeaderA{print.gllamm\_eirt}{Print EIRT model results}{print.gllamm.Rul.eirt}
+%
+\begin{Description}
+Print EIRT model results
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+## S3 method for class 'gllamm_eirt'
+print(x, ...)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{x}] Object of class gllamm\_eirt
+
+\item[\code{...}] Additional arguments
+\end{ldescription}
+\end{Arguments}
+\HeaderA{print.ordinal\_family}{Print method for ordinal family}{print.ordinal.Rul.family}
+\keyword{internal}{print.ordinal\_family}
+%
+\begin{Description}
+Print method for ordinal family
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+## S3 method for class 'ordinal_family'
+print(x, ...)
+\end{verbatim}
+\end{Usage}
+\HeaderA{print.po\_test}{Print method for proportional odds test}{print.po.Rul.test}
+\keyword{internal}{print.po\_test}
+%
+\begin{Description}
+Print method for proportional odds test
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+## S3 method for class 'po_test'
+print(x, ...)
+\end{verbatim}
+\end{Usage}
+\HeaderA{ranef}{Generic ranef}{ranef}
+%
+\begin{Description}
+Generic function to extract random effects from fitted models
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+ranef(object, ...)
+
+ranef(object, ...)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{object}] A fitted model object
+
+\item[\code{...}] Additional arguments passed to methods
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+Random effects (method-specific format)
+\end{Value}
+\HeaderA{ranef.gllamm}{Extract random effects}{ranef.gllamm}
+%
+\begin{Description}
+Extract random effects
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+## S3 method for class 'gllamm'
+ranef(object, ...)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{object}] A gllamm object
+
+\item[\code{...}] Additional arguments (ignored)
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+List of random effects by group
+\end{Value}
+\HeaderA{ranef.gllamm\_irt\_multilevel}{Extract Random Effects from Multi-Level IRT Models}{ranef.gllamm.Rul.irt.Rul.multilevel}
+%
+\begin{Description}
+Extract estimated random effects (group-level deviations) from fitted models
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+## S3 method for class 'gllamm_irt_multilevel'
+ranef(object, level = NULL, ...)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{object}] A fitted multi-level IRT model
+
+\item[\code{level}] Which random effect level to extract. If NULL, returns all levels.
+
+\item[\code{...}] Additional arguments (not used)
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+A named vector or matrix of random effects
+\end{Value}
+%
+\begin{Examples}
+\begin{ExampleCode}
+## Not run: 
+# Extract class effects
+ranef(fit, level = "class")
+
+# Extract all random effects
+ranef(fit)
+
+## End(Not run)
+
+\end{ExampleCode}
+\end{Examples}
+\HeaderA{rmvnorm\_chol}{Draw samples from a zero-mean multivariate normal}{rmvnorm.Rul.chol}
+\keyword{internal}{rmvnorm\_chol}
+%
+\begin{Description}
+Cholesky-based sampler so MASS can remain in Suggests.
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+rmvnorm_chol(n, Sigma)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{n}] Number of samples
+
+\item[\code{Sigma}] Variance-covariance matrix
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+n x ncol(Sigma) matrix of draws
+\end{Value}
+\HeaderA{sandwich\_vcov\_gllamm}{Cluster-robust (sandwich) covariance for GLLAMM fixed effects}{sandwich.Rul.vcov.Rul.gllamm}
+\keyword{internal}{sandwich\_vcov\_gllamm}
+%
+\begin{Description}
+Computes the cluster-robust covariance \eqn{H^{-1} M H^{-1}}{} where
+\eqn{H}{} is the observed information of the outer parameters and
+\eqn{M = \sum_j s_j s_j'}{} accumulates per-cluster score vectors. Because
+clusters are independent, the Laplace marginal log-likelihood decomposes
+by cluster; each cluster's score is evaluated by rebuilding its objective
+on the cluster's rows and differentiating at the full-data estimates
+(with the cluster's random effects re-profiled internally).
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+sandwich_vcov_gllamm(object)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{object}] A two-level GLMM fitted via \code{gllamm()} (gaussian,
+binomial, poisson, or Gamma family, single random-effects term)
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+Covariance matrix for the full outer parameter vector, with a
+\code{"fixed"} attribute holding the fixed-effects block.
+\end{Value}
+%
+\begin{SeeAlso}
+\code{\LinkA{vcov.gllamm}{vcov.gllamm}} with \code{type = "sandwich"}
+\end{SeeAlso}
+\HeaderA{simulate.gllamm}{Simulate from a GLLAMM model}{simulate.gllamm}
+%
+\begin{Description}
+Simulate response data from a fitted GLLAMM model. Random effects are
+drawn fresh from their estimated distribution for every replicate
+(population-level simulation), both for the original data and for
+\code{newdata}.
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+## S3 method for class 'gllamm'
+simulate(object, nsim = 1, seed = NULL, newdata = NULL, ...)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{object}] A fitted \code{gllamm} object
+
+\item[\code{nsim}] Number of simulations (default: 1)
+
+\item[\code{seed}] Optional random seed (stored in the \code{"seed"} attribute,
+following the \code{\LinkA{simulate}{simulate}} contract)
+
+\item[\code{newdata}] Optional new data frame containing the covariates and
+grouping variables of the model formula
+
+\item[\code{...}] Additional arguments (currently unused)
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+A data frame with \code{nsim} columns, one simulated response
+vector per column, with a \code{"seed"} attribute.
+\end{Value}
+%
+\begin{Examples}
+\begin{ExampleCode}
+## Not run: 
+fit <- gllamm(y ~ x + (1 | group), data = mydata)
+
+# Single simulation
+sim1 <- simulate(fit)
+
+# Multiple simulations
+sim10 <- simulate(fit, nsim = 10)
+
+## End(Not run)
+
+\end{ExampleCode}
+\end{Examples}
+\HeaderA{simulate.gllamm\_ordinal}{Simulate from a fitted ordinal model}{simulate.gllamm.Rul.ordinal}
+%
+\begin{Description}
+Draws fresh random effects from their estimated distribution for each
+replicate (population-level simulation) and samples categories from the
+implied response distribution.
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+## S3 method for class 'gllamm_ordinal'
+simulate(object, nsim = 1, seed = NULL, newdata = NULL, ...)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{object}] A fitted \code{gllamm\_ordinal} object
+
+\item[\code{nsim}] Number of simulations (default: 1)
+
+\item[\code{seed}] Optional random seed (stored in the \code{"seed"} attribute)
+
+\item[\code{newdata}] Optional new data frame with the model covariates and
+grouping variables
+
+\item[\code{...}] Additional arguments (currently unused)
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+A data frame with \code{nsim} columns of simulated category
+responses (integer codes 1..K), with a \code{"seed"} attribute.
+\end{Value}
+\HeaderA{summary.dif\_analysis}{Summary of DIF analysis}{summary.dif.Rul.analysis}
+%
+\begin{Description}
+Summary of DIF analysis
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+## S3 method for class 'dif_analysis'
+summary(object, ...)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{object}] Object of class dif\_analysis
+
+\item[\code{...}] Additional arguments (not used)
+\end{ldescription}
+\end{Arguments}
+\HeaderA{summary.gllamm\_eirt}{Summary of EIRT model}{summary.gllamm.Rul.eirt}
+%
+\begin{Description}
+Summary of EIRT model
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+## S3 method for class 'gllamm_eirt'
+summary(object, ...)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{object}] Object of class gllamm\_eirt
+
+\item[\code{...}] Additional arguments
+\end{ldescription}
+\end{Arguments}
+\HeaderA{test\_item\_covariates}{Test Item Covariate Effects}{test.Rul.item.Rul.covariates}
+%
+\begin{Description}
+Test whether adding item covariates significantly improves model fit
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+test_item_covariates(
+  response_matrix,
+  item_data,
+  difficulty_formula = ~1,
+  discrimination_formula = ~1,
+  model = c("Rasch", "2PL", "GRM"),
+  ...
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{response\_matrix}] Matrix of item responses
+
+\item[\code{item\_data}] Data frame of item-level covariates
+
+\item[\code{difficulty\_formula}] Formula for difficulty regression
+
+\item[\code{discrimination\_formula}] Formula for discrimination regression
+
+\item[\code{model}] IRT model type
+
+\item[\code{...}] Additional arguments passed to fit\_eirt
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+A list with:
+\begin{ldescription}
+\item[\code{full\_model}] EIRT model with covariates
+\item[\code{null\_model}] EIRT model without covariates (intercept only)
+\item[\code{comparison}] Model comparison results
+\end{ldescription}
+\end{Value}
+%
+\begin{Examples}
+\begin{ExampleCode}
+## Not run: 
+item_data <- data.frame(
+  word_freq = rnorm(20),
+  length = rpois(20, 5)
+)
+
+# Test if word frequency matters
+result <- test_item_covariates(
+  responses,
+  item_data,
+  difficulty_formula = ~ word_freq + length,
+  model = "Rasch"
+)
+
+print(result$comparison)
+
+## End(Not run)
+
+\end{ExampleCode}
+\end{Examples}
+\HeaderA{test\_proportional\_odds}{Test Proportional Odds Assumption}{test.Rul.proportional.Rul.odds}
+%
+\begin{Description}
+Perform a likelihood ratio test of the proportional odds assumption
+by comparing a proportional odds model to a partial proportional odds model
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+test_proportional_odds(object, data = NULL)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{object}] A fitted ordinal regression model (gllamm\_ordinal)
+
+\item[\code{data}] The data frame used to fit the model (required when the
+fitted object does not store its data)
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+The proportional odds assumption states that the effect of covariates
+is the same across all thresholds. This function fits a partial proportional
+odds (PPO) model where each threshold can have different covariate effects
+and tests whether this provides a significantly better fit.
+
+The test statistic is:
+\deqn{LRT = 2(logLik_{PPO} - logLik_{PO})}{}
+
+which follows a chi-squared distribution with degrees of freedom equal to
+the difference in number of parameters.
+
+If p < 0.05, the proportional odds assumption is rejected, suggesting
+that covariate effects vary across thresholds.
+\end{Details}
+%
+\begin{Value}
+An object of class \code{po\_test} with components:
+\begin{ldescription}
+\item[\code{statistic}] Likelihood ratio test statistic
+\item[\code{df}] Degrees of freedom for the test
+\item[\code{p\_value}] P-value from chi-squared distribution
+\item[\code{conclusion}] Text interpretation of the test result
+\item[\code{models}] List containing the base and PPO models
+\end{ldescription}
+\end{Value}
+%
+\begin{Note}
+This function currently only works for models with logit or probit links.
+It will not work with ACL, CRL, or already-PPO models.
+\end{Note}
+%
+\begin{Examples}
+\begin{ExampleCode}
+## Not run: 
+# Fit proportional odds model
+fit_po <- fit_ordinal(rating ~ temp + (1 | judge),
+                      data = wine, link = "logit")
+
+# Test proportional odds assumption
+po_test <- test_proportional_odds(fit_po)
+print(po_test)
+
+## End(Not run)
+
+\end{ExampleCode}
+\end{Examples}
+\HeaderA{validate\_formula}{Validate formula}{validate.Rul.formula}
+\keyword{internal}{validate\_formula}
+%
+\begin{Description}
+Check that formula is properly specified
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+validate_formula(formula, data)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{formula}] Formula object
+
+\item[\code{data}] Data frame
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+TRUE if valid, stops with error otherwise
+\end{Value}
+\HeaderA{validate\_poly\_responses}{Validate and auto-recode polytomous response matrices (shared by the Laplace and EM estimation paths)}{validate.Rul.poly.Rul.responses}
+\keyword{internal}{validate\_poly\_responses}
+%
+\begin{Description}
+Validate and auto-recode polytomous response matrices (shared by the
+Laplace and EM estimation paths)
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+validate_poly_responses(response_matrix)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Value}
+list(response\_matrix, n\_categories\_per\_item, max\_categories)
+\end{Value}
+\HeaderA{VarCorr}{Extract Variance Components from Multi-Level Models}{VarCorr}
+%
+\begin{Description}
+Generic function to extract variance components from fitted multi-level models
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+VarCorr(x, ...)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{x}] A fitted model object
+
+\item[\code{...}] Additional arguments passed to methods
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+Variance components (method-specific format)
+\end{Value}
+\HeaderA{VarCorr.gllamm}{Extract variance components}{VarCorr.gllamm}
+%
+\begin{Description}
+Extract variance components
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+## S3 method for class 'gllamm'
+VarCorr(x, ...)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{x}] A gllamm object
+
+\item[\code{...}] Additional arguments (ignored)
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+List of variance-covariance matrices for random effects
+\end{Value}
+\HeaderA{VarCorr.gllamm\_irt\_multilevel}{Extract Variance Components from Multi-Level IRT Models}{VarCorr.gllamm.Rul.irt.Rul.multilevel}
+%
+\begin{Description}
+Extract variance components from fitted multi-level IRT models
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+## S3 method for class 'gllamm_irt_multilevel'
+VarCorr(x, ...)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{x}] A fitted multi-level IRT model (class gllamm\_irt\_multilevel)
+
+\item[\code{...}] Additional arguments (not used)
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+A data frame with variance components
+\end{Value}
+%
+\begin{Examples}
+\begin{ExampleCode}
+## Not run: 
+# Fit multi-level model
+fit <- fit_irt(responses, model = "2PL",
+               person_data = data, random = ~ (1 | class))
+
+# Extract variance components
+VarCorr(fit)
+
+## End(Not run)
+
+\end{ExampleCode}
+\end{Examples}
+\printindex{}
+\end{document}

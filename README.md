@@ -1,4 +1,4 @@
-# GLLAMMR: Generalized Linear Latent and Mixed Models in R
+# gllammr: Generalized Linear Latent and Mixed Models in R
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
@@ -6,7 +6,7 @@ An R implementation of **Generalized Linear Latent and Mixed Models (GLLAMM)** f
 
 ## Overview
 
-GLLAMMR fits a wide class of multilevel latent variable models through one interface:
+gllammr fits a wide class of multilevel latent variable models through one interface:
 
 - **Multilevel GLMMs** (Gaussian, binomial, Poisson, gamma; logit/probit/cloglog links)
 - **Ordinal and multinomial models** (cumulative, adjacent-category, continuation-ratio, partial proportional odds)
@@ -22,7 +22,7 @@ All models are estimated by maximum likelihood via TMB automatic differentiation
 
 ```r
 # install.packages("remotes")
-remotes::install_github("yourusername/GLLAMMR")
+remotes::install_github("yourusername/gllammr")
 ```
 
 Requires R >= 4.0.0, TMB >= 1.9.0, and a C++ compiler at install time (standard for source packages; Rtools on Windows, Xcode CLT on macOS).
@@ -30,7 +30,7 @@ Requires R >= 4.0.0, TMB >= 1.9.0, and a C++ compiler at install time (standard 
 ## Quick Start
 
 ```r
-library(GLLAMMR)
+library(gllammr)
 
 # Gaussian GLMM with random intercept
 fit1 <- gllamm(y ~ x + (1 | group), data = mydata, family = gaussian())
@@ -70,7 +70,7 @@ fit_crossed <- gllamm(correct ~ x + (1 | person) + (1 | item),
 | `(1 \| g1/g2)` | Nested random effects |
 | `(1 \| g1) + (1 \| g2)` | Crossed random effects |
 
-Note: GLLAMMR exports its own `binomial()` (adding probit and cloglog links), which routes to a dedicated single-random-term fitter. For crossed/nested random effects, `integration = aghq()`, or level-specific weights with binary outcomes, use `stats::binomial()` to reach the general estimator.
+Note: gllammr exports its own `binomial()` (adding probit and cloglog links), which routes to a dedicated single-random-term fitter. For crossed/nested random effects, `integration = aghq()`, or level-specific weights with binary outcomes, use `stats::binomial()` to reach the general estimator.
 
 ### Unified family dispatch
 
@@ -166,8 +166,8 @@ results <- gllammr_validate()   # requires the reference packages (Suggests)
 
 ```r
 ?gllamm
-help(package = "GLLAMMR")
-browseVignettes("GLLAMMR")
+help(package = "gllammr")
+browseVignettes("gllammr")
 ```
 
 Vignettes: getting started, multilevel GLMMs, IRT models, multilevel IRT, latent class analysis, marginal predictions, weights, advanced features, and migrating from Stata GLLAMM.

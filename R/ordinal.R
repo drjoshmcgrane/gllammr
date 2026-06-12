@@ -224,7 +224,7 @@ fit_ordinal <- function(formula, data, link = c("logit", "probit", "acl",
     parameters = tmb_params,
     random = "u",
     map = tmb_map,
-    DLL = "GLLAMMR",
+    DLL = "gllammr",
     silent = TRUE
   )
 
@@ -426,7 +426,7 @@ fit_ordinal_multi <- function(formula, data, link, link_code, parsed,
     parameters = tmb_params,
     random = "u",
     map = tmb_map,
-    DLL = "GLLAMMR",
+    DLL = "gllammr",
     silent = TRUE
   )
 
@@ -705,7 +705,7 @@ fit_multinomial <- function(formula, data, reference = NULL,
     parameters = tmb_params,
     random = "u",
     map = tmb_map,
-    DLL = "GLLAMMR",
+    DLL = "gllammr",
     silent = TRUE
   )
 
@@ -839,7 +839,7 @@ fit_multinomial_multi <- function(formula, data, reference, parsed,
     parameters = tmb_params,
     random = "u",
     map = tmb_map,
-    DLL = "GLLAMMR",
+    DLL = "gllammr",
     silent = TRUE
   )
 

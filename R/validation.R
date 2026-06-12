@@ -1,6 +1,6 @@
-#' Cross-package validation of GLLAMMR estimates
+#' Cross-package validation of gllammr estimates
 #'
-#' Fits canonical benchmark datasets with GLLAMMR and with established
+#' Fits canonical benchmark datasets with gllammr and with established
 #' reference packages, and reports the agreement. Reference packages that use
 #' the same Laplace approximation (lme4 with nAGQ = 1, ordinal::clmm) should
 #' agree to numerical precision; packages using different integration schemes
@@ -24,7 +24,7 @@
 #' @param verbose Print progress messages (default TRUE)
 #'
 #' @return Data frame with one row per compared statistic: case, statistic,
-#'   GLLAMMR value, reference value, absolute and relative difference,
+#'   gllammr value, reference value, absolute and relative difference,
 #'   tolerance, and pass/fail.
 #'
 #' @examples
@@ -329,7 +329,7 @@ gllammr_validate <- function(cases = "all", scale = c("standard", "large", "all"
   ref <- mirt::mirt(Science, 1, itemtype = "graded", verbose = FALSE)
 
   # mirt: a*theta + d_k; threshold b_k = -d_k / a (theta ~ N(0,1) fixed).
-  # GLLAMMR estimates sigma_theta, so compare on the standardized scale:
+  # gllammr estimates sigma_theta, so compare on the standardized scale:
   # b* = b / sigma_theta, a* = a * sigma_theta.
   co <- mirt::coef(ref, simplify = TRUE)$items
   b_ref_item1 <- -co[1, "d1"] / co[1, "a1"]
@@ -722,7 +722,7 @@ gllammr_validate <- function(cases = "all", scale = c("standard", "large", "all"
     return(NULL)
   }
   # Logistic-regression DIF with score matching and purification: with
-  # the same (observed-score) matching criterion, GLLAMMR's tests are the
+  # the same (observed-score) matching criterion, gllammr's tests are the
   # same nested-model LR tests as difR::difLogistic.
   set.seed(19)
   n <- 1200; ni <- 12

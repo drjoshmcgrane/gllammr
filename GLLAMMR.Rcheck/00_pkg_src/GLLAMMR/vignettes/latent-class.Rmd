@@ -1,0 +1,426 @@
+---
+title: "Latent Class Analysis with GLLAMMR"
+author: "GLLAMMR Team"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Latent Class Analysis with GLLAMMR}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  eval = FALSE
+)
+```
+
+## Introduction to Latent Class Analysis
+
+Note: the code in this vignette is illustrative and is not evaluated when the vignette is built.
+
+Latent Class Analysis (LCA) is a statistical method for identifying unobserved subgroups (latent classes) within a population based on responses to categorical variables.
+
+### Key Concepts
+
+- **Latent classes**: Unobserved subgroups in the population
+- **Manifest variables**: Observed categorical indicators
+- **Class membership probabilities**: Proportion of population in each class
+- **Item response probabilities**: Probability of each response given class membership
+- **Local independence**: Within classes, responses are independent
+
+## Basic LCA Model
+
+The LCA model for binary items:
+
+$$P(Y_i = y) = \sum_{k=1}^K \pi_k \prod_{j=1}^J \rho_{jk}^{y_{ij}} (1-\rho_{jk})^{1-y_{ij}}$$
+
+where:
+- $K$ is the number of latent classes
+- $\pi_k$ is the probability of class $k$
+- $\rho_{jk}$ is the probability of endorsing item $j$ in class $k$
+
+## Simulating LCA Data
+
+```{r simulate-lca}
+library(GLLAMMR)
+
+set.seed(123)
+n <- 500
+n_items <- 6
+
+# Two latent classes with distinct response patterns
+# Class 1: "High endorsers" - frequently say yes
+class1_probs <- c(0.85, 0.75, 0.90, 0.80, 0.85, 0.70)
+
+# Class 2: "Low endorsers" - infrequently say yes
+class2_probs <- c(0.15, 0.25, 0.10, 0.20, 0.15, 0.30)
+
+# 60% in class 1, 40% in class 2
+true_class <- sample(1:2, n, replace = TRUE, prob = c(0.6, 0.4))
+
+# Generate item responses
+data <- matrix(NA, n, n_items)
+for (i in 1:n) {
+  probs <- if (true_class[i] == 1) class1_probs else class2_probs
+  data[i, ] <- rbinom(n_items, 1, probs)
+}
+
+colnames(data) <- paste0("Item", 1:n_items)
+head(data)
+```
+
+## Fitting a 2-Class Model
+
+```{r fit-2class}
+fit_2class <- fit_lca(data, nclass = 2)
+
+print(fit_2class)
+```
+
+The output shows:
+- Class probabilities (proportion in each class)
+- Item response probabilities for each class
+- Model fit statistics (AIC, BIC, log-likelihood)
+
+## Examining Results
+
+### Class Sizes
+
+```{r class-sizes}
+# Modal class assignment
+table(fit_2class$modal_class)
+
+# Compare to true classes
+if (exists("true_class")) {
+  # Confusion matrix (may need to relabel)
+  table(True = true_class, Estimated = fit_2class$modal_class)
+
+  # Classification accuracy (best of two label permutations)
+  acc1 <- mean(fit_2class$modal_class == true_class)
+  acc2 <- mean(fit_2class$modal_class == (3 - true_class))
+  cat("Classification accuracy:", max(acc1, acc2), "\n")
+}
+```
+
+### Item Response Probabilities
+
+```{r item-probs}
+# Item probabilities by class
+print(round(fit_2class$item_probs, 3))
+
+# Visualize item profiles
+barplot(t(fit_2class$item_probs),
+        beside = TRUE,
+        legend.text = paste("Class", 1:2),
+        xlab = "Item",
+        ylab = "P(Endorse)",
+        main = "Item Response Profiles by Class",
+        col = c("lightblue", "lightcoral"))
+```
+
+### Posterior Probabilities
+
+```{r posterior}
+# First few individuals' posterior class probabilities
+head(fit_2class$posterior)
+
+# How certain are we about class membership?
+# High max posterior = high certainty
+max_posterior <- apply(fit_2class$posterior, 1, max)
+
+hist(max_posterior,
+     main = "Distribution of Maximum Posterior Probabilities",
+     xlab = "Max Posterior Probability",
+     col = "lightgreen",
+     breaks = 20)
+
+# Individuals with uncertain classification
+uncertain <- which(max_posterior < 0.7)
+cat("Number of uncertain classifications:", length(uncertain), "\n")
+```
+
+## Determining the Number of Classes
+
+A key question in LCA is how many classes exist. Use information criteria and interpretability.
+
+```{r model-selection}
+# Fit models with different numbers of classes
+fit_1class <- fit_lca(data, nclass = 1)  # Null model
+fit_2class <- fit_lca(data, nclass = 2)
+fit_3class <- fit_lca(data, nclass = 3)
+fit_4class <- fit_lca(data, nclass = 4)
+
+# Compare fit statistics
+model_comparison <- data.frame(
+  nclass = 1:4,
+  LogLik = c(fit_1class$logLik, fit_2class$logLik,
+             fit_3class$logLik, fit_4class$logLik),
+  AIC = c(fit_1class$AIC, fit_2class$AIC,
+          fit_3class$AIC, fit_4class$AIC),
+  BIC = c(fit_1class$BIC, fit_2class$BIC,
+          fit_3class$BIC, fit_4class$BIC)
+)
+
+print(model_comparison)
+
+# Plot BIC by number of classes
+plot(model_comparison$nclass, model_comparison$BIC,
+     type = "b", lwd = 2, pch = 19,
+     xlab = "Number of Classes",
+     ylab = "BIC",
+     main = "Model Selection via BIC")
+
+# Lowest BIC is preferred
+best_model <- which.min(model_comparison$BIC)
+cat("Best model (by BIC):", best_model, "classes\n")
+```
+
+## Interpreting Classes
+
+### Naming Classes
+
+Based on item profiles, assign meaningful names:
+
+```{r interpret}
+# Example: Assuming fit_2class is the best model
+class_profiles <- fit_2class$item_probs
+
+# Class 1: High on all items -> "High Symptom" group
+# Class 2: Low on all items -> "Low Symptom" group
+
+class_names <- c("High Symptom", "Low Symptom")
+
+# Or for more nuanced patterns:
+# Class 1: High on items 1-3, low on 4-6 -> "Anxious" subtype
+# Class 2: Low on items 1-3, high on 4-6 -> "Depressed" subtype
+```
+
+### Profiling Classes
+
+```{r profiling, eval=FALSE}
+# If you have additional covariates (not used in LCA)
+# you can profile the classes
+
+# Example: Are classes related to age or gender?
+# (Assuming we have these variables)
+
+# age_by_class <- tapply(age, fit_2class$modal_class, mean)
+# gender_by_class <- table(gender, fit_2class$modal_class)
+```
+
+## Practical Applications
+
+### Clinical Psychology: Depression Subtypes
+
+```{r depression-example, eval=FALSE}
+# Simulate depression symptom data
+set.seed(456)
+n_patients <- 600
+symptoms <- c("Sad", "Tired", "Insomnia", "Appetite", "Guilt",
+              "Concentration", "Psychomotor", "Suicidal", "Anhedonia")
+n_symptoms <- length(symptoms)
+
+# Three classes:
+# 1. Severe (high on all)
+# 2. Moderate (medium on most)
+# 3. Mild (low on most)
+
+severe_probs <- rep(0.85, n_symptoms)
+moderate_probs <- rep(0.50, n_symptoms)
+mild_probs <- rep(0.15, n_symptoms)
+
+true_severity <- sample(1:3, n_patients, replace = TRUE,
+                        prob = c(0.2, 0.5, 0.3))
+
+depression_data <- matrix(NA, n_patients, n_symptoms)
+for (i in 1:n_patients) {
+  probs <- switch(true_severity[i],
+                  severe_probs,
+                  moderate_probs,
+                  mild_probs)
+  depression_data[i, ] <- rbinom(n_symptoms, 1, probs)
+}
+
+colnames(depression_data) <- symptoms
+
+# Fit 3-class model
+fit_depression <- fit_lca(depression_data, nclass = 3)
+
+print(fit_depression)
+
+# Examine class profiles
+print(round(fit_depression$item_probs, 2))
+```
+
+### Education: Learning Strategies
+
+```{r learning-strategies, eval=FALSE}
+# Simulate data on study strategies
+set.seed(789)
+n_students <- 400
+strategies <- c("Highlighting", "Summarizing", "Practice_Testing",
+                "Distributed", "Interleaved", "Elaboration")
+n_strategies <- length(strategies)
+
+# Two classes:
+# 1. "Deep learners" - use effective strategies
+# 2. "Surface learners" - use ineffective strategies
+
+deep_probs <- c(0.3, 0.8, 0.9, 0.85, 0.7, 0.8)  # High on good strategies
+surface_probs <- c(0.9, 0.3, 0.2, 0.15, 0.2, 0.3)  # High on highlighting only
+
+true_type <- sample(1:2, n_students, replace = TRUE, prob = c(0.4, 0.6))
+
+strategy_data <- matrix(NA, n_students, n_strategies)
+for (i in 1:n_students) {
+  probs <- if (true_type[i] == 1) deep_probs else surface_probs
+  strategy_data[i, ] <- rbinom(n_strategies, 1, probs)
+}
+
+colnames(strategy_data) <- strategies
+
+# Fit model
+fit_strategies <- fit_lca(strategy_data, nclass = 2)
+
+print(fit_strategies)
+
+# Interpret classes
+print(round(fit_strategies$item_probs, 2))
+
+# Deep learners should show high use of:
+# - Practice testing
+# - Distributed practice
+# - Interleaving
+# - Elaboration
+```
+
+### Marketing: Customer Segmentation
+
+```{r marketing, eval=FALSE}
+# Simulate customer purchase patterns
+set.seed(111)
+n_customers <- 800
+products <- c("Premium", "Budget", "Frequent", "Bulk",
+              "Online", "Loyalty", "Reviews")
+n_products <- length(products)
+
+# Three customer segments:
+# 1. "Premium shoppers"
+# 2. "Budget hunters"
+# 3. "Occasional buyers"
+
+premium_probs <- c(0.9, 0.1, 0.8, 0.3, 0.9, 0.8, 0.7)
+budget_probs <- c(0.1, 0.9, 0.6, 0.8, 0.5, 0.4, 0.8)
+occasional_probs <- c(0.3, 0.5, 0.2, 0.1, 0.4, 0.2, 0.3)
+
+true_segment <- sample(1:3, n_customers, replace = TRUE,
+                       prob = c(0.25, 0.45, 0.30))
+
+customer_data <- matrix(NA, n_customers, n_products)
+for (i in 1:n_customers) {
+  probs <- switch(true_segment[i],
+                  premium_probs,
+                  budget_probs,
+                  occasional_probs)
+  customer_data[i, ] <- rbinom(n_products, 1, probs)
+}
+
+colnames(customer_data) <- products
+
+# Fit model
+fit_customers <- fit_lca(customer_data, nclass = 3)
+
+print(fit_customers)
+
+# Target marketing strategies based on segments
+print(round(fit_customers$item_probs, 2))
+```
+
+## Model Diagnostics
+
+### Local Independence
+
+Check if items are independent within classes (LCA assumption):
+
+```{r local-indep, eval=FALSE}
+# Compare observed and expected cell frequencies
+# High residuals suggest local dependence
+
+# This would require additional functionality:
+# check_local_independence(fit_2class)
+```
+
+### Classification Diagnostics
+
+```{r classification-diag}
+# Entropy: measure of classification uncertainty
+# Ranges from 0 (complete uncertainty) to 1 (perfect certainty)
+
+compute_entropy <- function(posterior) {
+  # Avoid log(0)
+  posterior[posterior == 0] <- 1e-10
+
+  # Entropy formula
+  entropy_i <- -rowSums(posterior * log(posterior))
+  max_entropy <- log(ncol(posterior))
+
+  # Relative entropy (0 to 1)
+  rel_entropy <- 1 - mean(entropy_i) / max_entropy
+
+  return(rel_entropy)
+}
+
+entropy <- compute_entropy(fit_2class$posterior)
+cat("Entropy:", round(entropy, 3), "\n")
+
+# Entropy > 0.8 is considered good separation
+```
+
+## Advanced Topics
+
+### Latent Class Regression
+
+```{r lcr, eval=FALSE}
+# Future feature: Include covariates predicting class membership
+# fit_lcr <- fit_lca(data, nclass = 2, formula = ~ age + gender)
+```
+
+### Growth Mixture Models
+
+```{r gmm, eval=FALSE}
+# Future feature: Combine LCA with growth curves
+# fit_gmm <- fit_growth_mixture(y ~ time | id, nclass = 3)
+```
+
+### Latent Class IRT
+
+```{r lc-irt, eval=FALSE}
+# Future feature: IRT models with discrete ability distribution
+# fit_lc_irt <- fit_irt(responses, nclass = 3)
+```
+
+## Tips for Applied Researchers
+
+1. **Start simple**: Begin with 2 classes, then increase
+2. **Use multiple criteria**: Don't rely on fit statistics alone
+3. **Check interpretability**: Classes should make substantive sense
+4. **Validate**: Use holdout samples or cross-validation
+5. **Report uncertainty**: Include entropy and posterior probabilities
+6. **Consider alternatives**: Mixture models, hierarchical clustering
+
+## References
+
+- Lazarsfeld, P. F., & Henry, N. W. (1968). Latent Structure Analysis.
+- McCutcheon, A. L. (1987). Latent Class Analysis.
+- Hagenaars, J. A., & McCutcheon, A. L. (2002). Applied Latent Class Analysis.
+- Collins, L. M., & Lanza, S. T. (2010). Latent Class and Latent Transition Analysis.
+- Nylund-Gibson, K., & Choi, A. Y. (2018). Ten frequently asked questions about latent class analysis.
+
+## See Also
+
+- `vignette("irt-models")` - Item response theory
+- `vignette("factor-analysis")` - Continuous latent variables
+- `vignette("mixed-response")` - Multiple outcome types

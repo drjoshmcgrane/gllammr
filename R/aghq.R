@@ -150,7 +150,7 @@ fit_tmb_gllamm_aghq <- function(model_data, family, random_terms,
   opt <- NULL; obj <- NULL
   for (round in seq_len(max_adapt)) {
     obj <- TMB::MakeADFun(data = tmb_data, parameters = tmb_params,
-                          map = tmb_map, DLL = "GLLAMMR", silent = TRUE)
+                          map = tmb_map, DLL = "gllammr", silent = TRUE)
     opt <- nlminb(obj$par, obj$fn, obj$gr, control = ctl)
     tmb_params$beta <- opt$par[names(opt$par) == "beta"]
     if (fam_code == 0L) {
@@ -187,7 +187,7 @@ fit_tmb_gllamm_aghq <- function(model_data, family, random_terms,
 
   # Final fit at converged adaptation points
   obj <- TMB::MakeADFun(data = tmb_data, parameters = tmb_params,
-                        map = tmb_map, DLL = "GLLAMMR", silent = TRUE)
+                        map = tmb_map, DLL = "gllammr", silent = TRUE)
   opt <- nlminb(obj$par, obj$fn, obj$gr, control = ctl)
   sdr <- try(TMB::sdreport(obj), silent = TRUE)
 

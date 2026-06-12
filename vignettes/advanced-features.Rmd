@@ -1,8 +1,8 @@
 ---
-title: "Advanced Features in GLLAMMR"
+title: "Advanced Features in gllammr"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Advanced Features in GLLAMMR}
+  %\VignetteIndexEntry{Advanced Features in gllammr}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -20,7 +20,7 @@ outcomes, frailty survival, rank-ordered choices, nonparametric latent
 distributions, adaptive quadrature, and cluster-robust standard errors.
 
 ```{r lib}
-library(GLLAMMR)
+library(gllammr)
 set.seed(2026)
 ```
 

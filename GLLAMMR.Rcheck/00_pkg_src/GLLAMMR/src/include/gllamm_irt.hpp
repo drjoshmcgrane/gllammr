@@ -1,0 +1,98 @@
+// IRT Models: Rasch, 2PL, 3PL
+// Item Response Theory with latent ability as random effect
+
+#ifndef GLLAMM_IRT_HPP
+#define GLLAMM_IRT_HPP
+
+#undef TMB_OBJECTIVE_PTR
+#define TMB_OBJECTIVE_PTR obj
+
+template<class Type>
+Type gllamm_irt(objective_function<Type>* obj)
+{
+  // Data inputs
+  DATA_VECTOR(y);              // Item responses (0/1)
+  DATA_IVECTOR(person_id);     // Person identifier (0-indexed)
+  DATA_IVECTOR(item_id);       // Item identifier (0-indexed)
+  DATA_INTEGER(n_persons);     // Number of persons
+  DATA_INTEGER(n_items);       // Number of items
+  DATA_INTEGER(n_obs);         // Number of observations
+  DATA_VECTOR(weights);        // Case weights (fweights or pweights)
+  DATA_INTEGER(model_type);    // 1=Rasch, 2=2PL, 3=3PL
+  DATA_IVECTOR(mc_items);      // 1 if item has guessing parameter, 0 otherwise (for 3PL)
+
+  // Parameters
+  PARAMETER_VECTOR(theta);     // Person abilities (latent trait)
+  PARAMETER_VECTOR(difficulty); // Item difficulties (b parameters)
+  PARAMETER_VECTOR(discrimination); // Item discriminations (a parameters, for 2PL/3PL)
+  PARAMETER_VECTOR(guessing);  // Guessing parameters (c parameters, for 3PL)
+  PARAMETER(log_sigma_theta);  // Log SD of ability distribution
+
+  // Transform parameters
+  Type sigma_theta = exp(log_sigma_theta);
+
+  // Initialize negative log-likelihood
+  // parallel_accumulator splits the likelihood across OpenMP threads
+  // when available (no-op on single-threaded builds)
+  parallel_accumulator<Type> nll(obj);
+
+  // Prior for person abilities: theta ~ N(0, sigma_theta^2)
+  for (int p = 0; p < n_persons; p++) {
+    nll -= dnorm(theta(p), Type(0.0), sigma_theta, true);
+  }
+
+  // Likelihood for item responses
+  for (int i = 0; i < n_obs; i++) {
+    int person = person_id(i);
+    int item = item_id(i);
+
+    Type prob;
+
+    if (model_type == 1) {
+      // Rasch model: P(Y=1) = logit^{-1}(theta - b)
+      Type eta = theta(person) - difficulty(item);
+      prob = invlogit(eta);
+
+    } else if (model_type == 2) {
+      // 2PL model: P(Y=1) = logit^{-1}(a*(theta - b))
+      Type eta = discrimination(item) * (theta(person) - difficulty(item));
+      prob = invlogit(eta);
+
+    } else {
+      // 3PL model: P(Y=1) = c + (1-c) * logit^{-1}(a*(theta - b))
+      // Guessing only applied if mc_items[item] == 1
+      Type eta = discrimination(item) * (theta(person) - difficulty(item));
+
+      if (mc_items(item) == 1) {
+        // MC item: apply guessing parameter
+        Type c = guessing(item);
+        prob = c + (Type(1.0) - c) * invlogit(eta);
+      } else {
+        // Non-MC item: no guessing (same as 2PL)
+        prob = invlogit(eta);
+      }
+    }
+
+    // Bernoulli log-likelihood (weighted)
+    Type w_i = weights(i);
+    nll -= w_i * (y(i) * log(prob + Type(1e-10)) + (Type(1.0) - y(i)) * log(Type(1.0) - prob + Type(1e-10)));
+  }
+
+  // Report estimates
+  REPORT(theta);
+  ADREPORT(difficulty);
+  if (model_type >= 2) {
+    ADREPORT(discrimination);
+  }
+  if (model_type == 3) {
+    ADREPORT(guessing);
+  }
+  ADREPORT(sigma_theta);
+
+  return nll;
+}
+
+#undef TMB_OBJECTIVE_PTR
+#define TMB_OBJECTIVE_PTR this
+
+#endif // GLLAMM_IRT_HPP

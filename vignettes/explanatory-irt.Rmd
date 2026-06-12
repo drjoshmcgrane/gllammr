@@ -27,7 +27,7 @@ linear mixed model, and once you see it that way, item properties become
 "*why* is item 7 difficult — and how well do its design features explain
 that?"
 
-GLLAMMR implements this framework in `fit_eirt()` (equivalently
+gllammr implements this framework in `fit_eirt()` (equivalently
 `gllamm(resp, family = eirt(...))`). This vignette reproduces the
 canonical analysis: the **verbal aggression data** (316 persons x 24
 items, shipped with lme4), where each item is built from a 2 x 2 x 3
@@ -35,7 +35,7 @@ design — behaviour mode (want/do), situation type (other/self-to-blame),
 and behaviour type (curse/scold/shout).
 
 ```{r data}
-library(GLLAMMR)
+library(gllammr)
 data("VerbAgg", package = "lme4")
 
 # Persons x items response matrix (1 = "yes")
@@ -100,7 +100,7 @@ the point formally:
 
 The LLTM-plus-error is *exactly* a binomial GLMM with crossed person and
 item random effects — De Boeck & Wilson's central insight. You can check
-this inside GLLAMMR itself: an intercept-only explanatory model equals
+this inside gllammr itself: an intercept-only explanatory model equals
 the crossed-effects GLMM through the unified interface (and both equal
 `lme4::glmer`).
 

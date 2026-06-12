@@ -1,8 +1,8 @@
 # De Boeck & Wilson (2004) verbal aggression analysis:
-# GLLAMMR fit_eirt() vs the lme4 item-explanatory GLMM formulation.
+# gllammr fit_eirt() vs the lme4 item-explanatory GLMM formulation.
 
 suppressMessages({
-  library(GLLAMMR)
+  library(gllammr)
   library(lme4)
 })
 

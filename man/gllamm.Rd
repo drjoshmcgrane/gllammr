@@ -105,7 +105,7 @@ Main function for fitting GLLAMM models. Supports multilevel generalized
 linear models, factor models, IRT models, latent class models, and more.
 }
 \details{
-GLLAMMR uses Template Model Builder (TMB) for efficient computation via
+gllammr uses Template Model Builder (TMB) for efficient computation via
 automatic differentiation. The random effects are integrated out using
 Laplace approximation, providing fast and accurate inference.
 

@@ -1,0 +1,36 @@
+Package: GLLAMMR
+Type: Package
+Title: Generalized Linear Latent and Mixed Models
+Version: 1.2.0
+Authors@R: 
+    person("Josh", "McGrane", email = "drjoshmcgrane@gmail.com",
+           role = c("aut", "cre"))
+Description: Comprehensive implementation of Generalized Linear Latent and Mixed
+    Models following the 'Stata' 'GLLAMM' framework by Rabe-Hesketh, Skrondal,
+    and Pickles (2004) <doi:10.1007/BF02295939>. Supports multilevel generalized
+    linear models with Gaussian, binomial, Poisson, ordinal, and multinomial
+    responses; item response theory models including dichotomous (Rasch, 2PL,
+    3PL) and polytomous (GRM, PCM, GPCM, NRM) models; differential item
+    functioning analysis; explanatory item response models with item covariates;
+    latent class analysis; structural equation models; mixed response models;
+    and survival models. All models support frequency and probability weights
+    for survey data and aggregated observations. Provides marginal
+    (population-averaged) predictions via Monte Carlo integration. Uses
+    'TMB' (Template Model Builder) for efficient computation via automatic
+    differentiation and Laplace approximation. Provides comprehensive
+    diagnostics, visualization, and model comparison tools.
+License: GPL-3
+Depends: R (>= 4.0.0)
+Imports: TMB (>= 1.9.0), Matrix (>= 1.5.0), stats, methods, graphics,
+        grDevices, utils
+LinkingTo: TMB, RcppEigen
+Suggests: testthat (>= 3.0.0), knitr, rmarkdown, ggplot2, lme4, mirt,
+        TAM, MASS, lavaan, npmlreg, glmmTMB, ordinal, poLCA, survival,
+        HSAUR3, ltm
+Encoding: UTF-8
+RoxygenNote: 7.3.3
+VignetteBuilder: knitr
+NeedsCompilation: yes
+Packaged: 2026-06-11 10:37:06 UTC; josh
+Author: Josh McGrane [aut, cre]
+Maintainer: Josh McGrane <drjoshmcgrane@gmail.com>

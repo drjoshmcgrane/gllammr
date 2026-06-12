@@ -1,4 +1,4 @@
-# GLLAMMR 1.2.0
+# gllammr 1.2.0
 
 ## Post-1.2.0 development
 
@@ -199,7 +199,7 @@
   checks of estimates, variance components, and log-likelihoods against
   lme4, glmmTMB, ordinal, mirt, poLCA, npmlreg, and lavaan.
 
-# GLLAMMR 1.1.0 and earlier
+# gllammr 1.1.0 and earlier
 
 * Initial development releases: Gaussian/binomial/Poisson GLMMs, ordinal
   and multinomial models, dichotomous and polytomous IRT (Rasch, 2PL, 3PL,

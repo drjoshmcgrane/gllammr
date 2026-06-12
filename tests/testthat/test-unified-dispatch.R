@@ -82,7 +82,7 @@ test_that("gllamm() dispatches irt(), lca(), multinomial() families", {
   expect_s3_class(fit_m, "gllamm_multinomial")
 })
 
-test_that("GLLAMMR binomial() stays usable by glm and lme4", {
+test_that("gllammr binomial() stays usable by glm and lme4", {
   set.seed(35)
   d <- data.frame(x = rnorm(200), g = factor(rep(1:10, each = 20)),
                   yb = rbinom(200, 1, 0.5))

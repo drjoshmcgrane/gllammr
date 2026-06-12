@@ -2,7 +2,7 @@
 % Please edit documentation in R/tmb_interface_v2.R
 \name{fit_tmb_gllamm_v2}
 \alias{fit_tmb_gllamm_v2}
-\title{Enhanced interface to TMB for GLLAMMR models}
+\title{Enhanced interface to TMB for gllammr models}
 \usage{
 fit_tmb_gllamm_v2(
   model_data,

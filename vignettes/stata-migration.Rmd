@@ -1,6 +1,6 @@
 ---
 title: "Migrating from Stata GLLAMM"
-author: "GLLAMMR Team"
+author: "gllammr Team"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
@@ -21,7 +21,7 @@ knitr::opts_chunk$set(
 
 Note: the code in this vignette is illustrative and is not evaluated when the vignette is built.
 
-This guide helps Stata GLLAMM users transition to GLLAMMR.
+This guide helps Stata GLLAMM users transition to gllammr.
 
 ## Syntax Comparison
 
@@ -32,7 +32,7 @@ This guide helps Stata GLLAMM users transition to GLLAMMR.
 gllamm math_score ses, i(school) family(gaussian) link(identity)
 ```
 
-**R (GLLAMMR)**:
+**R (gllammr)**:
 ```{r}
 gllamm(math_score ~ ses + (1 | school),
        data = mydata,
@@ -47,7 +47,7 @@ eq slope: ses
 gllamm math_score ses, i(school) nrf(2) eqs(slope)
 ```
 
-**R (GLLAMMR)**:
+**R (gllammr)**:
 ```{r}
 gllamm(math_score ~ ses + (ses | school),
        data = mydata)
@@ -60,7 +60,7 @@ gllamm(math_score ~ ses + (ses | school),
 gllamm passed hours, i(school) family(binomial) link(logit)
 ```
 
-**R (GLLAMMR)**:
+**R (gllammr)**:
 ```{r}
 gllamm(passed ~ hours + (1 | school),
        family = binomial(link = "logit"))
@@ -68,7 +68,7 @@ gllamm(passed ~ hours + (1 | school),
 
 ## Feature Mapping
 
-| Feature | Stata GLLAMM | GLLAMMR |
+| Feature | Stata GLLAMM | gllammr |
 |---------|-------------|---------|
 | Random intercept | `i(group)` | `(1 \| group)` |
 | Random slope | `nrf(2) eqs(slope)` | `(x \| group)` |
@@ -97,7 +97,7 @@ gllapred re, u
 gllamm, eform
 ```
 
-### GLLAMMR Workflow
+### gllammr Workflow
 
 ```{r}
 # Load data
@@ -119,7 +119,7 @@ exp(coef(fit))  # Exponentiated coefficients
 
 ## Examples from Stata Manual
 
-All Stata GLLAMM manual examples can be replicated in GLLAMMR.
+All Stata GLLAMM manual examples can be replicated in gllammr.
 
 ### Example 1: Two-level model
 

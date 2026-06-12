@@ -139,7 +139,7 @@ fit_mixed <- function(formulas, random, data, start = NULL, control = list()) {
     parameters = tmb_params,
     random = "u",
     map = tmb_map,
-    DLL = "GLLAMMR",
+    DLL = "gllammr",
     silent = TRUE
   )
 

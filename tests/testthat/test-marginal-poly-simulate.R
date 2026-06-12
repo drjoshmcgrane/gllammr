@@ -30,7 +30,7 @@ simulate_glmm_data <- function(seed = 42, g = 25, n_per = 20) {
 
 test_that("irt_category_probs matches the template orientation for GRM", {
   # P(lowest category) must DECREASE with theta; P(highest) must INCREASE
-  p <- GLLAMMR:::irt_category_probs("GRM", c(-3, 0, 3),
+  p <- gllammr:::irt_category_probs("GRM", c(-3, 0, 3),
                                     thresholds = c(-1, 1), discrimination = 1)
   expect_equal(rowSums(p), rep(1, 3), tolerance = 1e-10)
   expect_true(p[1, 1] > p[3, 1])   # low ability -> low category
@@ -40,7 +40,7 @@ test_that("irt_category_probs matches the template orientation for GRM", {
 test_that("irt_category_probs rows sum to one for all models", {
   theta <- seq(-3, 3, length.out = 11)
   for (m in c("GRM", "PCM", "GPCM", "NRM")) {
-    p <- GLLAMMR:::irt_category_probs(m, theta,
+    p <- gllammr:::irt_category_probs(m, theta,
                                       thresholds = c(-0.5, 0.5),
                                       discrimination = 1.2)
     expect_equal(rowSums(p), rep(1, 11), tolerance = 1e-10)

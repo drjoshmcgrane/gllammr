@@ -144,7 +144,7 @@ fit_survival <- function(formula, data,
     parameters = tmb_params,
     random = "u",
     map = tmb_map,
-    DLL = "GLLAMMR",
+    DLL = "gllammr",
     silent = TRUE
   )
 

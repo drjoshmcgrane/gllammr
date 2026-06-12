@@ -26,7 +26,7 @@ not bias. Every defensible DIF analysis therefore conditions on a
 matching criterion, and the central methodological risk is that the
 criterion itself is contaminated by the DIF items.
 
-GLLAMMR implements a two-stage workflow:
+gllammr implements a two-stage workflow:
 
 1. **`dif_test()`** — fast logistic-regression screening with iterative
    purification, supporting multiple DIF variables and interactions.
@@ -40,7 +40,7 @@ biased against one gender, item 8 against one language group, and item
 11 only against the *combination* (intersectional DIF).
 
 ```{r simulate}
-library(GLLAMMR)
+library(gllammr)
 set.seed(2026)
 n <- 1000; ni <- 12
 persons <- data.frame(

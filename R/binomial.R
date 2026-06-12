@@ -196,7 +196,7 @@ fit_binomial <- function(formula, data, link = c("logit", "probit", "cloglog"),
     parameters = tmb_params,
     random = "u",
     map = tmb_map,
-    DLL = "GLLAMMR",
+    DLL = "gllammr",
     silent = TRUE
   )
 

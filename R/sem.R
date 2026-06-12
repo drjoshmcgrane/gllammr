@@ -274,7 +274,7 @@ fit_sem <- function(measurement, structural = NULL, data,
     parameters = tmb_params,
     random = "eta",
     map = tmb_map,
-    DLL = "GLLAMMR",
+    DLL = "gllammr",
     silent = TRUE
   )
 

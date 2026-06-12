@@ -1,6 +1,6 @@
 # Kim & Wilson (2019, Measurement 151:107062): polytomous item explanatory
 # IRT with random item effects, on the verbal aggression data (3 categories:
-# no / perhaps / yes). GLLAMMR fit_eirt(model = "PCM") vs their published
+# no / perhaps / yes). gllammr fit_eirt(model = "PCM") vs their published
 # Stan posterior means.
 #
 #   K&W "MFRM"        = location-explanatory PCM, no item errors
@@ -14,7 +14,7 @@
 # Shout (btype), so relevel VerbAgg factors to match.
 
 suppressMessages({
-  library(GLLAMMR)
+  library(gllammr)
   library(lme4)
 })
 
@@ -38,7 +38,7 @@ item_data <- data.frame(
   row.names = colnames(resp3))
 
 kw <- function(est, ours, se) {
-  data.frame(KimWilson = est, GLLAMMR = round(ours, 3), KW_SE = se)
+  data.frame(KimWilson = est, gllammr = round(ours, 3), KW_SE = se)
 }
 
 # =====================================================================
@@ -54,7 +54,7 @@ gA <- mA$regression_coefficients$difficulty
 print(kw(c(1.58, 0.43, -0.82, -1.28, -0.63),
          gA[c("(Intercept)", "modedo", "situother", "btypecurse", "btypescold")],
          c(0.08, 0.04, 0.04, 0.05, 0.05)))
-cat(sprintf("Person SD : K&W 0.95 | GLLAMMR %.3f\n", mA$ability_sd))
+cat(sprintf("Person SD : K&W 0.95 | gllammr %.3f\n", mA$ability_sd))
 cat(sprintf("logLik %.2f | time %.2fs\n", mA$logLik, tA))
 
 # =====================================================================
@@ -70,9 +70,9 @@ gB <- mB$regression_coefficients$difficulty
 print(kw(c(1.69, 0.49, -0.89, -1.38, -0.70),
          gB[c("(Intercept)", "modedo", "situother", "btypecurse", "btypescold")],
          c(0.18, 0.15, 0.14, 0.17, 0.18)))
-cat(sprintf("Item error SD : K&W 0.32 | GLLAMMR %.3f\n",
+cat(sprintf("Item error SD : K&W 0.32 | gllammr %.3f\n",
             mB$residual_sd$difficulty))
-cat(sprintf("Person SD     : K&W 0.97 | GLLAMMR %.3f\n", mB$ability_sd))
+cat(sprintf("Person SD     : K&W 0.97 | gllammr %.3f\n", mB$ability_sd))
 cat(sprintf("logLik %.2f | time %.2fs\n", mB$logLik, tB))
 
 # =====================================================================
@@ -107,7 +107,7 @@ tauA <- mA$tmb_obj$env$parList(par = pfA)$step_param[, 1]
 kw_tau <- c(-0.22, 0.00, -0.35, -0.47, -0.11, -0.11, -0.52, -0.29, -0.18,
             -0.62, -0.25, -0.19, -0.34, -0.25, -0.03, -0.17, -0.17, 0.30,
             -0.48, 0.01, 0.63, -0.60, -0.56, -0.02)
-cat(sprintf("cor(GLLAMMR tau_i1, K&W tau_i1)     : %.3f\n", cor(tauA, kw_tau)))
+cat(sprintf("cor(gllammr tau_i1, K&W tau_i1)     : %.3f\n", cor(tauA, kw_tau)))
 
 # =====================================================================
 # Model C: step-explanatory LPCM + item-step errors (K&W "LPCM + UISE")
@@ -131,11 +131,11 @@ if (!inherits(mC, "try-error")) {
     `situother`  = c(-0.70, -1.06, round(xi["situother", ], 3)),
     `btypecurse` = c(-1.71, -1.06, round(xi["btypecurse", ], 3)),
     `btypescold` = c(-0.84, -0.56, round(xi["btypescold", ], 3)))
-  colnames(out) <- c("KW_step1", "KW_step2", "GLLAMMR_step1", "GLLAMMR_step2")
+  colnames(out) <- c("KW_step1", "KW_step2", "gllammr_step1", "gllammr_step2")
   print(out)
-  cat(sprintf("Item-step error SD : K&W 0.33 | GLLAMMR %.3f\n",
+  cat(sprintf("Item-step error SD : K&W 0.33 | gllammr %.3f\n",
               mC$residual_sd$threshold))
-  cat(sprintf("Person SD          : K&W 0.97 | GLLAMMR %.3f\n", mC$ability_sd))
+  cat(sprintf("Person SD          : K&W 0.97 | gllammr %.3f\n", mC$ability_sd))
   cat(sprintf("logLik %.2f | time %.2fs\n", mC$logLik, tC))
 } else {
   cat("LPCM fit failed:\n", attr(mC, "condition")$message, "\n")

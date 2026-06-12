@@ -2,7 +2,7 @@
 % Please edit documentation in R/validation.R
 \name{gllammr_validate}
 \alias{gllammr_validate}
-\title{Cross-package validation of GLLAMMR estimates}
+\title{Cross-package validation of gllammr estimates}
 \usage{
 gllammr_validate(
   cases = "all",
@@ -29,11 +29,11 @@ silently); "all" runs both.}
 }
 \value{
 Data frame with one row per compared statistic: case, statistic,
-  GLLAMMR value, reference value, absolute and relative difference,
+  gllammr value, reference value, absolute and relative difference,
   tolerance, and pass/fail.
 }
 \description{
-Fits canonical benchmark datasets with GLLAMMR and with established
+Fits canonical benchmark datasets with gllammr and with established
 reference packages, and reports the agreement. Reference packages that use
 the same Laplace approximation (lme4 with nAGQ = 1, ordinal::clmm) should
 agree to numerical precision; packages using different integration schemes

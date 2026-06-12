@@ -142,7 +142,7 @@ fit_rank <- function(formula, case, data, random = NULL,
     parameters = tmb_params,
     random = if (is.null(random)) NULL else "u",
     map = tmb_map,
-    DLL = "GLLAMMR",
+    DLL = "gllammr",
     silent = TRUE
   )
 

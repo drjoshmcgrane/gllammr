@@ -1,4 +1,4 @@
-# CRAN comments for GLLAMMR 1.2.0
+# CRAN comments for gllammr 1.2.0
 
 ## Submission type
 
@@ -20,7 +20,7 @@ with a TeX distribution / current HTML Tidy):
   locally; `checking Rd files ... OK` passes and all Rd content issues
   were resolved.
 * "unable to verify current time", HTML Tidy version, leftover
-  GLLAMMR-manual.tex — consequences of the same local toolchain.
+  gllammr-manual.tex — consequences of the same local toolchain.
 
 Expected NOTEs on CRAN:
 
@@ -33,7 +33,7 @@ Expected NOTEs on CRAN:
 
 All C++ (TMB) templates compile once at install time into the package
 shared object; there is no runtime compilation. A single translation unit
-(src/GLLAMMR.cpp, headers under src/include/) dispatches between model
+(src/gllammr.cpp, headers under src/include/) dispatches between model
 templates, so compile time and memory are dominated by the one TMB.hpp
 include (1–4 minutes, comparable to other TMB packages).
 

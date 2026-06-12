@@ -327,7 +327,7 @@ fit.gllamm_eirt <- function(object, ...) {
 
   # R^2 for item parameter regressions
   # Using the eirt_r_squared function if available
-  if (requireNamespace("GLLAMMR", quietly = TRUE)) {
+  if (requireNamespace("gllammr", quietly = TRUE)) {
     fit_stats$R2_difficulty <- tryCatch({
       eirt_r_squared(object, parameter = "difficulty")
     }, error = function(e) NA)

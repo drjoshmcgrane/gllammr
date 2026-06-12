@@ -1,10 +1,10 @@
 ---
-title: "Using Weights in GLLAMMR"
-author: "GLLAMMR Package"
+title: "Using Weights in gllammr"
+author: "gllammr Package"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Using Weights in GLLAMMR}
+  %\VignetteIndexEntry{Using Weights in gllammr}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -21,12 +21,12 @@ knitr::opts_chunk$set(
 
 Note: the code in this vignette is illustrative and is not evaluated when the vignette is built.
 
-GLLAMMR supports two types of weights for all model families:
+gllammr supports two types of weights for all model families:
 
 - **Frequency weights (fweights)**: Integer weights representing the number of observations at each unique covariate pattern
 - **Probability weights (pweights)**: Continuous weights for survey sampling or inverse probability weighting
 
-This vignette demonstrates how to use weights with various model types in GLLAMMR.
+This vignette demonstrates how to use weights with various model types in gllammr.
 
 ## Types of Weights
 
@@ -71,7 +71,7 @@ All GLMM families (Gaussian, Binomial, Poisson) support weights.
 ### Example 1: Binomial GLMM with Aggregated Data
 
 ```{r binomial_weights, eval=FALSE}
-library(GLLAMMR)
+library(gllammr)
 
 # Aggregated binary data
 data <- data.frame(
@@ -141,7 +141,7 @@ fit_irt <- fit_irt(responses,
 print(fit_irt$item_parameters)
 ```
 
-**Key point:** The weights vector has length `n_persons`, but internally GLLAMMR expands it to length `n_persons × n_items` for the TMB likelihood.
+**Key point:** The weights vector has length `n_persons`, but internally gllammr expands it to length `n_persons × n_items` for the TMB likelihood.
 
 ### Example: EIRT with Weights
 
@@ -250,7 +250,7 @@ summary(fit_surv)
 
 ## Weight Validation
 
-GLLAMMR automatically validates weights:
+gllammr automatically validates weights:
 
 ```{r validation, eval=FALSE}
 # These will produce errors:
@@ -327,17 +327,17 @@ Weights add minimal computational overhead:
 
 | Software | Frequency Weights | Probability Weights |
 |----------|-------------------|---------------------|
-| GLLAMMR  | ✓ | ✓ |
+| gllammr  | ✓ | ✓ |
 | lme4     | ✓ (via cbind) | Limited |
 | glmmTMB  | ✓ | ✓ |
 | Stata    | ✓ (fweight) | ✓ (pweight) |
 | SAS      | ✓ (FREQ) | ✓ (WEIGHT) |
 
-GLLAMMR provides unified support across all model families.
+gllammr provides unified support across all model families.
 
 ## Summary
 
-- All GLLAMMR model families support weights
+- All gllammr model families support weights
 - Use `weights` parameter in all fitting functions
 - Weights are validated automatically
 - Choose frequency vs probability weights based on data structure
