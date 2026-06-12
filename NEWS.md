@@ -2,6 +2,12 @@
 
 ## Post-1.2.0 development
 
+* Sandwich-SE audit. Cluster-robust fixed-effect covariances match
+  `clubSandwich::vcovCR(type = "CR0")` on the same ML linear mixed
+  model (within 1%), and a 200-replication Monte Carlo under
+  heteroskedastic misspecification confirms the sandwich SE tracks the
+  true sampling SD (0.084 vs 0.090) where the model-based SE is badly
+  anticonservative (0.057). clubSandwich added to Suggests.
 * Mixed-response audit. Verified: single-outcome `fit_mixed()` equals
   the corresponding GLMM exactly; with genuinely shared random effects
   the joint fit dominates the sum of separate fits; with independent

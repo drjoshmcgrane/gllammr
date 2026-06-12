@@ -38,3 +38,20 @@ test_that("sandwich requires a gllamm()-fitted model", {
   fake <- structure(list(formula = NULL), class = "gllamm")
   expect_error(vcov(fake, type = "sandwich"), "gllamm")
 })
+
+test_that("sandwich vcov matches clubSandwich CR0 on the same ML LMM", {
+  skip_if_not_installed("clubSandwich")
+  skip_if_not_installed("lme4")
+  set.seed(31)
+  ng <- 50; m <- 12; n <- ng * m
+  g <- factor(rep(1:ng, each = m))
+  u <- rnorm(ng, 0, 0.8)
+  x <- rnorm(n)
+  d <- data.frame(g = g, x = x, y = 1 + 0.5 * x + u[g] + rnorm(n))
+
+  f <- gllamm(y ~ x + (1 | g), data = d)
+  se_g <- sqrt(diag(vcov(f, type = "sandwich")))
+  fl <- lme4::lmer(y ~ x + (1 | g), data = d, REML = FALSE)
+  se_c <- sqrt(diag(as.matrix(clubSandwich::vcovCR(fl, type = "CR0"))))
+  expect_lt(max(abs(se_g - se_c) / se_c), 0.02)
+})

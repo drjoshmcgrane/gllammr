@@ -53,7 +53,8 @@ Suggests:
     CDM,
     difR,
     VGAM,
-    nnet
+    nnet,
+    clubSandwich
 URL: https://github.com/drjoshmcgrane/gllammr
 BugReports: https://github.com/drjoshmcgrane/gllammr/issues
 Encoding: UTF-8
