@@ -25,7 +25,10 @@ Type gllamm_survival(objective_function<Type>* obj)
   DATA_VECTOR(weights);        // Case weights (fweights or pweights)
 
   // Parameters
-  PARAMETER_VECTOR(beta);      // Fixed effects (log hazard ratios)
+  PARAMETER_VECTOR(beta);      // Fixed effects: log hazard ratios for the
+                               // exponential; for the Weibull, eta scales
+                               // time (S(t) = exp(-(exp(eta) t)^shape)),
+                               // so the log hazard ratio is shape * beta
   PARAMETER_VECTOR(u);         // Random effects
   PARAMETER(log_shape);        // Log shape parameter (for Weibull)
   PARAMETER_VECTOR(log_sigma_u); // Log random effects SDs

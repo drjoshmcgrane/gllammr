@@ -184,7 +184,7 @@ test_that("VarCorr fails for standard IRT model", {
   responses <- matrix(rbinom(500, 1, 0.5), 50, 10)
   fit_std <- fit_irt(responses, model = "Rasch")
 
-  expect_error(VarCorr(fit_std), "multi-level models")
+  expect_error(VarCorr(fit_std), "random effects")
 })
 
 test_that("icc fails for standard IRT model", {
@@ -192,7 +192,7 @@ test_that("icc fails for standard IRT model", {
   responses <- matrix(rbinom(500, 1, 0.5), 50, 10)
   fit_std <- fit_irt(responses, model = "Rasch")
 
-  expect_error(icc(fit_std), "multi-level models")
+  expect_error(icc(fit_std), "random effects")
 })
 
 test_that("ranef fails for standard IRT model", {
@@ -200,7 +200,7 @@ test_that("ranef fails for standard IRT model", {
   responses <- matrix(rbinom(500, 1, 0.5), 50, 10)
   fit_std <- fit_irt(responses, model = "Rasch")
 
-  expect_error(ranef(fit_std), "multi-level models")
+  expect_error(ranef(fit_std), "random effects")
 })
 
 test_that("abilities works for standard IRT model", {

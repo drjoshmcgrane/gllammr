@@ -25,11 +25,11 @@ integration (mirt, ltm) agree within stated tolerances.
 | poisson_grouseticks | beta_intercept | 0.3514 | 0.3514 | 5.9e-06 | 0.01 | yes |
 | poisson_grouseticks | logLik | -1015 | -1015 | 6.45e-09 |  0.5 | yes |
 | poisson_grouseticks | sigma_u | 1.266 | 1.266 | 5.04e-07 | 0.01 | yes |
-| ordinal_wine | beta_temp | 3.063 | 3.063 | 9.55e-07 | 0.01 | yes |
-| ordinal_wine | beta_contact | 1.835 | 1.835 | 8.43e-06 | 0.01 | yes |
-| ordinal_wine | threshold_1 | -1.624 | -1.624 | 1.55e-06 | 0.02 | yes |
+| ordinal_wine | beta_temp | 3.063 | 3.063 | 1.1e-06 | 0.01 | yes |
+| ordinal_wine | beta_contact | 1.835 | 1.835 | 8.85e-06 | 0.01 | yes |
+| ordinal_wine | threshold_1 | -1.624 | -1.624 | 1.38e-06 | 0.02 | yes |
 | ordinal_wine | logLik | -81.57 | -81.57 | 4.24e-08 |  0.1 | yes |
-| ordinal_wine | sigma_judge | 1.131 | 1.131 | 5.64e-06 | 0.02 | yes |
+| ordinal_wine | sigma_judge | 1.131 | 1.131 | 3.79e-06 | 0.02 | yes |
 | rasch_lsat | difficulty_item1 | -2.705 | -2.705 | 1.42e-06 | 0.01 | yes |
 | rasch_lsat | difficulty_item3 | -0.2374 | -0.2374 | 1.37e-05 | 0.01 | yes |
 | rasch_lsat | sigma_theta | 0.7085 | 0.7085 | 1.33e-05 | 0.01 | yes |
@@ -86,9 +86,9 @@ integration (mirt, ltm) agree within stated tolerances.
 | cdm_fraction_dina | mean_abs_guess_diff | 0.002803 |     0 | 1.26e+13 | 0.01 | yes |
 | cdm_fraction_dina | mean_abs_slip_diff | 0.0002323 |     0 | 1.05e+12 | 0.01 | yes |
 | cdm_fraction_dina | guess_item1 | 0.02978 | 0.0298 | 0.000433 | 0.02 | yes |
-| ordinal_crossed | beta_temp | 2.928 | 2.928 | 3.98e-07 | 0.01 | yes |
-| ordinal_crossed | sigma_judge | 1.072 | 1.072 | 1.06e-06 | 0.02 | yes |
-| ordinal_crossed | sigma_bottle | 0.7209 | 0.7209 | 1.97e-06 | 0.05 | yes |
+| ordinal_crossed | beta_temp | 2.928 | 2.928 | 5.98e-07 | 0.01 | yes |
+| ordinal_crossed | sigma_judge | 1.072 | 1.072 | 9.85e-07 | 0.02 | yes |
+| ordinal_crossed | sigma_bottle | 0.7209 | 0.7209 | 2.02e-06 | 0.05 | yes |
 | ordinal_crossed | logLik | -87.4 | -87.4 | 4.21e-10 | 0.05 | yes |
 | dif_logistic | flag_agreement |     1 |     1 |    0 | 1e-09 | yes |
 | dif_logistic | stat_rank_correlation |     1 |     1 |    0 | 0.05 | yes |
@@ -101,8 +101,8 @@ integration (mirt, ltm) agree within stated tolerances.
 | large_glmm_binomial | logLik | -6.154e+04 | -6.154e+04 | 3.35e-10 |  0.5 | yes |
 | large_grm_battery | discrimination_cor |     1 |     1 | 4.1e-08 | 0.0001 | yes |
 | large_grm_battery | logLik | -6.446e+05 | -6.446e+05 | 4.11e-08 |  0.5 | yes |
-| large_lca | logLik | -1.039e+05 | -1.039e+05 | 1.6e-10 |  0.5 | yes |
-| large_lca | max_class_proportion | 0.496 | 0.496 | 9.25e-06 | 0.01 | yes |
+| large_lca | logLik | -1.039e+05 | -1.039e+05 | 1.44e-10 |  0.5 | yes |
+| large_lca | max_class_proportion | 0.496 | 0.496 | 7.58e-06 | 0.01 | yes |
 | large_sem | structural_f2_f1 | 0.6073 | 0.6073 | 9.16e-09 | 0.001 | yes |
 | large_sem | loading_x3 | 1.205 | 1.205 | 8.04e-08 | 0.001 | yes |
 

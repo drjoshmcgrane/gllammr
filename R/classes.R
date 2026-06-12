@@ -55,30 +55,41 @@ summary.gllamm <- function(object, ...) {
   print(object$call)
   cat("\n")
 
-  cat("Family:", object$family$family, "\n")
-  cat("Link:", object$family$link, "\n\n")
+  if (!is.null(object$family$family)) {
+    cat("Family:", object$family$family, "\n")
+    cat("Link:", object$family$link, "\n\n")
+  }
 
-  # Fixed effects table
-  cat("Fixed effects:\n")
-  fe <- cbind(
-    Estimate = object$coefficients$fixed,
-    `Std. Error` = sqrt(diag(object$vcov$fixed)),
-    `z value` = object$coefficients$fixed / sqrt(diag(object$vcov$fixed))
-  )
-  fe <- cbind(fe, `Pr(>|z|)` = 2 * pnorm(-abs(fe[, "z value"])))
-  printCoefmat(fe, digits = 4, signif.stars = TRUE)
-  cat("\n")
+  # Fixed effects table (SEs only when a matching vcov is available -
+  # never recycle a mismatched matrix into wrong standard errors)
+  est <- object$coefficients$fixed
+  if (!is.null(est) && length(est)) {
+    vf <- if (is.list(object$vcov)) object$vcov$fixed else object$vcov
+    se <- rep(NA_real_, length(est))
+    if (is.matrix(vf) && nrow(vf) == length(est)) se <- sqrt(diag(vf))
+    cat("Fixed effects:\n")
+    fe <- cbind(Estimate = est, `Std. Error` = se, `z value` = est / se,
+                `Pr(>|z|)` = 2 * pnorm(-abs(est / se)))
+    printCoefmat(fe, digits = 4, signif.stars = TRUE, na.print = "-")
+    cat("\n")
+  }
 
   # Random effects
-  cat("Random effects:\n")
-  for (i in seq_along(object$random_terms)) {
-    rt <- object$random_terms[[i]]
-    cat("  Groups:", paste(rt$grouping, collapse = "/"), "\n")
-    cat("    Number of groups:", object$n_groups[i], "\n")
-    cat("    Variance:", round(object$coefficients$random_var[[i]], 4), "\n")
-    cat("    Std.Dev.:", round(sqrt(object$coefficients$random_var[[i]]), 4), "\n")
+  if (!is.null(object$random_terms) && length(object$random_terms) &&
+      !is.null(object$coefficients$random_var)) {
+    cat("Random effects:\n")
+    for (i in seq_along(object$random_terms)) {
+      rt <- object$random_terms[[i]]
+      cat("  Groups:", paste(rt$grouping, collapse = "/"), "\n")
+      if (!is.null(object$n_groups)) {
+        cat("    Number of groups:", object$n_groups[i], "\n")
+      }
+      rv <- object$coefficients$random_var[[i]]
+      cat("    Variance:", round(rv, 4), "\n")
+      cat("    Std.Dev.:", round(sqrt(rv), 4), "\n")
+    }
+    cat("\n")
   }
-  cat("\n")
 
   # Model fit
   cat("Number of observations:", object$n_obs, "\n")
@@ -110,6 +121,10 @@ vcov.gllamm <- function(object, which = "fixed",
   if (type == "sandwich") {
     V <- sandwich_vcov_gllamm(object)
     return(attr(V, "fixed"))
+  }
+  # Models that store one parameter covariance matrix directly (e.g. SEM)
+  if (is.matrix(object$vcov)) {
+    return(object$vcov)
   }
   if (which == "fixed") {
     return(object$vcov$fixed)
@@ -181,6 +196,41 @@ fixef <- function(object, ...) {
 }
 
 
+.no_re_hint <- function(object) {
+  if (inherits(object, "gllamm_irt")) {
+    return(paste0("For IRT fits: person abilities are in ",
+                  "$person_abilities, the ability SD in $ability_sd."))
+  }
+  if (inherits(object, "gllamm_eirt")) {
+    return(paste0("For explanatory IRT fits: person abilities are in ",
+                  "$person_abilities; item residual SDs in $residual_sd."))
+  }
+  if (inherits(object, "gllamm_lca")) {
+    return(paste0("For latent class fits: class posteriors are in ",
+                  "$posterior, prevalences in $class_probs."))
+  }
+  if (inherits(object, "gllamm_cdm")) {
+    return(paste0("For CDM fits: attribute posteriors are in ",
+                  "$attribute_posteriors, profile prevalences in ",
+                  "$profile_probs."))
+  }
+  if (inherits(object, "gllamm_sem")) {
+    return(paste0("For SEM fits: factor scores are in $factor_scores, ",
+                  "latent (co)variances in $latent_covariance."))
+  }
+  if (inherits(object, "gllamm_npml")) {
+    return(paste0("For NPML fits the latent distribution is discrete: ",
+                  "mass-point locations are in $locations, masses in ",
+                  "$masses."))
+  }
+  if (inherits(object, "gllamm_mixed")) {
+    return(paste0("For mixed-response fits: the shared random-intercept ",
+                  "SD is in $random_sd."))
+  }
+  "Model does not contain (normal) random effects."
+}
+
+
 #' Extract random effects
 #'
 #' @param object A gllamm object
@@ -190,8 +240,8 @@ fixef <- function(object, ...) {
 #' @export
 ranef.gllamm <- function(object, ...) {
   if (is.null(object$random_effects)) {
-    stop("ranef is only available for multi-level models. ",
-         "Model does not contain random effects.")
+    stop("ranef is only available for models with (normal) random ",
+         "effects. ", .no_re_hint(object))
   }
   object$random_effects
 }
@@ -216,8 +266,8 @@ ranef <- function(object, ...) {
 VarCorr.gllamm <- function(x, ...) {
   vc <- x$coefficients$random_var
   if (is.null(vc) || length(vc) == 0) {
-    stop("VarCorr is only available for multi-level models. ",
-         "Model does not contain random effects.")
+    stop("VarCorr is only available for models with (normal) random ",
+         "effects. ", .no_re_hint(x))
   }
   if (!is.null(x$random_terms)) {
     names(vc) <- sapply(x$random_terms,

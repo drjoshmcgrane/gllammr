@@ -254,8 +254,8 @@ icc.gllamm <- function(x, quiet = FALSE, ...) {
   print <- if (quiet) function(...) invisible(NULL) else base::print
 
   if (length(x$coefficients$random_var) == 0) {
-    stop("icc is only available for multi-level models. ",
-         "Model does not contain random effects.")
+    stop("icc is only available for models with (normal) random ",
+         "effects. ", .no_re_hint(x))
   }
 
   # Random-effect variances: random_var is a list of per-term covariance

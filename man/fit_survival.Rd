@@ -47,6 +47,17 @@ The exponential frailty model is likelihood-equivalent to a Poisson GLMM
 on the event indicator with offset \eqn{\log(t)}, which is used in the
 package validation suite.
 }
+\section{Parameterization}{
+
+The exponential model has hazard \eqn{\exp(\eta)}, so coefficients
+are log hazard ratios. The Weibull model is parameterized as
+\eqn{S(t) = \exp(-(\exp(\eta)\,t)^{shape})}: \eqn{\eta} scales
+time (accelerated-failure-time form), and the log hazard ratio for a
+covariate is \eqn{shape \times \beta}. This matches
+\code{survival::survreg} with \eqn{\beta = -\beta_{AFT}} and
+\eqn{shape = 1/scale}.
+}
+
 \examples{
 \dontrun{
 fit <- fit_survival(Surv(time, status) ~ age + (1 | center),

@@ -730,12 +730,17 @@ fit_multinomial <- function(formula, data, reference = NULL,
   log_sigma_u_hat <- par_full[names(par_full) == "log_sigma_u"]
   sigma_u_hat <- exp(log_sigma_u_hat)
 
+  u_hat <- par_full[names(par_full) == "u"]
+  random_effects <- matrix(u_hat, ncol = n_random, byrow = TRUE)
+
   # Construct result
   result <- list(
     coefficients = list(
       beta = beta_hat,
       random_var = sigma_u_hat^2
     ),
+    random_effects = random_effects,
+    n_random_terms = 1L,
     reference = reference,
     categories = category_labels,
     n_categories = n_categories,
@@ -882,11 +887,21 @@ fit_multinomial_multi <- function(formula, data, reference, parsed,
                               function(rt) paste(rt$grouping, collapse = ":"),
                               character(1))
 
+  u_hat_m <- par_full[names(par_full) == "u"]
+  random_effects <- vector("list", n_terms)
+  for (t in seq_len(n_terms)) {
+    nr <- term_n_random[t]
+    block <- u_hat_m[(offsets[t] + 1):offsets[t + 1]]
+    random_effects[[t]] <- matrix(block, ncol = nr, byrow = TRUE)
+  }
+  names(random_effects) <- names(Sigma_list)
+
   result <- list(
     coefficients = list(
       beta = beta_hat,
       random_var = Sigma_list
     ),
+    random_effects = random_effects,
     n_random_terms = n_terms,
     reference = reference,
     categories = category_labels,

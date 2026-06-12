@@ -36,8 +36,9 @@ parse_formula <- function(formula, data) {
     }
   }
 
-  # Get response variable
-  response_name <- as.character(formula[[2]])
+  # Get response variable (deparse handles call LHS like Surv(t, d))
+  response_name <- paste(deparse(formula[[2]], width.cutoff = 500),
+                         collapse = "")
 
   # Create fixed effects formula
   if (length(fixed_terms) > 0) {

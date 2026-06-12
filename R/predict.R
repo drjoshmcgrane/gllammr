@@ -93,27 +93,31 @@ predict.gllamm <- function(object,
 
     # Get group identifiers from new data
     if (length(object$random_terms) > 0) {
-      rt <- object$random_terms[[1]]
-      new_groups <- if (rt$nested) {
-        interaction(newdata[, rt$grouping], drop = TRUE)
-      } else {
-        factor(newdata[[rt$grouping]])
-      }
-
-      # Match to training groups
-      training_groups <- names(object$random_effects) %||%
-                        paste0("Group", seq_along(object$random_effects))
-
-      random_contrib <- numeric(nrow(newdata))
-      for (i in seq_along(new_groups)) {
-        g_name <- as.character(new_groups[i])
-        if (g_name %in% training_groups) {
-          g_idx <- which(training_groups == g_name)
-          random_contrib[i] <- sum(new_mats$Z[[1]][i, ] * object$random_effects[[g_idx]])
+      parts <- .gllamm_re_parts(object, object$data)
+      random_contrib <- numeric(nrow(new_mats$X))
+      for (t in seq_len(parts$n_terms)) {
+        rt <- parsed$random_terms[[t]]
+        gv <- rt$grouping_vars %||% rt$grouping
+        train_f <- if (length(gv) > 1) {
+          interaction(object$data[, gv], drop = TRUE)
+        } else {
+          factor(object$data[[gv]])
         }
-        # else: use 0 (population average) for new groups
+        new_f <- if (length(gv) > 1) {
+          interaction(newdata[, gv], drop = TRUE)
+        } else {
+          factor(newdata[[gv]])
+        }
+        if (!is.null(new_mats$complete_idx)) {
+          new_f <- new_f[new_mats$complete_idx]
+        }
+        idx <- match(as.character(new_f), levels(train_f))
+        u_t <- parts$u[[t]]
+        if (is.null(u_t)) next
+        contrib <- rowSums(new_mats$Z[[t]] * u_t[idx, , drop = FALSE])
+        contrib[is.na(idx)] <- 0      # new groups: population average
+        random_contrib <- random_contrib + contrib
       }
-
       pred <- fixed_pred + random_contrib
     } else {
       pred <- fixed_pred
@@ -128,6 +132,48 @@ predict.gllamm <- function(object,
   }
 
   return(pred)
+}
+
+
+#' Per-term random-effects pieces of a fitted GLMM
+#'
+#' Normalizes the two stored shapes (single-term: per-group list of
+#' coefficient vectors; multi-term: per-term list of group x coef
+#' matrices) into aligned per-term lists of design matrices, group
+#' indices, covariance matrices, and BLUP matrices.
+#'
+#' @keywords internal
+.gllamm_re_parts <- function(object, data) {
+  parsed <- parse_formula(object$formula, data)
+  md <- make_model_matrices(parsed, data)
+  rv <- object$coefficients$random_var
+  to_mat <- function(m, nr) {
+    if (is.matrix(m)) m else diag(as.numeric(m), nrow = nr)
+  }
+  Sigmas <- if (is.list(rv)) {
+    lapply(seq_along(rv), function(t) {
+      to_mat(rv[[t]], ncol(md$Z[[min(t, length(md$Z))]]))
+    })
+  } else {
+    list(to_mat(rv, ncol(md$Z[[1]])))
+  }
+  n_terms <- length(Sigmas)
+
+  re <- object$random_effects
+  u_list <- if (is.list(re) && n_terms > 1 && length(re) == n_terms &&
+                all(vapply(re, is.matrix, TRUE))) {
+    re                                        # per-term matrices
+  } else if (is.list(re) && length(re) > 0 &&
+             !any(vapply(re, is.matrix, TRUE))) {
+    list(do.call(rbind, re))                  # per-group vectors
+  } else if (is.matrix(re)) {
+    list(re)
+  } else {
+    vector("list", n_terms)
+  }
+
+  list(md = md, parsed = parsed, Sigmas = Sigmas, u = u_list,
+       n_terms = n_terms)
 }
 
 
@@ -182,19 +228,10 @@ simulate.gllamm <- function(object,
 
   # Design matrices: original data or newdata via the same construction
   sim_data <- if (is.null(newdata)) object$data else newdata
-  parsed <- parse_formula(object$formula, sim_data)
-  model_data <- make_model_matrices(parsed, sim_data)
+  parts <- .gllamm_re_parts(object, sim_data)
+  model_data <- parts$md
   X <- model_data$X
-  Z <- model_data$Z[[1]]
-  groups <- model_data$groups[[1]]
-  n_groups <- model_data$n_groups[1]
   n_obs <- model_data$n_obs
-
-  # Random-effects covariance (full matrix; handles slopes and correlation)
-  Sigma_u <- object$coefficients$random_var[[1]]
-  if (!is.matrix(Sigma_u)) {
-    Sigma_u <- diag(as.numeric(Sigma_u), nrow = ncol(Z))
-  }
 
   family_name <- object$family$family
 
@@ -214,9 +251,15 @@ simulate.gllamm <- function(object,
 
   sims <- matrix(NA_real_, nrow = n_obs, ncol = nsim)
   for (s in seq_len(nsim)) {
-    # Fresh random effects each replicate: u_g ~ MVN(0, Sigma_u)
-    u_sim <- rmvnorm_chol(n_groups, Sigma_u)
-    eta <- fixed_part + rowSums(Z * u_sim[groups + 1, , drop = FALSE])
+    # Fresh random effects each replicate, for EVERY term:
+    # u_g ~ MVN(0, Sigma_t)
+    eta <- fixed_part
+    for (t in seq_len(parts$n_terms)) {
+      u_sim <- rmvnorm_chol(model_data$n_groups[t], parts$Sigmas[[t]])
+      eta <- eta + rowSums(model_data$Z[[t]] *
+                             u_sim[model_data$groups[[t]] + 1, ,
+                                   drop = FALSE])
+    }
 
     sims[, s] <- switch(family_name,
       gaussian = rnorm(n_obs, mean = eta, sd = sigma),
@@ -274,39 +317,34 @@ predict_marginal_gllamm <- function(object, newdata = NULL, n_sim = 1000, se.fit
 
   # General case: Nonlinear link requires Monte Carlo integration
 
-  # Get model matrices
-  if (is.null(newdata)) {
-    # Construct X/Z for original data (some fit objects, e.g. fit_binomial
-    # results, do not store the design matrix)
-    parsed <- parse_formula(object$formula, object$data)
-    model_data <- make_model_matrices(parsed, object$data)
-    X <- if (!is.null(object$X)) object$X else model_data$X
-    Z <- model_data$Z[[1]]
-  } else {
-    parsed <- parse_formula(object$formula, newdata)
-    new_mats <- make_model_matrices(parsed, newdata)
-    X <- new_mats$X
-    Z <- new_mats$Z[[1]]
-  }
+  # Per-term design pieces (multi-term fits integrate over every term)
+  mdata <- if (is.null(newdata)) object$data else newdata
+  parts <- .gllamm_re_parts(object, mdata)
+  X <- if (is.null(newdata) && !is.null(object$X)) object$X
+       else parts$md$X
 
-  # Get fixed effects
   beta <- object$coefficients$fixed
-
-  # Extract random effects variance-covariance matrix
-  Sigma_u <- extract_random_vcov(object)
-
-  # Get inverse link function
   inv_link <- get_inverse_link(object$family)
 
-  # Monte Carlo integration
-  result <- mc_integrate_marginal(
-    X = as.matrix(X),
-    Z = as.matrix(Z),
-    beta = beta,
-    Sigma_u = Sigma_u,
-    inv_link_fn = inv_link,
-    n_sim = n_sim
-  )
+  # Monte Carlo integration: one population draw per term per replicate,
+  # Welford accumulation of mean and variance
+  eta_fixed <- as.numeric(as.matrix(X) %*% beta)
+  n_obs <- length(eta_fixed)
+  mean_acc <- numeric(n_obs)
+  m2_acc <- numeric(n_obs)
+  for (sims in seq_len(n_sim)) {
+    eta <- eta_fixed
+    for (t in seq_len(parts$n_terms)) {
+      u_t <- rmvnorm_chol(1, parts$Sigmas[[t]])
+      eta <- eta + as.vector(parts$md$Z[[t]] %*% as.numeric(u_t))
+    }
+    mu <- inv_link(eta)
+    delta <- mu - mean_acc
+    mean_acc <- mean_acc + delta / sims
+    m2_acc <- m2_acc + delta * (mu - mean_acc)
+  }
+  result <- list(fit = mean_acc,
+                 se = sqrt(m2_acc / (n_sim * pmax(n_sim - 1, 1))))
 
   if (se.fit) {
     return(list(fit = result$fit, se.fit = result$se))

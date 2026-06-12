@@ -32,6 +32,15 @@
 #'                     data = d, distribution = "weibull")
 #' }
 #'
+#' @section Parameterization:
+#' The exponential model has hazard \eqn{\exp(\eta)}, so coefficients
+#' are log hazard ratios. The Weibull model is parameterized as
+#' \eqn{S(t) = \exp(-(\exp(\eta)\,t)^{shape})}: \eqn{\eta} scales
+#' time (accelerated-failure-time form), and the log hazard ratio for a
+#' covariate is \eqn{shape \times \beta}. This matches
+#' \code{survival::survreg} with \eqn{\beta = -\beta_{AFT}} and
+#' \eqn{shape = 1/scale}.
+#'
 #' @export
 fit_survival <- function(formula, data,
                          distribution = c("weibull", "exponential"),

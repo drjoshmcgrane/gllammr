@@ -2,6 +2,32 @@
 
 ## Post-1.2.0 development
 
+* Package-wide audit (every S3 method probed on every fit variant;
+  under-validated likelihoods checked externally). **Bug fixes:**
+  on crossed/multi-term GLMMs, `simulate()` drew random effects for the
+  first term only and marginal predictions integrated over only the
+  first term's variance (both silently wrong; conditional newdata
+  predictions also applied only the first term's BLUPs) - all three now
+  loop over every term; `summary()` recycled mismatched covariance
+  matrices into wrong standard errors for survival/rank/NPML fits (SEs
+  are now shown only when a matching vcov exists); `vcov()` errored on
+  SEM fits instead of returning the parameter covariance;
+  `parse_formula()` mangled call-type responses like `Surv(t, d)`.
+  **New methods:** `simulate()` for multinomial, survival (uncensored
+  event times from the fitted hazard), IRT (parametric bootstrap,
+  dichotomous + polytomous, EM and Laplace fits), EIRT, LCA (all
+  indicator types), CDM, SEM (implied-distribution draws), NPML
+  (mass-point draws), and mixed responses; `predict()` for polytomous
+  IRT (category probabilities and expected scores); multinomial fits now
+  store their random effects so `ranef()` works. `icc`/`VarCorr`/`ranef`
+  refusals now point at the right accessor for each latent-variable
+  class. **External validations added:** multinomial matches
+  `nnet::multinom` in the fixed-effect limit (1e-4); Weibull frailty
+  matches `survival::survreg` in the no-frailty limit (with the
+  AFT-scale parameterization now documented: log hazard ratio =
+  shape x beta); rank-ordered logit coefficients equal the exploded
+  conditional logit (`survival::coxph`, Plackett-Luce equivalence,
+  1e-4).
 * Ordinal GLMM audit. **Bug fix:** the backward continuation-ratio link
   (`crl_backward`) was not a valid probability model - its category
   probabilities summed to 2*plogis(tau_max - eta) because the top
