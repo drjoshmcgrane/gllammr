@@ -14,3 +14,9 @@ Meta
 src/Rplots.pdf
 Rplots.pdf
 *.pdf
+*.tar.gz
+*.Rcheck/
+Rplots.pdf
+*.pdf
+IMPLEMENTATION_SUMMARY.md
+.DS_Store

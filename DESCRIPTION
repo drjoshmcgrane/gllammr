@@ -52,6 +52,8 @@ Suggests:
     ltm,
     CDM,
     difR
+URL: https://github.com/drjoshmcgrane/gllammr
+BugReports: https://github.com/drjoshmcgrane/gllammr/issues
 Encoding: UTF-8
 RoxygenNote: 7.3.3
 VignetteBuilder: knitr
