@@ -1,3 +1,82 @@
+#' Category probabilities for every ordinal link
+#'
+#' Mirrors the likelihood construction in gllamm_ordinal.hpp. For the
+#' PPO link \code{eta} must be an n x (K-1) matrix of per-threshold
+#' linear predictors; for all other links a length-n vector.
+#'
+#' @keywords internal
+.ordinal_category_probs <- function(eta, thresholds, link, K) {
+  n <- if (is.matrix(eta)) nrow(eta) else length(eta)
+  probs <- matrix(NA_real_, n, K)
+
+  if (link %in% c("logit", "probit", "ppo")) {
+    pfun <- if (link == "probit") stats::pnorm else stats::plogis
+    cum <- vapply(seq_len(K - 1), function(k) {
+      e <- if (is.matrix(eta)) eta[, k] else eta
+      pfun(thresholds[k] - e)
+    }, numeric(n))
+    cum <- matrix(cum, n, K - 1)
+    probs[, 1] <- cum[, 1]
+    if (K > 2) {
+      for (k in 2:(K - 1)) probs[, k] <- cum[, k] - cum[, k - 1]
+    }
+    probs[, K] <- 1 - cum[, K - 1]
+    # PPO curves can cross at extreme covariate values
+    probs <- pmax(probs, 1e-12)
+    probs <- probs / rowSums(probs)
+  } else if (link == "acl") {
+    lp <- matrix(0, n, K)
+    for (k in 2:K) lp[, k] <- lp[, k - 1] + thresholds[k - 1] + eta
+    m <- lp[, 1]
+    for (k in 2:K) m <- pmax(m, lp[, k])
+    el <- exp(lp - m)
+    probs <- el / rowSums(el)
+  } else if (link == "crl_forward") {
+    surv <- rep(1, n)
+    for (k in seq_len(K - 1)) {
+      h <- stats::plogis(thresholds[k] - eta)
+      probs[, k] <- surv * h
+      surv <- surv * (1 - h)
+    }
+    probs[, K] <- surv
+  } else if (link == "crl_backward") {
+    # P(c) = b_c prod_{j>c}(1 - b_j), b_c = plogis(tau_{c-1} - eta)
+    surv <- rep(1, n)
+    for (c in K:2) {
+      b <- stats::plogis(thresholds[c - 1] - eta)
+      probs[, c] <- b * surv
+      surv <- surv * (1 - b)
+    }
+    probs[, 1] <- surv
+  } else {
+    stop("Unknown ordinal link: ", link)
+  }
+  probs
+}
+
+
+#' Per-term random-effects pieces of a fitted ordinal model
+#'
+#' Returns aligned lists of Z matrices, 0-based group indices, group
+#' counts, and covariance matrices - one element per random-effects term,
+#' for both single- and multi-term fits.
+#'
+#' @keywords internal
+.ordinal_re_parts <- function(object, data) {
+  parsed <- parse_formula(object$formula, data)
+  model_data <- make_model_matrices(parsed, data)
+  rv <- object$coefficients$random_var
+  Sigmas <- if (is.list(rv)) {
+    lapply(rv, as.matrix)
+  } else {
+    list(as.matrix(extract_random_vcov(object)))
+  }
+  list(Z = model_data$Z, groups = model_data$groups,
+       n_groups = model_data$n_groups, Sigmas = Sigmas,
+       X = drop_intercept_column(model_data$X), n_obs = model_data$n_obs)
+}
+
+
 #' Predict method for ordinal models
 #'
 #' Obtain predictions from a fitted ordinal regression model
@@ -67,142 +146,87 @@ predict.gllamm_ordinal <- function(object,
   }
 
   n_obs <- nrow(X)
-
-  # Get link function info (stored at the top level of the fit object)
   link <- object$link
 
-  # Marginal predictions require Monte Carlo
-  if (type == "marginal") {
-    return(predict_marginal_ordinal(object, X, Z, n_sim))
+  # Linear predictor at u = 0: a vector for links 1-5, an n x (K-1)
+  # matrix of per-threshold predictors for PPO
+  eta <- if (link == "ppo") {
+    X %*% t(object$coefficients$beta_ppo)
+  } else {
+    as.vector(X %*% beta)
   }
 
-  # Conditional predictions (at u=0)
-  # Compute linear predictor (fixed effects only)
-  eta <- as.vector(X %*% beta)
-
-  # Compute cumulative probabilities for each threshold
-  cumprobs <- matrix(NA, n_obs, n_categories - 1)
-
-  for (k in 1:(n_categories - 1)) {
-    if (link == "logit") {
-      cumprobs[, k] <- plogis(thresholds[k] - eta)
-    } else if (link == "probit") {
-      cumprobs[, k] <- pnorm(thresholds[k] - eta)
-    } else {
-      stop("Unknown ordinal link:", link)
-    }
+  # Marginal predictions require Monte Carlo over all RE terms
+  if (type == "marginal") {
+    return(predict_marginal_ordinal(object, n_sim = n_sim,
+                                    newdata = newdata))
   }
 
   if (type == "cumprobs") {
-    return(cumprobs)
+    if (!link %in% c("logit", "probit", "ppo")) {
+      stop("Cumulative probabilities are defined for the cumulative ",
+           "links (logit, probit, ppo); use type = \"probs\" for ", link)
+    }
+    pfun <- if (link == "probit") pnorm else plogis
+    cumprobs <- vapply(seq_len(n_categories - 1), function(k) {
+      e <- if (is.matrix(eta)) eta[, k] else eta
+      pfun(thresholds[k] - e)
+    }, numeric(n_obs))
+    return(matrix(cumprobs, n_obs, n_categories - 1))
   }
 
-  # Convert cumulative to category probabilities
-  probs <- matrix(NA, n_obs, n_categories)
-  probs[, 1] <- cumprobs[, 1]
-  for (k in 2:(n_categories - 1)) {
-    probs[, k] <- cumprobs[, k] - cumprobs[, k - 1]
-  }
-  probs[, n_categories] <- 1 - cumprobs[, n_categories - 1]
-
-  # Ensure probabilities sum to 1 (numerical precision)
-  probs <- probs / rowSums(probs)
+  probs <- .ordinal_category_probs(eta, thresholds, link, n_categories)
 
   if (type == "probs") {
     colnames(probs) <- paste0("P(Y=", 1:n_categories, ")")
     return(probs)
   }
-
-  if (type == "class") {
-    # Return modal category
-    predicted_class <- apply(probs, 1, which.max)
-    return(predicted_class)
-  }
+  apply(probs, 1, which.max)
 }
 
 
 #' Internal function for marginal ordinal predictions
 #'
-#' @param object Fitted ordinal model
-#' @param X Fixed effects design matrix
-#' @param Z Random effects design matrix
-#' @param n_sim Number of MC samples
+#' Population-averaged category probabilities by Monte Carlo over the
+#' estimated random-effects distributions of every term (fresh draws per
+#' replicate; the same draw applies to all members of a group only in
+#' expectation, which is what the marginal quantity requires).
 #'
-#' @return Matrix of marginal probabilities (n_obs × n_categories)
 #' @keywords internal
-predict_marginal_ordinal <- function(object, X, Z, n_sim = 1000) {
-  n_obs <- nrow(X)
+predict_marginal_ordinal <- function(object, n_sim = 1000,
+                                     newdata = NULL) {
+  data <- if (is.null(newdata)) object$data else newdata
+  parts <- .ordinal_re_parts(object, data)
+  X <- parts$X
+  n_obs <- parts$n_obs
   n_categories <- object$n_categories
-  beta <- object$coefficients$fixed
   thresholds <- object$coefficients$thresholds
   link <- object$link
 
-  # Extract random effects variance
-  Sigma_u <- extract_random_vcov(object)
-  n_random <- ncol(Sigma_u)
-
-  # Draw samples from random effects distribution
-  if (n_random == 1) {
-    sigma_u <- sqrt(Sigma_u[1, 1])
-    u_samples <- matrix(rnorm(n_sim, 0, sigma_u), n_sim, 1)
+  eta_fixed <- if (link == "ppo") {
+    X %*% t(object$coefficients$beta_ppo)
   } else {
-    u_samples <- rmvnorm_chol(n_sim, Sigma_u)
+    as.vector(X %*% object$coefficients$fixed)
   }
 
-  # Storage for marginal probabilities
   marginal_probs <- matrix(0, n_obs, n_categories)
-
-  # Fixed effects part
-  eta_fixed <- as.vector(X %*% beta)
-
-  # For each MC sample
-  for (s in 1:n_sim) {
-    u <- u_samples[s, ]
-
-    # Random effects contribution
-    if (is.matrix(Z)) {
-      eta_random <- as.vector(Z %*% u)
-    } else {
-      eta_random <- Z * u
+  for (s in seq_len(n_sim)) {
+    # One population draw per RE term, mapped to observations
+    eta_random <- rep(0, n_obs)
+    for (t in seq_along(parts$Sigmas)) {
+      u_t <- rmvnorm_chol(1, parts$Sigmas[[t]])
+      eta_random <- eta_random +
+        as.vector(parts$Z[[t]] %*% as.numeric(u_t))
     }
-
-    # Total linear predictor
-    eta <- eta_fixed + eta_random
-
-    # Compute cumulative probabilities
-    cumprobs <- matrix(NA, n_obs, n_categories - 1)
-
-    for (k in 1:(n_categories - 1)) {
-      if (link == "logit") {
-        cumprobs[, k] <- plogis(thresholds[k] - eta)
-      } else if (link == "probit") {
-        cumprobs[, k] <- pnorm(thresholds[k] - eta)
-      } else {
-        stop("Unknown ordinal link:", link)
-      }
-    }
-
-    # Convert to category probabilities
-    probs <- matrix(NA, n_obs, n_categories)
-    probs[, 1] <- cumprobs[, 1]
-    for (k in 2:(n_categories - 1)) {
-      probs[, k] <- cumprobs[, k] - cumprobs[, k - 1]
-    }
-    probs[, n_categories] <- 1 - cumprobs[, n_categories - 1]
-
-    # Accumulate
-    marginal_probs <- marginal_probs + probs
+    eta <- if (is.matrix(eta_fixed)) eta_fixed + eta_random
+           else eta_fixed + eta_random
+    marginal_probs <- marginal_probs +
+      .ordinal_category_probs(eta, thresholds, link, n_categories)
   }
-
-  # Average across samples
   marginal_probs <- marginal_probs / n_sim
-
-  # Ensure probabilities sum to 1 (numerical precision)
   marginal_probs <- marginal_probs / rowSums(marginal_probs)
-
   colnames(marginal_probs) <- paste0("P(Y=", 1:n_categories, ")")
-
-  return(marginal_probs)
+  marginal_probs
 }
 
 
@@ -239,41 +263,35 @@ simulate.gllamm_ordinal <- function(object,
   }
 
   link <- object$link
-  if (!link %in% c("logit", "probit")) {
-    stop("Simulation is implemented for logit and probit ordinal links; got: ",
-         link)
-  }
-
   n_categories <- object$n_categories
-  beta <- object$coefficients$fixed
   thresholds <- object$coefficients$thresholds
 
   sim_data <- if (is.null(newdata)) object$data else newdata
-  parsed <- parse_formula(object$formula, sim_data)
-  model_data <- make_model_matrices(parsed, sim_data)
-  X <- drop_intercept_column(model_data$X)  # thresholds carry the location
-  Z <- model_data$Z[[1]]
-  groups <- model_data$groups[[1]]
-  n_groups <- model_data$n_groups[1]
-  n_obs <- model_data$n_obs
+  parts <- .ordinal_re_parts(object, sim_data)
+  X <- parts$X
+  n_obs <- parts$n_obs
 
-  Sigma_u <- extract_random_vcov(object)
-  pfun <- if (link == "logit") plogis else pnorm
-
-  eta_fixed <- as.vector(X %*% beta)
+  eta_fixed <- if (link == "ppo") {
+    X %*% t(object$coefficients$beta_ppo)
+  } else {
+    as.vector(X %*% object$coefficients$fixed)
+  }
 
   sims <- matrix(NA_integer_, n_obs, nsim)
   for (s in seq_len(nsim)) {
-    u_sim <- rmvnorm_chol(n_groups, Sigma_u)
-    eta <- eta_fixed + rowSums(Z * u_sim[groups + 1, , drop = FALSE])
-
-    # Cumulative probabilities P(Y <= k), then inverse-CDF sampling
-    cumprobs <- vapply(seq_len(n_categories - 1),
-                       function(k) pfun(thresholds[k] - eta),
-                       numeric(n_obs))
-    cum <- cbind(matrix(cumprobs, n_obs, n_categories - 1), 1)
+    # Fresh group-level draws for every RE term (population semantics)
+    eta_random <- rep(0, n_obs)
+    for (t in seq_along(parts$Sigmas)) {
+      u_t <- rmvnorm_chol(parts$n_groups[t], parts$Sigmas[[t]])
+      eta_random <- eta_random +
+        rowSums(parts$Z[[t]] *
+                  u_t[parts$groups[[t]] + 1, , drop = FALSE])
+    }
+    eta <- eta_fixed + eta_random
+    probs <- .ordinal_category_probs(eta, thresholds, link, n_categories)
+    cum <- t(apply(probs, 1, cumsum))
     r <- runif(n_obs)
-    sims[, s] <- 1L + rowSums(r > cum)
+    sims[, s] <- 1L + rowSums(r > cum[, -n_categories, drop = FALSE])
   }
 
   out <- as.data.frame(sims)

@@ -193,17 +193,18 @@ Type gllamm_ordinal(objective_function<Type>* obj)
 
     // Link 5: Continuation Ratio Logit (Backward)
     else if (link == 5) {
-      // P(Y=k) = P(Y<=k) * P(Y=k | Y<=k)
-      if (obs_cat == n_categories - 1) {
-        prob_cat = invlogit(ordered_threshold(n_categories - 2) - eta);
-      } else {
-        Type prob_at_or_below = invlogit(ordered_threshold(obs_cat) - eta);
-        Type prob_below = Type(0.0);
-        if (obs_cat > 0) {
-          prob_below = invlogit(ordered_threshold(obs_cat - 1) - eta);
-        }
-        prob_cat = prob_at_or_below - prob_below;
+      // Proper backward continuation ratio: hazards b_c = P(Y = c | Y <= c)
+      // = invlogit(tau_{c-1} - eta) for c = 1..K-1;
+      // P(c) = b_c * prod_{j>c} (1 - b_j), P(0) = prod_{j>=1} (1 - b_j).
+      // (The previous formulation double-counted the top category: the
+      // category probabilities summed to 2 * invlogit(tau_max - eta).)
+      Type surv = Type(1.0);
+      for (int m = obs_cat; m <= n_categories - 2; m++) {
+        surv *= (Type(1.0) - invlogit(ordered_threshold(m) - eta));
       }
+      prob_cat = (obs_cat == 0)
+        ? surv
+        : invlogit(ordered_threshold(obs_cat - 1) - eta) * surv;
     }
 
     // Link 6: Partial Proportional Odds (PPO)

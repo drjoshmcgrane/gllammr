@@ -271,6 +271,32 @@ icc.gllamm <- function(x, quiet = FALSE, ...) {
     fam <- if (inherits(x, "gllamm_binomial")) "binomial" else "gaussian"
   }
 
+  # Ordinal models: latent-response-scale ICC (cumulative links only)
+  if (inherits(x, "gllamm_ordinal")) {
+    if (!x$link %in% c("logit", "probit")) {
+      message("Latent-scale ICC is defined for the cumulative logit/",
+              "probit links; not available for link = ", x$link)
+      return(invisible(NULL))
+    }
+    resid_var <- if (x$link == "logit") pi^2 / 3 else 1
+    re_vars <- .re_variances(x$coefficients$random_var)
+    total_var <- sum(re_vars) + resid_var
+    iccs <- re_vars / total_var
+    nm <- names(x$coefficients$random_var)
+    names(iccs) <- if (!is.null(nm) && length(nm) == length(iccs)) {
+      nm
+    } else {
+      paste0("Level", seq_along(iccs))
+    }
+    if (!quiet) {
+      cat("Latent-scale ICC (", x$link, " link):\n", sep = "")
+      for (i in seq_along(iccs)) {
+        cat(" ", names(iccs)[i], ":", round(iccs[i], 4), "\n")
+      }
+    }
+    return(invisible(iccs))
+  }
+
   # For Gaussian models
   if (fam == "gaussian") {
     # Residual variance

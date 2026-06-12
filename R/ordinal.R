@@ -156,13 +156,11 @@ fit_ordinal <- function(formula, data, link = c("logit", "probit", "acl",
 
   # Initialize parameters
   if (is.null(start)) {
-    # Initialize thresholds evenly spaced
-    threshold_init <- seq(-1, 1, length.out = n_categories - 1)
-    # Transform to ensure ordering (using differences)
-    threshold_init[1] <- threshold_init[1]
-    for (k in 2:length(threshold_init)) {
-      threshold_init[k] <- log(threshold_init[k] - threshold_init[k-1])
-    }
+    # Initialize thresholds evenly spaced; internal parameterization is
+    # [tau_1, log-spacings], computed from the raw values (the previous
+    # sequential transform mixed raw and transformed values)
+    raw <- seq(-1, 1, length.out = n_categories - 1)
+    threshold_init <- if (n_categories > 2) c(raw[1], log(diff(raw))) else raw
 
     # Initialize other parameters
     u_init <- rep(0, tmb_data$n_groups * n_random)
@@ -398,12 +396,8 @@ fit_ordinal_multi <- function(formula, data, link, link_code, parsed,
     model_name = "ordinal_multi"
   )
 
-  threshold_init <- seq(-1, 1, length.out = n_categories - 1)
-  if (n_categories > 2) {
-    for (k in 2:(n_categories - 1)) {
-      threshold_init[k] <- log(threshold_init[k] - threshold_init[k - 1])
-    }
-  }
+  raw <- seq(-1, 1, length.out = n_categories - 1)
+  threshold_init <- if (n_categories > 2) c(raw[1], log(diff(raw))) else raw
 
   n_theta_per_term <- ifelse(term_correlated == 1L,
                              term_n_random * (term_n_random - 1) / 2, 0L)

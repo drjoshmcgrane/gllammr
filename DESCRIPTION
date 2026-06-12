@@ -51,7 +51,8 @@ Suggests:
     HSAUR3,
     ltm,
     CDM,
-    difR
+    difR,
+    VGAM
 URL: https://github.com/drjoshmcgrane/gllammr
 BugReports: https://github.com/drjoshmcgrane/gllammr/issues
 Encoding: UTF-8

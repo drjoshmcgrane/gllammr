@@ -22,7 +22,7 @@ All models are estimated by maximum likelihood via TMB automatic differentiation
 
 ```r
 # install.packages("remotes")
-remotes::install_github("yourusername/gllammr")
+remotes::install_github("drjoshmcgrane/gllammr")
 ```
 
 Requires R >= 4.0.0, TMB >= 1.9.0, and a C++ compiler at install time (standard for source packages; Rtools on Windows, Xcode CLT on macOS).

@@ -20,7 +20,7 @@ We welcome several types of contributions:
 1. **Fork and clone the repository**
 
 ```bash
-git clone https://github.com/yourusername/GLLAMMR.git
+git clone https://github.com/drjoshmcgrane/gllammr.git
 cd GLLAMMR
 ```
 

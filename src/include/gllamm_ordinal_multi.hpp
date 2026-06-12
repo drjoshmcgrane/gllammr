@@ -166,17 +166,15 @@ Type gllamm_ordinal_multi(objective_function<Type>* obj)
         prob_cat = surv * invlogit(ordered_threshold(obs_cat) - eta);
       }
     } else {
-      // Continuation-ratio (backward), as in gllamm_ordinal.hpp
-      if (obs_cat == n_categories - 1) {
-        prob_cat = invlogit(ordered_threshold(n_categories - 2) - eta);
-      } else {
-        Type prob_at_or_below = invlogit(ordered_threshold(obs_cat) - eta);
-        Type prob_below = Type(0.0);
-        if (obs_cat > 0) {
-          prob_below = invlogit(ordered_threshold(obs_cat - 1) - eta);
-        }
-        prob_cat = prob_at_or_below - prob_below;
+      // Continuation-ratio (backward), as in gllamm_ordinal.hpp:
+      // P(c) = b_c * prod_{j>c} (1 - b_j) with b_c = invlogit(tau_{c-1}-eta)
+      Type surv = Type(1.0);
+      for (int m = obs_cat; m <= n_categories - 2; m++) {
+        surv *= (Type(1.0) - invlogit(ordered_threshold(m) - eta));
       }
+      prob_cat = (obs_cat == 0)
+        ? surv
+        : invlogit(ordered_threshold(obs_cat - 1) - eta) * surv;
     }
 
     nll -= weights(i) * log(prob_cat + Type(1e-10));

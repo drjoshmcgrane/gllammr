@@ -4,21 +4,12 @@
 \alias{predict_marginal_ordinal}
 \title{Internal function for marginal ordinal predictions}
 \usage{
-predict_marginal_ordinal(object, X, Z, n_sim = 1000)
-}
-\arguments{
-\item{object}{Fitted ordinal model}
-
-\item{X}{Fixed effects design matrix}
-
-\item{Z}{Random effects design matrix}
-
-\item{n_sim}{Number of MC samples}
-}
-\value{
-Matrix of marginal probabilities (n_obs × n_categories)
+predict_marginal_ordinal(object, n_sim = 1000, newdata = NULL)
 }
 \description{
-Internal function for marginal ordinal predictions
+Population-averaged category probabilities by Monte Carlo over the
+estimated random-effects distributions of every term (fresh draws per
+replicate; the same draw applies to all members of a group only in
+expectation, which is what the marginal quantity requires).
 }
 \keyword{internal}

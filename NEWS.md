@@ -2,6 +2,22 @@
 
 ## Post-1.2.0 development
 
+* Ordinal GLMM audit. **Bug fix:** the backward continuation-ratio link
+  (`crl_backward`) was not a valid probability model - its category
+  probabilities summed to 2*plogis(tau_max - eta) because the top
+  category reused the last cumulative probability; it now uses the
+  proper hazard-product form and, like `acl` and `crl_forward`, is
+  validated against VGAM (acat/sratio; agreement ~1e-3). `predict()` and
+  `simulate()` now support all six ordinal links (previously
+  logit/probit only) through a shared category-probability helper
+  mirroring the C++ likelihoods, and both - along with marginal
+  predictions - handle crossed/multi-term random effects (marginal
+  predictions previously integrated over only the first term's variance;
+  simulate() errored). `icc()` gains a proper latent-response-scale
+  branch for cumulative ordinal models (it previously fell through to
+  the gaussian formula); threshold starting values are computed from raw
+  spacings. Single-term ordinal fits run at ordinal::clmm speed parity
+  with identical likelihoods. VGAM added to Suggests.
 * New general `compare_models()`: a comparison table (logLik, parameter
   count, AIC/BIC with deltas, Akaike weights) for any set of fitted
   gllammr models, across model classes, with an n_obs comparability

@@ -24,7 +24,10 @@ gllammr (Generalized Linear Latent and Mixed Models in R) provides a comprehensi
 ## Installation
 
 ```{r install}
+# From CRAN (once published):
 # install.packages("gllammr")
+# Development version:
+# remotes::install_github("drjoshmcgrane/gllammr")
 library(gllammr)
 ```
 
