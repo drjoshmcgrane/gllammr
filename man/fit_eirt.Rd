@@ -10,6 +10,8 @@ fit_eirt(
   difficulty_formula = ~1,
   discrimination_formula = ~1,
   threshold_formula = NULL,
+  step_formula = NULL,
+  step_data = NULL,
   person_data = NULL,
   random = NULL,
   weights = NULL,
@@ -32,8 +34,24 @@ Applies to 2PL, GRM, and GPCM models.
 Model: log(a_i) = W_disc \%*\% delta + epsilon_a (if item_residuals = TRUE)}
 
 \item{threshold_formula}{Formula for threshold-specific regression (e.g., ~ abstractness).
-Only used for PCM/GPCM models. When specified, enables threshold-difficulty regression
+Coefficients are step-specific DEVIATIONS that sum to zero across an
+item's thresholds; the item-level main effect of the same covariate
+belongs in difficulty_formula (the two are jointly identified this
+way). Only used for PCM/GPCM models. When specified, enables threshold-difficulty regression
 (Kim & Wilson 2019 LPCM framework): delta_im = b_i + sum_k xi_km * x_ik + e_im}
+
+\item{step_formula}{Formula for step-level covariates (PCM/GPCM only):
+predictors that vary WITHIN an item across its steps, each with a
+single common coefficient (\eqn{\delta_{im} = b_i + \xi_{0m} +
+\sum_k \eta_k x_{imk} + e_{im}}). The intercept is dropped; per-step
+baselines come from the threshold intercepts. Combine freely with
+difficulty_formula (item level) and threshold_formula (item
+properties with step-specific effects).}
+
+\item{step_data}{Data frame for step_formula with one row per
+item-step cell in item-major order (item 1 steps 1..K-1, then item
+2, ...; n_items x (max_categories - 1) rows; pad items with fewer
+categories with NA rows - those cells are never read).}
 
 \item{person_data}{Optional data frame with person-level variables for multi-level models}
 

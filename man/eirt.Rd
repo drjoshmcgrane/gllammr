@@ -9,6 +9,8 @@ eirt(
   difficulty_formula = ~1,
   discrimination_formula = ~1,
   threshold_formula = NULL,
+  step_formula = NULL,
+  step_data = NULL,
   model = c("Rasch", "2PL", "GRM", "PCM", "GPCM"),
   item_residuals = TRUE
 )
@@ -22,6 +24,10 @@ eirt(
 discrimination (2PL/GRM/GPCM)}
 
 \item{threshold_formula}{Optional threshold regression (LPCM framework)}
+
+\item{step_formula}{Optional step-level covariate formula (PCM/GPCM)}
+
+\item{step_data}{Data frame for step_formula (one row per item-step cell)}
 
 \item{model}{"Rasch", "2PL", "GRM", "PCM", or "GPCM"}
 
