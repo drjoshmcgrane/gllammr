@@ -66,11 +66,13 @@ extern "C" {
 
 SEXP C_em_poly(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP C_em_cdm(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP C_isotonic_poset(SEXP, SEXP, SEXP);
 
 static const R_CallMethodDef CallEntries[] = {
   TMB_CALLDEFS,
   {"C_em_poly", (DL_FUNC) &C_em_poly, 9},
   {"C_em_cdm", (DL_FUNC) &C_em_cdm, 10},
+  {"C_isotonic_poset", (DL_FUNC) &C_isotonic_poset, 3},
   {NULL, NULL, 0}
 };
 

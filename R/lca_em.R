@@ -37,7 +37,7 @@
 #' (length(y) = number of classes), so iteration cost is negligible.
 #'
 #' @keywords internal
-.isotonic_poset <- function(y, w, edges, tol = 1e-12, max_iter = 10000) {
+.isotonic_poset <- function(y, w, edges) {
   K <- length(y)
   E <- nrow(edges)
   if (E == 0) return(y)
@@ -46,39 +46,8 @@
       all(edges[, 2] == 2:K)) {
     return(.pava_weighted(y, w))
   }
-  x <- y
-  # Dykstra increments, one pair per constraint
-  inc_a <- numeric(E)
-  inc_b <- numeric(E)
-  for (it in seq_len(max_iter)) {
-    delta <- 0
-    for (e in seq_len(E)) {
-      a <- edges[e, 1]; b <- edges[e, 2]
-      xa <- x[a] + inc_a[e]
-      xb <- x[b] + inc_b[e]
-      if (xa > xb) {
-        m <- (w[a] * xa + w[b] * xb) / (w[a] + w[b])
-        new_a <- m; new_b <- m
-      } else {
-        new_a <- xa; new_b <- xb
-      }
-      inc_a[e] <- xa - new_a
-      inc_b[e] <- xb - new_b
-      delta <- delta + abs(new_a - x[a]) + abs(new_b - x[b])
-      x[a] <- new_a
-      x[b] <- new_b
-    }
-    if (delta < tol) break
-  }
-  # Guarantee feasibility to numerical precision
-  for (e in seq_len(E)) {
-    a <- edges[e, 1]; b <- edges[e, 2]
-    if (x[a] > x[b]) {
-      m <- (w[a] * x[a] + w[b] * x[b]) / (w[a] + w[b])
-      x[a] <- m; x[b] <- m
-    }
-  }
-  x
+  storage.mode(edges) <- "integer"
+  .Call(C_isotonic_poset, as.numeric(y), as.numeric(w), edges)
 }
 
 
@@ -243,15 +212,37 @@ fit_lca_em <- function(Y, nclass, item_type, n_cats, weights = NULL,
     m
   }
 
+  # Structural flatten/unflatten for the located (Rasch) classes: the
+  # model space is closed under extrapolation in (log pi, theta, delta),
+  # so Ramsay acceleration needs no projection
+  if (rasch) {
+    flatten <- function(p) {
+      L <- qlogis(p$bin)
+      theta <- colMeans(L)
+      delta <- mean(theta) - rowMeans(L)
+      c(log(p$pi), theta, delta)
+    }
+    unflatten <- function(v, p) {
+      pi_raw <- exp(v[1:K]); p$pi <- pi_raw / sum(pi_raw)
+      J_b <- length(bin_idx)
+      theta <- v[K + seq_len(K)]
+      delta <- v[2 * K + seq_len(J_b)]
+      delta <- delta - mean(delta)
+      p$bin <- pmin(pmax(plogis(outer(-delta, theta, "+")), 1e-6),
+                    1 - 1e-6)
+      p
+    }
+  }
+
   # Unconstrained flatten/unflatten for Ramsay extrapolation
-  flatten <- function(p) {
+  if (!rasch) flatten <- function(p) {
     v <- log(p$pi)
     if (length(bin_idx)) v <- c(v, qlogis(p$bin))
     for (m in p$cat) v <- c(v, log(m))
     if (length(gau_idx)) v <- c(v, p$mu, log(p$sd))
     v
   }
-  unflatten <- function(v, p) {
+  if (!rasch) unflatten <- function(v, p) {
     k <- K
     pi_raw <- exp(v[1:K]); p$pi <- pi_raw / sum(pi_raw)
     if (length(bin_idx)) {
@@ -363,16 +354,16 @@ fit_lca_em <- function(Y, nclass, item_type, n_cats, weights = NULL,
       }
 
       # ---- Ramsay acceleration on successive EM steps (safeguarded) ----
-      # (Acceleration is skipped under the Rasch structure: extrapolating
-      # cellwise logits would leave the additive model space)
-      if (!rasch) {
       th_after <- flatten(p)
       step_now <- th_after - th_before
       step_norm <- sqrt(sum(step_now^2))
       if (step_prev_norm > 0 && step_norm > 0) {
         r <- step_norm / step_prev_norm
-        if (r > 0.1 && r < 0.98) {
-          gain <- min(r / (1 - r), 20)
+        # Slowly converging EM has step ratio near 1 - exactly where
+        # acceleration matters most; the logLik-revert safeguard makes a
+        # wide trigger window safe
+        if (r > 0.1 && r < 0.9995) {
+          gain <- min(r / (1 - r), 100)
           p_revert <- p
           p <- unflatten(th_after + gain * step_now, p)
           if (ordering || item_ordering) {
@@ -404,7 +395,6 @@ fit_lca_em <- function(Y, nclass, item_type, n_cats, weights = NULL,
         }
       }
       step_prev_norm <- step_norm
-      }
     }
     list(p = p, loglik = loglik, converged = converged, iter = iter)
   }

@@ -2,6 +2,17 @@
 
 ## Post-1.2.0 development
 
+* New general `compare_models()`: a comparison table (logLik, parameter
+  count, AIC/BIC with deltas, Akaike weights) for any set of fitted
+  gllammr models, across model classes, with an n_obs comparability
+  check; `latent_structure_comparison()` now delegates its table to it.
+* Order-restricted LCA optimized: the isotonic poset projection runs in
+  C (shared with the CDM engine), and the Ramsay acceleration trigger
+  window widened to cover slowly converging EM (step ratio near 1; the
+  logLik-revert safeguard makes this safe). MON/IIO/DM fits are 2.7-4.2x
+  faster; the located class model now converges where it previously hit
+  the iteration cap, and its EM is ~10x faster than fitting the same
+  model through the equivalent NPML GLMM route (identical logLik).
 * Latent structure analysis (Torres Irribarra & Diakow framework):
   `fit_lca()` gains `item_ordering` (invariant item ordering - item
   monotonicity within classes, via isotonic regression over the

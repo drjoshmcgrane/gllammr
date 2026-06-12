@@ -4,7 +4,7 @@
 \alias{.isotonic_poset}
 \title{Weighted isotonic regression over a partial order}
 \usage{
-.isotonic_poset(y, w, edges, tol = 1e-12, max_iter = 10000)
+.isotonic_poset(y, w, edges)
 }
 \description{
 Minimizes sum(w * (y - x)^2) subject to x[a] <= x[b] for every row

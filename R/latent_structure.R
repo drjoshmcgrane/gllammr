@@ -93,24 +93,21 @@ latent_structure_comparison <- function(Y, nclass = NULL,
     RM = fit_irt(Y, model = "Rasch")
   )
 
-  tab <- data.frame(
-    model = names(fits),
-    structure = c("qualitative", "ordinal", "ordinal", "ordinal",
-                  "quantitative (discrete)", "quantitative (continuous)"),
-    logLik = vapply(fits, `[[`, 0, "logLik"),
-    n_params = c(rep(fits$UN$AIC / 2 + fits$UN$logLik, 4),
-                 fits$LCR$AIC / 2 + fits$LCR$logLik,
-                 fits$RM$AIC / 2 + fits$RM$logLik),
-    stringsAsFactors = FALSE
-  )
-  tab$AIC <- -2 * tab$logLik + 2 * tab$n_params
-  tab$BIC <- -2 * tab$logLik + log(nrow(Y)) * tab$n_params
+  # Delegate the comparison table to the general machinery, then add the
+  # framework's structure labels
+  cmp <- compare_models(UN = fits$UN, MON = fits$MON, IIO = fits$IIO,
+                        DM = fits$DM, LCR = fits$LCR, RM = fits$RM)
+  tab <- as.data.frame(cmp)
+  tab$structure <- c("qualitative", "ordinal", "ordinal", "ordinal",
+                     "quantitative (discrete)",
+                     "quantitative (continuous)")
+  tab <- tab[, c("model", "structure", "logLik", "n_params", "AIC",
+                 "dAIC", "BIC", "dBIC")]
   rownames(tab) <- NULL
 
-  out <- structure(tab, fits = fits, nclass = nclass,
-                   item_order = ord,
-                   class = c("lca_structure_comparison", "data.frame"))
-  out
+  structure(tab, fits = fits, nclass = nclass, item_order = ord,
+            class = c("lca_structure_comparison",
+                      "gllammr_model_comparison", "data.frame"))
 }
 
 
@@ -122,8 +119,8 @@ print.lca_structure_comparison <- function(x, ...) {
       "| IIO/DM item order:", paste(attr(x, "item_order"),
                                     collapse = " < "), "\n\n")
   tab <- as.data.frame(x)
-  tab[, c("logLik", "AIC", "BIC")] <- round(tab[, c("logLik", "AIC",
-                                                    "BIC")], 2)
+  num <- vapply(tab, is.numeric, TRUE)
+  tab[num] <- lapply(tab[num], round, 2)
   print(tab, row.names = FALSE)
   best <- tab$model[which.min(tab$BIC)]
   cat("\nLowest BIC:", best, "\n")
