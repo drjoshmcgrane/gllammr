@@ -202,3 +202,41 @@ test_that("summary never recycles mismatched standard errors", {
   sn <- simulate(fn, nsim = 2, seed = 1)
   expect_equal(nrow(sn), n)
 })
+
+test_that("mixed-response joint model: limits, coupling, and methods", {
+  set.seed(12)
+  ng <- 30; m <- 10; n <- ng * m
+  g <- factor(rep(1:ng, each = m))
+  u <- rnorm(ng, 0, 0.8)
+  x <- rnorm(n)
+  d <- data.frame(g = g, x = x,
+                  y1 = 1 + 0.5 * x + u[g] + rnorm(n, 0, 0.7),
+                  y2 = rbinom(n, 1, plogis(-0.2 + 0.6 * x + u[g])))
+
+  # Single-outcome limit: fit_mixed == the corresponding GLMM exactly
+  m1 <- fit_mixed(list(gaussian = y1 ~ x), random = ~ 1 | g, data = d)
+  g1 <- gllamm(y1 ~ x + (1 | g), data = d)
+  expect_equal(as.numeric(logLik(m1)), as.numeric(logLik(g1)),
+               tolerance = 1e-6)
+  m2 <- fit_mixed(list(binomial = y2 ~ x), random = ~ 1 | g, data = d)
+  g2 <- gllamm(y2 ~ x + (1 | g), data = d, family = binomial())
+  expect_equal(as.numeric(logLik(m2)), as.numeric(logLik(g2)),
+               tolerance = 1e-6)
+
+  # With genuinely shared random effects the joint fit must beat the
+  # sum of the separate fits (it models the cross-outcome dependence)
+  mj <- fit_mixed(list(gaussian = y1 ~ x, binomial = y2 ~ x),
+                  random = ~ 1 | g, data = d)
+  expect_gt(as.numeric(logLik(mj)),
+            as.numeric(logLik(m1)) + as.numeric(logLik(m2)))
+
+  # predict/fitted return per-outcome conditional predictions
+  p <- predict(mj)
+  expect_named(p, c("gaussian", "binomial"))
+  expect_length(p$gaussian, n)
+  expect_true(all(p$binomial >= 0 & p$binomial <= 1))
+  expect_gt(cor(p$gaussian, d$y1), 0.5)
+  pn <- predict(mj, newdata = d[1:10, ])
+  expect_equal(pn$gaussian, p$gaussian[1:10], tolerance = 1e-10)
+  expect_identical(fitted(mj), predict(mj))
+})

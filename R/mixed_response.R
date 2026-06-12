@@ -212,3 +212,45 @@ print.gllamm_mixed <- function(x, ...) {
   cat("Log-likelihood:", round(x$logLik, 2), "\n")
   invisible(x)
 }
+
+#' Predict from a fitted mixed-response model
+#'
+#' Conditional predictions (fixed effects plus estimated group effects,
+#' loading 1 on every outcome) for each outcome of the joint model.
+#'
+#' @param object Fitted \code{gllamm_mixed} object
+#' @param newdata Optional data frame; groups unseen at fit time get a
+#'   group effect of zero (population-level prediction)
+#' @param type \code{"response"} (default) or \code{"link"}
+#' @param ... Unused
+#' @return Named list with one prediction vector per outcome
+#' @export
+predict.gllamm_mixed <- function(object, newdata = NULL,
+                                 type = c("response", "link"), ...) {
+  type <- match.arg(type)
+  data <- if (is.null(newdata)) object$data else newdata
+  re_term <- attr(stats::terms(object$random), "term.labels")
+  rt <- parse_random_term(re_term, object$data)
+  train_g <- factor(object$data[[rt$grouping[1]]])
+  g <- factor(data[[rt$grouping[1]]], levels = levels(train_g))
+  u <- object$random_effects
+  ub <- ifelse(is.na(as.integer(g)), 0, u[as.integer(g)])
+  out <- list()
+  for (fam in object$outcomes) {
+    f <- object$formulas[[fam]]
+    X <- stats::model.matrix(stats::delete.response(stats::terms(f)),
+                             data = data)
+    eta <- as.numeric(X %*% object$coefficients[[fam]]) + ub
+    out[[fam]] <- if (type == "link") eta else switch(fam,
+      gaussian = eta,
+      binomial = stats::plogis(eta),
+      poisson = exp(eta))
+  }
+  out
+}
+
+
+#' @export
+fitted.gllamm_mixed <- function(object, ...) {
+  predict(object, type = "response")
+}

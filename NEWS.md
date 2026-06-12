@@ -2,6 +2,14 @@
 
 ## Post-1.2.0 development
 
+* Mixed-response audit. Verified: single-outcome `fit_mixed()` equals
+  the corresponding GLMM exactly; with genuinely shared random effects
+  the joint fit dominates the sum of separate fits; with independent
+  outcomes the forced loading-1 coupling degrades fit as expected
+  (outcome-specific loadings remain documented as unsupported).
+  **New methods:** `predict()` and `fitted()` for `gllamm_mixed`
+  (per-outcome conditional predictions, link or response scale,
+  newdata supported) - `predict()` previously returned NULL silently.
 * GLMM level-2 weight audit (follow-up to the EIRT weight finding).
   Level-2 (group) weights under Laplace previously scaled each group's
   likelihood-plus-prior contribution - approximate in the variance
