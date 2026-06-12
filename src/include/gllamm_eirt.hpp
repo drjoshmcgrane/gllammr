@@ -29,6 +29,8 @@ Type gllamm_eirt(objective_function<Type>* obj)
   DATA_MATRIX(W_discrimination);     // Item covariate matrix for discrimination [n_items x p_disc]
   DATA_MATRIX(W_threshold);          // Item covariate matrix for threshold regression [n_items x p_thresh]
                                      // Used for LPCM; dummy (zero-column) for other models
+  DATA_MATRIX(W_step);               // Step-level covariates [(n_items*(max_categories-1)) x p_step],
+                                     // row = item*(max_categories-1) + (m-1); dummy elsewhere
   DATA_INTEGER(n_persons);           // Number of persons
   DATA_INTEGER(n_items);             // Number of items
   DATA_INTEGER(n_obs);               // Number of observations
@@ -70,8 +72,16 @@ Type gllamm_eirt(objective_function<Type>* obj)
   // (K-2 free deviations; last deviation = -sum of others, enforcing sum-to-zero)
   PARAMETER_MATRIX(step_param);
 
-  // For LPCM: step-specific regression weights [p_thresh x (max_categories-1)]
-  PARAMETER_MATRIX(xi);
+  // For LPCM: free step-deviation weights [p_thresh x (max_categories-2)].
+  // The full xi row sums to zero across thresholds (last column = -rowsum):
+  // threshold covariates give step-specific DEVIATIONS; item-level main
+  // effects belong in difficulty_formula. Without the constraint the
+  // difficulty and threshold regressions share a flat ridge whenever a
+  // column (including the intercept) appears in both designs.
+  PARAMETER_MATRIX(xi_dev);
+
+  // For LPCM: common coefficients of step-level covariates [p_step]
+  PARAMETER_VECTOR(eta_step);
 
   // For LPCM: item-step residuals [n_items x (max_categories-1)]
   PARAMETER_MATRIX(e_step);
@@ -146,6 +156,20 @@ Type gllamm_eirt(objective_function<Type>* obj)
   }
 
   // Effective ability: person deviation plus group-level effects
+  // Full threshold-deviation matrix (sum-to-zero rows), used by LPCM
+  matrix<Type> xi(W_threshold.cols(), max_categories > 1 ? max_categories - 1 : 1);
+  xi.setZero();
+  if (is_polytomous == 1 && poly_model_type == 4 && max_categories >= 3) {
+    for (int pp = 0; pp < xi.rows(); pp++) {
+      Type rsum = Type(0.0);
+      for (int m = 0; m < max_categories - 2; m++) {
+        xi(pp, m) = xi_dev(pp, m);
+        rsum += xi_dev(pp, m);
+      }
+      xi(pp, max_categories - 2) = -rsum;
+    }
+  }
+
   vector<Type> theta_eff(n_persons);
   for (int p = 0; p < n_persons; p++) {
     theta_eff(p) = theta(p);
@@ -362,6 +386,12 @@ Type gllamm_eirt(objective_function<Type>* obj)
           for (int p = 0; p < p_thresh; p++) {
             delta_im += W_threshold(item, p) * xi(p, m - 1);  // threshold covariates
           }
+          // Step-level covariates: one common coefficient per predictor,
+          // covariate values vary within item across steps
+          for (int p = 0; p < eta_step.size(); p++) {
+            delta_im += W_step(item * (max_categories - 1) + (m - 1), p) *
+              eta_step(p);
+          }
           delta_im += e_step(item, m - 1);  // threshold residual
 
           cumsum(m) = cumsum(m-1) + (theta_eff(person) - delta_im);
@@ -396,6 +426,7 @@ Type gllamm_eirt(objective_function<Type>* obj)
   if (is_polytomous == 1) {
     if (poly_model_type == 4) {
       ADREPORT(xi);
+      ADREPORT(eta_step);
       ADREPORT(sigma_e_step);
     }
   }

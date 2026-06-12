@@ -2,6 +2,24 @@
 
 ## Post-1.2.0 development
 
+* **Step-level predictors in explanatory IRT.** `fit_eirt()` (and the
+  `eirt()` family) gain `step_formula`/`step_data` for PCM/GPCM:
+  covariates that vary WITHIN an item across its steps, each with a
+  single common coefficient (delta_im = b_i + xi_0m + sum_k eta_k
+  x_imk + e_im) - the step-property models of Kim & Wilson (2019).
+  Combines freely with difficulty_formula (item level) and
+  threshold_formula (item properties with step-specific effects);
+  a step covariate constant within items reproduces the equivalent
+  item-covariate fit exactly. A combined item/threshold/step rank
+  check rejects cross-level collinearity by name.
+* **LPCM identification fix.** The threshold regression previously
+  shared a flat ridge with the difficulty regression whenever a column
+  (including the intercept) appeared in both designs - all standard
+  errors NaN. Threshold coefficients are now sum-to-zero deviations
+  across an item's thresholds (matching the package's PCM/GRM
+  conventions), with item-level main effects carried by
+  difficulty_formula: both location effects and step deviations are
+  recovered with finite SEs.
 * Newdata-prediction audit across all formula-based classes (predictions
   on newdata equal to in-sample fits for seen groups; unseen groups get
   population-level predictions). **Bug fixes:** binomial fits from the

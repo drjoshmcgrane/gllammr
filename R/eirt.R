@@ -12,8 +12,22 @@
 #' @param discrimination_formula Formula for discrimination regression (e.g., ~ item_type).
 #'   Applies to 2PL, GRM, and GPCM models.
 #'   Model: log(a_i) = W_disc \%*\% delta + epsilon_a (if item_residuals = TRUE)
+#' @param step_formula Formula for step-level covariates (PCM/GPCM only):
+#'   predictors that vary WITHIN an item across its steps, each with a
+#'   single common coefficient (\eqn{\delta_{im} = b_i + \xi_{0m} +
+#'   \sum_k \eta_k x_{imk} + e_{im}}). The intercept is dropped; per-step
+#'   baselines come from the threshold intercepts. Combine freely with
+#'   difficulty_formula (item level) and threshold_formula (item
+#'   properties with step-specific effects).
+#' @param step_data Data frame for step_formula with one row per
+#'   item-step cell in item-major order (item 1 steps 1..K-1, then item
+#'   2, ...; n_items x (max_categories - 1) rows; pad items with fewer
+#'   categories with NA rows - those cells are never read).
 #' @param threshold_formula Formula for threshold-specific regression (e.g., ~ abstractness).
-#'   Only used for PCM/GPCM models. When specified, enables threshold-difficulty regression
+#'   Coefficients are step-specific DEVIATIONS that sum to zero across an
+#'   item's thresholds; the item-level main effect of the same covariate
+#'   belongs in difficulty_formula (the two are jointly identified this
+#'   way). Only used for PCM/GPCM models. When specified, enables threshold-difficulty regression
 #'   (Kim & Wilson 2019 LPCM framework): delta_im = b_i + sum_k xi_km * x_ik + e_im
 #' @param weights Optional vector of integer person-level frequency weights
 #'   (length = number of persons). Implemented by exact replication of
@@ -109,6 +123,8 @@ fit_eirt <- function(response_matrix,
                      difficulty_formula = ~ 1,
                      discrimination_formula = ~ 1,
                      threshold_formula = NULL,
+                     step_formula = NULL,
+                     step_data = NULL,
                      person_data = NULL,
                      random = NULL,
                      weights = NULL,
@@ -188,6 +204,15 @@ fit_eirt <- function(response_matrix,
          "interpretation for model = \"", model, "\". For GRM, item-level ",
          "predictors enter through difficulty_formula.")
   }
+  if (!is.null(step_formula) && !model %in% c("PCM", "GPCM")) {
+    stop("step_formula is only supported for PCM and GPCM models ",
+         "(step-level covariates in the adjacent-categories framework).")
+  }
+  if (!is.null(step_formula) && is.null(step_data)) {
+    stop("step_data must be provided with step_formula: one row per ",
+         "item-step combination in item-major order (item 1 steps ",
+         "1..K-1, then item 2, ...)")
+  }
 
   # Determine if polytomous
   is_polytomous <- model %in% c("GRM", "PCM", "GPCM")
@@ -195,9 +220,15 @@ fit_eirt <- function(response_matrix,
   if (is_polytomous) {
     # Determine polytomous model type
     # For PCM/GPCM: use threshold regression (type 4) if threshold_formula provided
-    if (model == "PCM" && !is.null(threshold_formula)) {
+    has_step_regression <- !is.null(threshold_formula) || !is.null(step_formula)
+    if (has_step_regression && max(apply(response_matrix, 2, function(x)
+      length(unique(x[!is.na(x)])))) < 3) {
+      stop("threshold_formula/step_formula require items with at least ",
+           "3 categories")
+    }
+    if (model == "PCM" && has_step_regression) {
       poly_model_type <- 4L  # PCM with threshold regression (LPCM framework)
-    } else if (model == "GPCM" && !is.null(threshold_formula)) {
+    } else if (model == "GPCM" && has_step_regression) {
       poly_model_type <- 4L  # GPCM with threshold regression
       # Note: GPCM with threshold regression uses same likelihood as LPCM but with discrimination
     } else {
@@ -222,22 +253,55 @@ fit_eirt <- function(response_matrix,
   p_diff <- ncol(W_diff)
   p_disc <- ncol(W_disc)
 
-  # Threshold regression design matrix (for PCM/GPCM with threshold_formula)
+  # Threshold regression design matrix (for PCM/GPCM with threshold_formula).
+  # With step_formula alone, an intercept-only threshold design supplies the
+  # per-step baseline parameters (xi intercept row = ordinary step spacing).
   if (!is.null(threshold_formula) && model %in% c("PCM", "GPCM")) {
     W_threshold <- model.matrix(threshold_formula, data = item_data)
+  } else if (!is.null(step_formula) && model %in% c("PCM", "GPCM")) {
+    W_threshold <- matrix(1, n_items, 1,
+                          dimnames = list(NULL, "(Intercept)"))
   } else {
     W_threshold <- matrix(0, n_items, 1)
   }
   p_thresh <- ncol(W_threshold)
 
+  # Step-level design: one row per item-step cell (item-major), covariates
+  # may vary WITHIN item across steps; one common coefficient per column.
+  # The intercept is dropped (per-step baselines come from the threshold
+  # intercepts), as are unused trailing cells of items with fewer steps.
+  if (!is.null(step_formula)) {
+    n_step_rows <- n_items * (max_categories - 1L)
+    if (nrow(step_data) != n_step_rows) {
+      stop("step_data must have ", n_step_rows, " rows (n_items x ",
+           "(max_categories - 1), item-major; pad items with fewer ",
+           "categories with NA rows). Found: ", nrow(step_data))
+    }
+    used_cell <- as.vector(t(outer(seq_len(n_items), seq_len(max_categories - 1L),
+                                   function(j, m) m <= n_categories_per_item[j] - 1L)))
+    sd_used <- step_data
+    sd_used[!used_cell, ] <- sd_used[rep(which(used_cell)[1], sum(!used_cell)), ]
+    W_step <- drop_intercept_column(model.matrix(step_formula, data = sd_used))
+    if (ncol(W_step) == 0) {
+      stop("step_formula must contain at least one predictor (the ",
+           "intercept is carried by the per-step baseline parameters)")
+    }
+    W_step[!used_cell, ] <- 0
+  } else {
+    W_step <- matrix(0, n_items * max(max_categories - 1L, 1L), 1)
+  }
+  p_step <- ncol(W_step)
+
   # Rank-deficient designs produce singular Hessians and NaN standard
   # errors downstream; fail with the aliased columns named instead.
   check_designs <- c("difficulty_formula", "discrimination_formula",
-                     if (!is.null(threshold_formula)) "threshold_formula")
+                     if (!is.null(threshold_formula)) "threshold_formula",
+                     if (!is.null(step_formula)) "step_formula")
   for (nm in check_designs) {
     W <- switch(nm, difficulty_formula = W_diff,
                 discrimination_formula = W_disc,
-                threshold_formula = W_threshold)
+                threshold_formula = W_threshold,
+                step_formula = W_step)
     qr_W <- qr(W)
     if (qr_W$rank < ncol(W)) {
       aliased <- colnames(W)[setdiff(seq_len(ncol(W)),
@@ -245,6 +309,36 @@ fit_eirt <- function(response_matrix,
       stop("The ", nm, " design matrix is rank deficient: column(s) ",
            paste(aliased, collapse = ", "), " are collinear with the ",
            "others. Remove redundant item predictors.")
+    }
+  }
+
+  # Cross-level identifiability: a step covariate that is constant within
+  # items duplicates an item-level effect; a threshold covariate's
+  # step-specific effects span any step covariate of the form
+  # item-covariate x step. Check the combined item-step design.
+  if (!is.null(step_formula)) {
+    Km1 <- max_categories - 1L
+    row_item <- rep(seq_len(n_items), each = Km1)
+    row_step <- rep(seq_len(Km1), n_items)
+    used <- row_step <= (n_categories_per_item[row_item] - 1L)
+    A_diff <- W_diff[row_item, , drop = FALSE]
+    # Threshold effects are sum-to-zero deviations: K-2 basis columns per
+    # covariate (step m vs the last step)
+    A_thr <- if (Km1 >= 2) {
+      do.call(cbind, lapply(seq_len(p_thresh), function(k) {
+        sapply(seq_len(Km1 - 1L), function(m) {
+          W_threshold[row_item, k] * ((row_step == m) - (row_step == Km1))
+        })
+      }))
+    } else NULL
+    A <- cbind(A_diff, A_thr, W_step)[used, , drop = FALSE]
+    qr_A <- qr(A)
+    if (qr_A$rank < ncol(A)) {
+      stop("The combined item/threshold/step design is rank deficient: ",
+           "some step_formula column is collinear with the item-level ",
+           "difficulty design or the threshold regression (e.g. a step ",
+           "covariate constant within items, or expressible as item ",
+           "covariate x step). Remove the redundant predictor.")
     }
   }
 
@@ -316,6 +410,7 @@ fit_eirt <- function(response_matrix,
     W_difficulty = as.matrix(W_diff),
     W_discrimination = as.matrix(W_disc),
     W_threshold = as.matrix(W_threshold),
+    W_step = as.matrix(W_step),
     n_persons = as.integer(n_persons),
     n_items = as.integer(n_items),
     n_obs = as.integer(n_obs),
@@ -368,7 +463,8 @@ fit_eirt <- function(response_matrix,
       log_sigma_epsilon_a = init_log_sigma_a,
       log_sigma_theta = log(1.0),
       step_param = step_param_init,
-      xi = matrix(0, p_thresh, n_step_cols),
+      xi_dev = matrix(0, p_thresh, max(1L, n_step_cols - 1L)),
+      eta_step = rep(0, p_step),
       e_step = matrix(0, n_items, n_step_cols),
       log_sigma_e_step = log(0.5),
       u_random = if (has_random) {
@@ -389,9 +485,13 @@ fit_eirt <- function(response_matrix,
   if (poly_model_type == 4L) {
     # LPCM: fix step_param (unused), but keep difficulty_formula active
     map_list$step_param <- factor(rep(NA, n_items * n_step_cols))
+    if (is.null(step_formula)) {
+      map_list$eta_step <- factor(rep(NA, p_step))
+    }
   } else {
     # All non-LPCM models: threshold-regression machinery unused
-    map_list$xi <- factor(rep(NA, p_thresh * n_step_cols))
+    map_list$xi_dev <- factor(rep(NA, p_thresh * max(1L, n_step_cols - 1L)))
+    map_list$eta_step <- factor(rep(NA, p_step))
     map_list$e_step <- factor(rep(NA, n_items * n_step_cols))
     map_list$log_sigma_e_step <- factor(NA)
     if (!is_polytomous) {
@@ -499,6 +599,7 @@ fit_eirt <- function(response_matrix,
 
   # Extract ADREPORT quantities
   xi_hat <- NULL
+  eta_step_hat <- NULL
   sigma_e_step_hat <- NA
 
   if (!inherits(sdr, "try-error")) {
@@ -527,6 +628,13 @@ fit_eirt <- function(response_matrix,
         rownames(xi_hat) <- colnames(W_threshold)
         colnames(xi_hat) <- paste0("Threshold", seq_len(max_categories - 1L))
       }
+      eta_rows <- rownames(sdr_summary) == "eta_step"
+      if (any(eta_rows) && !is.null(step_formula)) {
+        eta_step_hat <- cbind(
+          estimate = sdr_summary[eta_rows, "Estimate"],
+          se = sdr_summary[eta_rows, "Std. Error"])
+        rownames(eta_step_hat) <- colnames(W_step)
+      }
       se_rows <- rownames(sdr_summary) == "sigma_e_step"
       if (any(se_rows)) {
         sigma_e_step_hat <- sdr_summary[se_rows, "Estimate"]
@@ -548,7 +656,8 @@ fit_eirt <- function(response_matrix,
     regression_coefficients = list(
       difficulty = gamma_hat,
       discrimination = delta_hat,
-      threshold = xi_hat
+      threshold = xi_hat,
+      step = eta_step_hat
     ),
     item_parameters = list(
       difficulty = difficulty_hat,
@@ -578,7 +687,8 @@ fit_eirt <- function(response_matrix,
     formulas = list(
       difficulty = difficulty_formula,
       discrimination = discrimination_formula,
-      threshold = threshold_formula
+      threshold = threshold_formula,
+      step = step_formula
     ),
     item_data = item_data,
     tmb_obj = obj,
@@ -662,6 +772,13 @@ print.gllamm_eirt <- function(x, ...) {
     cat("  Coefficients (rows = predictors, cols = thresholds):\n")
     print(round(x$regression_coefficients$threshold, 3))
     cat("  Residual SD:", round(x$residual_sd$threshold, 3), "\n\n")
+  }
+
+  if (!is.null(x$regression_coefficients$step)) {
+    cat("Step-level covariates:\n")
+    cat("  Formula:", deparse(x$formulas$step), "\n")
+    print(round(x$regression_coefficients$step, 3))
+    cat("\n")
   }
 
   cat("Ability distribution:\n")

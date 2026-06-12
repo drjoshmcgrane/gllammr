@@ -11,7 +11,7 @@ gllammr fits a wide class of multilevel latent variable models through one inter
 - **Multilevel GLMMs** (Gaussian, binomial, Poisson, gamma; logit/probit/cloglog links), with random slopes, nested and crossed terms, adaptive quadrature, and level-specific survey weights
 - **Ordinal and multinomial models** (cumulative, adjacent-category, forward/backward continuation-ratio, partial proportional odds), with crossed/multi-term random effects
 - **Item response theory**: Rasch, 2PL, 3PL (with item-specific guessing), GRM, PCM, GPCM, NRM; EM or Laplace estimation; multilevel IRT with school/cluster random effects and person-level random slopes
-- **Explanatory IRT (EIRT)**: regress item difficulty, discrimination, or polytomous step thresholds on item properties (LLTM, LLTM-plus-error, latent regression, and the polytomous LPCM framework of Kim & Wilson), single- or multilevel
+- **Explanatory IRT (EIRT)**: regress item difficulty, discrimination, or polytomous step thresholds on item properties (LLTM, LLTM-plus-error, latent regression, and the polytomous LPCM framework of Kim & Wilson), plus genuinely step-level covariates that vary within items across steps; single- or multilevel
 - **Differential item functioning**: logistic-regression DIF with multiple grouping factors, interactions, iterative purification, and effect-size classification; and model-based IRT-likelihood-ratio DIF with anchor items, latent impact regression, and Wald or LR tests
 - **Latent class analysis**: binary, categorical, and continuous indicators; order-restricted and partially ordered (poset) classes; Rasch-structured located classes (LCR); and a latent-structure comparison spanning unrestricted, monotone, invariant-item-ordering, double-monotone, LCR, and Rasch models
 - **Cognitive diagnosis models**: DINA, DINO, and G-DINA with Q-matrices, attribute hierarchies, and monotonicity constraints
@@ -138,6 +138,11 @@ fit_lltm <- fit_eirt(resp_matrix, item_data,
 fit_poly <- fit_eirt(poly_matrix, item_data,
                      difficulty_formula = ~ domain,
                      threshold_formula = ~ step_type, # LPCM step regression
+                     model = "PCM")
+fit_step <- fit_eirt(poly_matrix, item_data,
+                     difficulty_formula = ~ domain,
+                     step_formula = ~ skill_demand,   # varies within item
+                     step_data = step_properties,     # one row per item-step
                      model = "PCM")
 
 # DIF: logistic-regression DIF with multiple factors and purification ...

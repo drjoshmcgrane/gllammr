@@ -311,6 +311,8 @@ cdm <- function(Q, model = c("gdina", "dina", "dino"),
 #' @param discrimination_formula Item-covariate formula for (log)
 #'   discrimination (2PL/GRM/GPCM)
 #' @param threshold_formula Optional threshold regression (LPCM framework)
+#' @param step_formula Optional step-level covariate formula (PCM/GPCM)
+#' @param step_data Data frame for step_formula (one row per item-step cell)
 #' @param model "Rasch", "2PL", "GRM", "PCM", or "GPCM"
 #' @param item_residuals Random item residuals around the regression
 #'   (LLTM-plus-error; default TRUE)
@@ -326,6 +328,7 @@ cdm <- function(Q, model = c("gdina", "dina", "dino"),
 #' @export
 eirt <- function(item_data, difficulty_formula = ~ 1,
                  discrimination_formula = ~ 1, threshold_formula = NULL,
+                 step_formula = NULL, step_data = NULL,
                  model = c("Rasch", "2PL", "GRM", "PCM", "GPCM"),
                  item_residuals = TRUE) {
   model <- match.arg(model)
@@ -333,6 +336,7 @@ eirt <- function(item_data, difficulty_formula = ~ 1,
     list(family = "eirt", item_data = item_data,
          difficulty_formula = difficulty_formula,
          discrimination_formula = discrimination_formula,
+         step_formula = step_formula, step_data = step_data,
          threshold_formula = threshold_formula,
          model = model, item_residuals = item_residuals),
     class = c("eirt_family", "family")

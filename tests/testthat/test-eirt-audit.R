@@ -163,3 +163,83 @@ test_that("multilevel fit_irt simulate and marginal use the group REs", {
   mg <- predict(fm, type = "marginal")
   expect_lt(abs(mean(mg) - mean(d$resp)), 0.03)
 })
+
+test_that("step-level predictors: recovery, identity, and identification", {
+  set.seed(9)
+  np <- 400; ni <- 10; K <- 4
+  theta <- rnorm(np)
+  z_item <- rnorm(ni)
+  x_step <- matrix(rnorm(ni * (K - 1)), ni, K - 1)
+  b <- 0.3 + 0.6 * z_item
+  resp <- sapply(seq_len(ni), function(j) {
+    delta <- b[j] + 0.7 * x_step[j, ] + c(-0.9, 0, 0.9)
+    sapply(seq_len(np), function(p) {
+      cs <- cumsum(c(0, theta[p] - delta))
+      sample.int(K, 1, prob = exp(cs) / sum(exp(cs)))
+    })
+  })
+  step_data <- data.frame(x = as.vector(t(x_step)))
+
+  # Item-level and step-level predictors estimated together, with SEs
+  f <- fit_eirt(resp, data.frame(z_item = z_item),
+                difficulty_formula = ~ z_item,
+                step_formula = ~ x, step_data = step_data,
+                model = "PCM", item_residuals = TRUE)
+  expect_true(f$convergence$converged)
+  expect_equal(unname(f$regression_coefficients$difficulty["z_item"]), 0.6,
+               tolerance = 0.15)
+  eta <- f$regression_coefficients$step
+  expect_equal(unname(eta["x", "estimate"]), 0.7, tolerance = 0.1)
+  expect_true(is.finite(eta["x", "se"]) && eta["x", "se"] > 0)
+
+  # A step covariate constant within items is EXACTLY an item covariate
+  zc <- rnorm(ni)
+  resp2 <- sapply(seq_len(ni), function(j) {
+    delta <- 0.5 * zc[j] + c(-0.8, 0, 0.8)
+    sapply(seq_len(np), function(p) {
+      cs <- cumsum(c(0, theta[p] - delta))
+      sample.int(K, 1, prob = exp(cs) / sum(exp(cs)))
+    })
+  })
+  sd2 <- data.frame(zc = rep(zc, each = K - 1))
+  fa <- fit_eirt(resp2, data.frame(one = rep(1, ni)),
+                 difficulty_formula = ~ 0 + one,
+                 step_formula = ~ zc, step_data = sd2,
+                 model = "PCM", item_residuals = FALSE)
+  fb <- fit_eirt(resp2, data.frame(zc = zc), difficulty_formula = ~ zc,
+                 threshold_formula = ~ 1, model = "PCM",
+                 item_residuals = FALSE)
+  expect_equal(as.numeric(logLik(fa)), as.numeric(logLik(fb)),
+               tolerance = 1e-5)
+
+  # Cross-level collinearity is rejected, not silently ridged
+  expect_error(
+    fit_eirt(resp2, data.frame(zc = zc), difficulty_formula = ~ zc,
+             step_formula = ~ zc, step_data = sd2, model = "PCM"),
+    "rank deficient")
+})
+
+test_that("threshold regression is identified with shared covariates", {
+  set.seed(9)
+  np <- 400; ni <- 10; K <- 4
+  theta <- rnorm(np); z <- rnorm(ni)
+  resp <- sapply(seq_len(ni), function(j) {
+    delta <- 0.3 + 0.5 * z[j] + c(-0.8, 0, 0.8) + c(-0.3, 0.1, 0.2) * z[j]
+    sapply(seq_len(np), function(p) {
+      cs <- cumsum(c(0, theta[p] - delta))
+      sample.int(K, 1, prob = exp(cs) / sum(exp(cs)))
+    })
+  })
+  # Same covariate at the item level AND with step-specific effects:
+  # previously a flat ridge (all SEs NaN); xi rows now sum to zero so
+  # the location effect and the deviations separate
+  f <- fit_eirt(resp, data.frame(z = z), difficulty_formula = ~ z,
+                threshold_formula = ~ z, model = "PCM",
+                item_residuals = FALSE)
+  sdr <- summary(f$tmb_sdr, select = "fixed")
+  g <- sdr[rownames(sdr) == "gamma", ]
+  expect_true(all(is.finite(g[, "Std. Error"])))
+  expect_equal(unname(g[2, "Estimate"]), 0.5, tolerance = 0.1)
+  xi <- f$regression_coefficients$threshold
+  expect_equal(unname(rowSums(xi)), c(0, 0), tolerance = 1e-8)
+})
