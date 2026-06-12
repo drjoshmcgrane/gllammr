@@ -19,4 +19,6 @@ NULL
 
 # Dataset names loaded via utils::data() inside the validation suite
 utils::globalVariables(c("LSAT", "Science", "carcinoma", "grouseticks",
+                         "fraction.subtraction.data",
+                         "fraction.subtraction.qmatrix",
                          "sleepstudy", "toenail", "wine"))
