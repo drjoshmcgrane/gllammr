@@ -52,8 +52,17 @@ jobs:
         if: runner.os == 'Windows'
         shell: bash
         run: |
+          # R on Windows reads ~/.R/Makevars.win / Makevars.ucrt, NOT
+          # ~/.R/Makevars. Append to the runner's default flags rather
+          # than replacing them (keeps -mfpmath=sse etc.).
           mkdir -p ~/.R
-          echo 'CXXFLAGS = -O2 -Wall -Wno-array-bounds' >> ~/.R/Makevars
+          CXXF="$(R CMD config CXXFLAGS) -Wno-array-bounds"
+          for f in Makevars.win Makevars.ucrt; do
+            {
+              echo "CXXFLAGS = $CXXF"
+              echo "CXX17FLAGS = $CXXF"
+            } >> ~/.R/$f
+          done
 
       - uses: r-lib/actions/check-r-package@v2
         with:
