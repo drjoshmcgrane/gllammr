@@ -248,6 +248,16 @@ fit_binomial <- function(formula, data, link = c("logit", "probit", "cloglog"),
   # Get fitted values
   fitted_vals <- obj$report()$fitted
 
+  # Random-effect predictions by group (same shape as the general engine:
+  # a list of per-group coefficient vectors), so ranef() and conditional
+  # newdata predictions work on binomial fits
+  u_hat <- par_full[names(par_full) == "u"]
+  random_effects <- list()
+  for (g_i in seq_len(model_data$n_groups[1])) {
+    idx_start <- (g_i - 1) * n_random + 1
+    random_effects[[g_i]] <- unname(u_hat[idx_start:(g_i * n_random)])
+  }
+
   # Construct result
   result <- list(
     coefficients = list(
@@ -255,6 +265,7 @@ fit_binomial <- function(formula, data, link = c("logit", "probit", "cloglog"),
       random_sd = sigma_u_hat,
       random_var = list(Sigma_u_hat)
     ),
+    random_effects = random_effects,
     logLik = -opt$objective,
     AIC = 2 * opt$objective + 2 * length(obj$par),
     BIC = 2 * opt$objective + log(model_data$n_obs) * length(obj$par),
@@ -270,6 +281,7 @@ fit_binomial <- function(formula, data, link = c("logit", "probit", "cloglog"),
     fitted_values = fitted_vals,
     residuals = y_response - fitted_vals,
     formula = formula,
+    random_terms = parsed$random_terms,
     data = data,
     tmb_obj = obj,
     tmb_opt = opt,

@@ -240,3 +240,34 @@ test_that("mixed-response joint model: limits, coupling, and methods", {
   expect_equal(pn$gaussian, p$gaussian[1:10], tolerance = 1e-10)
   expect_identical(fitted(mj), predict(mj))
 })
+
+test_that("newdata predictions are conditional and consistent everywhere", {
+  set.seed(44)
+  n <- 300
+  g <- factor(rep(1:15, each = 20))
+  u <- rnorm(15, 0, 0.7)
+  x <- rnorm(n)
+  d <- data.frame(g = g, x = x)
+  d$yb <- rbinom(n, 1, plogis(0.3 * x + u[g]))
+
+  # Binomial fits (fit_binomial path) must apply BLUPs on newdata for
+  # seen groups, matching in-sample fitted values
+  f <- gllamm(yb ~ x + (1 | g), data = d, family = binomial())
+  pn <- predict(f, newdata = d[1:30, ], type = "response")
+  expect_equal(unname(pn), unname(fitted(f)[1:30]), tolerance = 1e-3)
+  expect_true(is.list(ranef(f)) && length(ranef(f)) == 15)
+  # Unseen groups: population-level, no error
+  dnew <- d[1:5, ]; dnew$g <- factor("ZZZ")
+  expect_no_error(predict(f, newdata = dnew, type = "response"))
+
+  # NPML fits: posterior-mean mass-point intercepts per group; unseen
+  # groups get the prior mean
+  fn <- suppressWarnings(fit_npml(yb ~ x + (1 | g), data = d, k = 2,
+                                  family = binomial()))
+  p0 <- predict(fn)
+  pn2 <- predict(fn, newdata = d[1:30, ])
+  expect_equal(unname(pn2), unname(p0[1:30]), tolerance = 1e-8)
+  expect_equal(unname(fitted(fn)), unname(p0))
+  pu <- predict(fn, newdata = dnew)
+  expect_true(all(is.finite(pu)))
+})

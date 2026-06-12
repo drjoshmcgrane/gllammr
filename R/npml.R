@@ -166,3 +166,72 @@ print.gllamm_npml <- function(x, ...) {
   cat("Log-likelihood:", round(x$logLik, 2), "\n")
   invisible(x)
 }
+
+#' Predict from a fitted NPML model
+#'
+#' Conditional predictions for NPML fits. Each training group gets its
+#' posterior-mean intercept over the estimated mass points; groups unseen
+#' at fit time (or absent from \code{newdata}) get the prior mean
+#' \code{sum(masses * locations)}.
+#'
+#' @param object Fitted \code{gllamm_npml} object
+#' @param newdata Optional data frame (defaults to the training data)
+#' @param type \code{"response"} (default) or \code{"link"}
+#' @param ... Unused
+#' @return Numeric vector of predictions
+#' @export
+predict.gllamm_npml <- function(object, newdata = NULL,
+                                type = c("response", "link"), ...) {
+  type <- match.arg(type)
+  parsed <- parse_formula(object$formula, object$data)
+  md <- make_model_matrices(parsed, object$data)
+  X_tr <- drop_intercept_column(as.matrix(md$X))
+  beta <- object$coefficients$fixed
+  eta_fix_tr <- if (ncol(X_tr)) as.numeric(X_tr %*% beta) else
+    numeric(md$n_obs)
+  gi_tr <- as.integer(md$groups[[1]])
+  y <- as.numeric(md$y)
+  K <- object$k
+  loc <- object$locations
+  pi_k <- object$masses
+
+  # Per-group posterior over mass points from the training data
+  logf <- matrix(0, md$n_groups[1], K)
+  for (k in seq_len(K)) {
+    eta <- eta_fix_tr + loc[k]
+    ll <- switch(object$family$family,
+      gaussian = stats::dnorm(y, eta, object$residual_sd, log = TRUE),
+      binomial = stats::dbinom(y, 1, object$family$linkinv(eta), log = TRUE),
+      poisson = stats::dpois(y, exp(eta), log = TRUE),
+      stop("Unsupported NPML family for prediction"))
+    logf[, k] <- tapply(ll, gi_tr, sum) + log(pi_k[k])
+  }
+  W <- exp(logf - apply(logf, 1, max))
+  W <- W / rowSums(W)
+  u_group <- as.numeric(W %*% loc)        # posterior-mean intercepts
+  u_prior <- sum(pi_k * loc)
+
+  data_new <- if (is.null(newdata)) object$data else newdata
+  parsed_n <- parse_formula(object$formula, data_new)
+  md_n <- make_model_matrices(parsed_n, data_new)
+  X_n <- drop_intercept_column(as.matrix(md_n$X))
+  eta_fix <- if (ncol(X_n)) as.numeric(X_n %*% beta) else
+    numeric(md_n$n_obs)
+
+  gv <- parsed$random_terms[[1]]$grouping
+  train_f <- factor(object$data[[gv]])
+  new_f <- factor(data_new[[gv]], levels = levels(train_f))
+  if (!is.null(md_n$complete_idx)) new_f <- new_f[md_n$complete_idx]
+  idx <- as.integer(new_f)
+  u <- ifelse(is.na(idx), u_prior, u_group[idx])
+
+  eta <- eta_fix + u
+  if (type == "link") eta else object$family$linkinv(eta)
+}
+
+
+#' @export
+fitted.gllamm_npml <- function(object, ...) {
+  predict(object, type = "response")
+}
+

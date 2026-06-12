@@ -91,8 +91,10 @@ predict.gllamm <- function(object,
     # Include random effects - use posterior means (BLUPs) from training
     # For new groups not in training, use 0 (population average)
 
-    # Get group identifiers from new data
-    if (length(object$random_terms) > 0) {
+    # Get group identifiers from new data. Use the freshly parsed
+    # formula, not object$random_terms - some fitters (fit_binomial)
+    # do not store the parsed terms on the result.
+    if (length(parsed$random_terms) > 0) {
       parts <- .gllamm_re_parts(object, object$data)
       random_contrib <- numeric(nrow(new_mats$X))
       for (t in seq_len(parts$n_terms)) {

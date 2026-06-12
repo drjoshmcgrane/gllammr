@@ -2,6 +2,15 @@
 
 ## Post-1.2.0 development
 
+* Newdata-prediction audit across all formula-based classes (predictions
+  on newdata equal to in-sample fits for seen groups; unseen groups get
+  population-level predictions). **Bug fixes:** binomial fits from the
+  dedicated single-term path ignored the estimated group effects on
+  newdata (silently fixed-effects-only) and refused `ranef()` - BLUPs
+  are now stored on the fit; NPML fits had no working `predict()` at
+  all (non-conformable error on newdata, NULL in-sample) - `predict()`
+  and `fitted()` now use posterior-mean mass-point intercepts per
+  group, with the prior mean for unseen groups.
 * Sandwich-SE audit. Cluster-robust fixed-effect covariances match
   `clubSandwich::vcovCR(type = "CR0")` on the same ML linear mixed
   model (within 1%), and a 200-replication Monte Carlo under
