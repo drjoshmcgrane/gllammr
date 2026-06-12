@@ -50,6 +50,11 @@ fit_survival <- function(formula, data,
   distribution <- match.arg(distribution)
   dist_code <- switch(distribution, exponential = 1L, weibull = 2L)
 
+  if (is.list(weights)) {
+    stop("Level-specific weights are not supported for survival models; ",
+         "supply a vector of observation weights")
+  }
+
   # ---- Parse Surv(time, event) on the LHS without requiring survival ----
   lhs <- formula[[2]]
   if (!(is.call(lhs) && identical(as.character(lhs[[1]]), "Surv"))) {

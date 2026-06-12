@@ -2,6 +2,23 @@
 
 ## Post-1.2.0 development
 
+* GLMM level-2 weight audit (follow-up to the EIRT weight finding).
+  Level-2 (group) weights under Laplace previously scaled each group's
+  likelihood-plus-prior contribution - approximate in the variance
+  components and unbounded in principle (every weighted group
+  contributes -(w-1)*log(sigma_u)). Integer level-2 frequency weights
+  are now implemented by exact whole-group replication before fitting
+  (weighted fits are identical to group-duplicated fits, verified for
+  gaussian/poisson/binomial; replication happens before listwise
+  deletion, so incomplete rows are handled exactly as duplicated data
+  would be); non-integer level-2 weights under Laplace are rejected
+  with guidance to `integration = aghq(k)`, which weights each group's
+  log marginal likelihood outside the integral and is exact for
+  arbitrary weights (verified identical to duplication). Binomial fits
+  with list weights now route to the general engine instead of failing
+  in `fit_binomial()`; ordinal models reject level-specific weights
+  with a clear message; survival models likewise reject list weights
+  clearly (previously an obscure coercion error).
 * EIRT deep audit. **Saturated identities verified exactly:** an EIRT
   model with `difficulty_formula = ~ item` (and, where applicable,
   `discrimination_formula = ~ item`) reproduces the descriptive

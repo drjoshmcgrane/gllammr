@@ -54,7 +54,13 @@ latent distribution.}
 
 \item{weights}{Optional case weights: a numeric vector of observation
 (level-1) weights, or a list with elements \code{level1} and/or
-\code{level2} for survey designs with weights at both levels.}
+\code{level2} for survey designs with weights at both levels.
+Under the default Laplace fit, level-2 weights must be integer
+frequency weights; they are implemented by exact replication of
+whole groups, so results are identical to fitting the duplicated
+data. Non-integer level-2 weights require
+\code{integration = aghq(k)}, which weights each group's log
+marginal likelihood directly and supports arbitrary weights.}
 
 \item{random}{For matrix-response families (\code{irt()}, \code{lca()}):
 an optional person-level random-effects formula such as

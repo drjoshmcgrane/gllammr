@@ -50,6 +50,12 @@
 #' @param weights Optional case weights: a numeric vector of observation
 #'   (level-1) weights, or a list with elements \code{level1} and/or
 #'   \code{level2} for survey designs with weights at both levels.
+#'   Under the default Laplace fit, level-2 weights must be integer
+#'   frequency weights; they are implemented by exact replication of
+#'   whole groups, so results are identical to fitting the duplicated
+#'   data. Non-integer level-2 weights require
+#'   \code{integration = aghq(k)}, which weights each group's log
+#'   marginal likelihood directly and supports arbitrary weights.
 #' @param random For matrix-response families (\code{irt()}, \code{lca()}):
 #'   an optional person-level random-effects formula such as
 #'   \code{~ (1 | class)}.
@@ -318,6 +324,10 @@ gllamm <- function(formula,
   # This provides a unified interface: gllamm(formula, data, family = ordinal(...))
 
   if (inherits(family, "ordinal_family")) {
+    if (is.list(weights)) {
+      stop("Level-specific weights are not supported for ordinal models; ",
+           "supply a vector of observation weights")
+    }
     # Ordinal regression models
     return(fit_ordinal(formula = formula,
                       data = data,
@@ -334,7 +344,9 @@ gllamm <- function(formula,
     # npml) route through the general engines, which support all three
     # links.
     n_re <- length(parse_formula(formula, data)$random_terms)
-    if (n_re <= 1 && is.null(integration)) {
+    # List (level-specific) weights need the general engine: fit_binomial
+    # only understands observation-weight vectors
+    if (n_re <= 1 && is.null(integration) && !is.list(weights)) {
       return(fit_binomial(formula = formula,
                           data = data,
                           link = family$link,
@@ -350,6 +362,61 @@ gllamm <- function(formula,
 
   if (length(parsed$random_terms) == 0) {
     stop("No random effects specified. Use glm() for fixed effects only models.")
+  }
+
+  # Level-2 frequency weights under Laplace are implemented by exact
+  # replication of whole groups (each copy gets its own random effect),
+  # which reproduces duplicated-data fits exactly. Scaling each group's
+  # likelihood-plus-prior contribution instead is only approximate under
+  # the Laplace normalization and its objective is unbounded in principle
+  # (every weighted group contributes -(w - 1) * log(sigma_u)). Adaptive
+  # quadrature weights each group's log marginal likelihood outside the
+  # integral, which is exact for arbitrary weights, so aghq fits pass
+  # level-2 weights straight through.
+  is_aghq <- inherits(integration, "gllamm_integration") &&
+    identical(integration$method, "aghq")
+  if (is.list(weights) && !is.null(weights$level2) && !is_aghq) {
+    if (length(parsed$random_terms) != 1) {
+      stop("Level-specific weights are currently supported for two-level ",
+           "models (a single random-effects term)")
+    }
+    gvar <- parsed$random_terms[[1]]$grouping
+    if (is.null(gvar) || !gvar %in% names(data)) {
+      stop("Level-2 weights require a simple grouping variable in the data")
+    }
+    gfac <- factor(data[[gvar]])
+    w2 <- as.numeric(weights$level2)
+    if (length(w2) == nlevels(gfac)) {
+      w2_obs <- w2[as.integer(gfac)]
+    } else if (length(w2) == nrow(data)) {
+      if (any(tapply(w2, gfac, function(v) length(unique(v))) > 1)) {
+        stop("weights$level2 must be constant within each group")
+      }
+      w2_obs <- w2
+    } else {
+      stop("weights$level2 must have length ", nlevels(gfac),
+           " (one per group) or ", nrow(data), " (one per observation)")
+    }
+    if (any(is.na(w2_obs)) || any(w2_obs < 0)) {
+      stop("weights$level2 must be non-negative and complete")
+    }
+    if (any(abs(w2_obs - round(w2_obs)) > 1e-8)) {
+      stop("Non-integer level-2 weights are not supported under the ",
+           "Laplace approximation. Use integration = aghq(k), which ",
+           "weights each group's log marginal likelihood exactly.")
+    }
+    w2_grp <- round(tapply(w2_obs, gfac, function(v) v[1]))
+    idx <- unlist(lapply(seq_len(nlevels(gfac)), function(j) {
+      rows <- which(as.integer(gfac) == j)
+      rep(list(rows), w2_grp[j])
+    }), recursive = FALSE)
+    copy_id <- rep(seq_along(idx), lengths(idx))
+    idx <- unlist(idx)
+    data <- data[idx, , drop = FALSE]
+    data[[gvar]] <- factor(paste0(as.character(gfac)[idx], ".rep", copy_id))
+    w1 <- weights$level1
+    weights <- if (!is.null(w1)) as.numeric(w1)[idx] else NULL
+    parsed <- parse_formula(formula, data)
   }
 
   # Create model matrices

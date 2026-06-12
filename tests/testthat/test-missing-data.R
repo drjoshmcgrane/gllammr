@@ -124,14 +124,28 @@ test_that("matrix-response models use observed responses under MAR", {
   expect_true(f_lca$convergence$converged)
 })
 
-test_that("level-specific weights with incomplete rows error clearly", {
+test_that("level-2 weights handle incomplete rows via replication", {
   set.seed(9)
   d <- data.frame(y = rnorm(200), x = rnorm(200),
-                  g = factor(rep(1:20, 10)),
-                  w2 = rep(runif(20, 0.5, 2), each = 10))
+                  g = factor(rep(1:20, each = 10)),
+                  w2 = rep(sample(1:2, 20, replace = TRUE), each = 10))
   d$x[5] <- NA
+
+  # Non-integer level-2 weights are rejected under Laplace with guidance
   expect_error(
     suppressWarnings(
-      gllamm(y ~ x + (1 | g), data = d, weights = list(level2 = d$w2))),
-    "complete data")
+      gllamm(y ~ x + (1 | g), data = d,
+             weights = list(level2 = d$w2 + 0.5))),
+    "aghq")
+
+  # Integer weights replicate groups BEFORE listwise deletion, which is
+  # exactly what fitting the duplicated data would do
+  fw <- suppressWarnings(
+    gllamm(y ~ x + (1 | g), data = d, weights = list(level2 = d$w2)))
+  dup <- d[d$w2 == 2, ]
+  dup$g <- factor(paste0("dup", dup$g))
+  dd <- rbind(d, dup)
+  dd$g <- factor(as.character(dd$g))
+  fd <- suppressWarnings(gllamm(y ~ x + (1 | g), data = dd))
+  expect_equal(fw$logLik, fd$logLik, tolerance = 1e-5)
 })
