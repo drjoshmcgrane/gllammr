@@ -145,6 +145,45 @@ a few hundredths — their numbers are Bayesian posterior means, ours
 maximum likelihood. Step-specific item properties (their LPCM) are
 available through `threshold_formula`.
 
+## Covariates at the step level
+
+Two distinct kinds of "step predictor" arise in practice, and the
+package separates them:
+
+- `threshold_formula`: **item properties whose effects differ by step**.
+  Each covariate gets one coefficient per threshold, constrained to sum
+  to zero across an item's thresholds — they are step-specific
+  *deviations* around the item-level effect, which belongs in
+  `difficulty_formula`. (The two are jointly identified this way.)
+- `step_formula` with `step_data`: **covariates that vary within an item
+  across its steps**, each with a single common coefficient — e.g. each
+  scoring step of a rubric demands a different skill. `step_data` has
+  one row per item-step cell in item-major order.
+
+The full decomposition is
+$\delta_{im} = b_i + \xi_{0m} + \sum_k \eta_k x_{imk} + e_{im}$:
+item location from the difficulty regression, per-step baselines,
+step-level covariate effects, and (with `item_residuals = TRUE`)
+step residuals.
+
+```{r step-level}
+# Suppose each item-step is rated for the cognitive demand of that step
+set.seed(1)
+step_props <- data.frame(
+  demand = rnorm(ncol(resp3) * 2)   # 3 categories -> 2 steps per item
+)
+pcm_step <- fit_eirt(resp3, item_kw,
+                     difficulty_formula = ~ mode + situ + btype,
+                     step_formula = ~ demand, step_data = step_props,
+                     model = "PCM", item_residuals = TRUE)
+pcm_step$regression_coefficients$step
+```
+
+A step covariate that happens to be constant within items is exactly
+equivalent to entering it in `difficulty_formula`; genuinely redundant
+cross-level specifications are rejected with a rank-deficiency error
+rather than fit on a ridge.
+
 ## Explaining discrimination too
 
 For models with a discrimination parameter (2PL, GRM, GPCM),
