@@ -13,7 +13,7 @@ simulate_2pl <- function(seed = 7, np = 800, ni = 20) {
 test_that("EM 2PL matches mirt to numerical agreement", {
   skip_if_not_installed("mirt")
   s <- simulate_2pl()
-  fit <- fit_irt(s$resp, model = "2PL", method = "em")
+  fit <- fit_irt(s$resp, model = "2PL", method = "em", se = FALSE)
   ref <- mirt::mirt(as.data.frame(s$resp), 1, itemtype = "2PL", verbose = FALSE)
   co <- mirt::coef(ref, simplify = TRUE)$items
   b_ref <- -co[, "d"] / co[, "a1"]
@@ -28,8 +28,8 @@ test_that("EM Rasch agrees with the Laplace path and improves the logLik", {
   np <- 600; ni <- 25
   resp <- matrix(rbinom(np * ni, 1,
                         plogis(outer(rnorm(np), rnorm(ni), "-"))), np, ni)
-  fit_em <- fit_irt(resp, model = "Rasch", method = "em")
-  fit_lap <- fit_irt(resp, model = "Rasch")
+  fit_em <- fit_irt(resp, model = "Rasch", method = "em", se = FALSE)
+  fit_lap <- fit_irt(resp, model = "Rasch", se = FALSE)
 
   expect_gt(cor(fit_em$item_parameters$difficulty,
                 fit_lap$item_parameters$difficulty), 0.9999)
@@ -49,14 +49,14 @@ test_that("EM GRM matches mirt; EM PCM agrees with Laplace", {
     1L + rowSums(matrix(runif(np), np, 3) < cum)
   })
 
-  fit_g <- fit_irt(resp, model = "GRM", method = "em")
+  fit_g <- fit_irt(resp, model = "GRM", method = "em", se = FALSE)
   ref <- mirt::mirt(as.data.frame(resp), 1, itemtype = "graded", verbose = FALSE)
   co <- mirt::coef(ref, simplify = TRUE)$items
   expect_gt(cor(fit_g$item_parameters$discrimination, co[, "a1"]), 0.999)
   expect_equal(fit_g$logLik, mirt::extract.mirt(ref, "logLik"), tolerance = 1e-3)
 
-  fit_p <- fit_irt(resp, model = "PCM", method = "em")
-  fit_pl <- fit_irt(resp, model = "PCM")
+  fit_p <- fit_irt(resp, model = "PCM", method = "em", se = FALSE)
+  fit_pl <- fit_irt(resp, model = "PCM", se = FALSE)
   expect_equal(fit_p$ability_sd, fit_pl$ability_sd, tolerance = 0.05)
   expect_gte(fit_p$logLik, fit_pl$logLik - 1e-6)
 })
@@ -64,7 +64,7 @@ test_that("EM GRM matches mirt; EM PCM agrees with Laplace", {
 test_that("EM handles the short-test 2PL case where Laplace diverges", {
   skip_if_not_installed("ltm")
   data("LSAT", package = "ltm", envir = environment())
-  fit <- fit_irt(as.matrix(LSAT), model = "2PL", method = "em")
+  fit <- fit_irt(as.matrix(LSAT), model = "2PL", method = "em", se = FALSE)
   ref_coef <- coef(ltm::ltm(LSAT ~ z1))
 
   expect_equal(unname(fit$item_parameters$difficulty),
@@ -78,14 +78,14 @@ test_that("EM respects person weights and missing data", {
   s <- simulate_2pl(np = 300, ni = 10)
   resp <- s$resp
   resp[sample(length(resp), 200)] <- NA
-  fit <- fit_irt(resp, model = "2PL", method = "em")
+  fit <- fit_irt(resp, model = "2PL", method = "em", se = FALSE)
   expect_true(fit$convergence$converged)
 
   # Integer weights == duplication
   w <- rep(c(1, 2), length.out = 300)
-  fit_w <- fit_irt(s$resp, model = "Rasch", method = "em", weights = w)
+  fit_w <- fit_irt(s$resp, model = "Rasch", method = "em", weights = w, se = FALSE)
   fit_d <- fit_irt(rbind(s$resp, s$resp[w == 2, ]), model = "Rasch",
-                   method = "em")
+                   method = "em", se = FALSE)
   expect_equal(fit_w$item_parameters$difficulty,
                fit_d$item_parameters$difficulty, tolerance = 1e-3)
 })
@@ -94,7 +94,7 @@ test_that("EM rejects multi-level specifications clearly", {
   s <- simulate_2pl(np = 100, ni = 5)
   pd <- data.frame(g = factor(rep(1:5, each = 20)))
   expect_error(fit_irt(s$resp, model = "Rasch", method = "em",
-                       person_data = pd, random = ~ (1 | g)),
+                       person_data = pd, random = ~ (1 | g), se = FALSE),
                "single-level")
 })
 
@@ -112,7 +112,7 @@ test_that("C++ EM matches mirt exactly on a large polytomous battery", {
     1L + rowSums(matrix(runif(np), np, 4) < cum)
   })
 
-  fit <- fit_irt(resp, model = "GRM")        # default: C++ EM
+  fit <- fit_irt(resp, model = "GRM", se = FALSE)  # se = FALSE: C++ EM
   ref <- mirt::mirt(as.data.frame(resp), 1, itemtype = "graded",
                     verbose = FALSE)
   co <- mirt::coef(ref, simplify = TRUE)$items

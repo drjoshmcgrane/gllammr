@@ -90,7 +90,7 @@ latent_structure_comparison <- function(Y, nclass = NULL,
                  item_ordering = item_pairs, control = ctl),
     LCR = fit_lca(Y, nclass = nclass, structure = "rasch",
                   control = ctl),
-    RM = fit_irt(Y, model = "Rasch")
+    RM = fit_irt(Y, model = "Rasch", se = FALSE)
   )
 
   # Delegate the comparison table to the general machinery, then add the

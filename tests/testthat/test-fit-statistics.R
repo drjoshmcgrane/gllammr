@@ -251,7 +251,7 @@ test_that("fit() for IRT models returns correct structure", {
   b <- seq(-1.2, 1.2, length.out = n_items)
   responses <- sapply(seq_len(n_items), function(j)
     rbinom(n_persons, 1, plogis(theta - b[j])))
-  fit_irt_model <- fit_irt(responses, model = "2PL")
+  fit_irt_model <- fit_irt(responses, model = "2PL", se = FALSE)
   fit_stats <- fit(fit_irt_model)
 
   expect_true("item_fit" %in% names(fit_stats))

@@ -2,6 +2,17 @@
 
 ## Post-1.2.0 development
 
+* **Behavior change: `fit_irt()` (and `gllamm(family = irt())`) now
+  compute standard errors by default (`se = TRUE`),** aligning the IRT
+  fitter with `fit_sem()`/`sem()` and standard R practice. Because SEs
+  require the Laplace path, `method = "auto"` now resolves to
+  `"laplace"` under the default; pass `se = FALSE` to skip SE
+  computation and recover the previous fast Bock-Aitkin EM default for
+  single-level models. `method = "auto"` still selects `"em"` whenever
+  non-integer person weights (an EM-only feature) are supplied, in
+  which case the default `se = TRUE` is skipped silently (an explicit
+  `se = TRUE` warns, as before). The `irt()` family constructor gains a
+  matching `se` argument that `gllamm()` passes through.
 * **CI: coverage, lint, pkgdown, and scheduled-validation workflows.**
   Added `.github/workflows/test-coverage.yaml` (covr + Codecov, with a
   build-artifact fallback), `.github/workflows/lint.yaml` (non-blocking

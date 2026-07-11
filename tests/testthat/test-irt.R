@@ -39,7 +39,7 @@ test_that("fit_irt accepts valid input", {
     }
   }
 
-  fit <- fit_irt(responses, model = "Rasch")
+  fit <- fit_irt(responses, model = "Rasch", se = FALSE)
 
   expect_s3_class(fit, "gllamm_irt")
   expect_true("item_parameters" %in% names(fit))
@@ -70,7 +70,7 @@ test_that("Rasch model recovers known parameters", {
   }
 
   # Fit model
-  fit <- fit_irt(responses, model = "Rasch")
+  fit <- fit_irt(responses, model = "Rasch", se = FALSE)
 
   # Check parameter recovery (with generous tolerance)
   # Note: Need to account for identification constraints
@@ -98,7 +98,7 @@ test_that("2PL model includes discrimination parameters", {
     }
   }
 
-  fit <- fit_irt(responses, model = "2PL")
+  fit <- fit_irt(responses, model = "2PL", se = FALSE)
 
   expect_s3_class(fit, "gllamm_irt")
   expect_true(all(fit$item_parameters$discrimination > 0))
@@ -112,7 +112,7 @@ test_that("IRT print and summary methods work", {
   set.seed(111)
   responses <- matrix(rbinom(50 * 5, 1, 0.5), 50, 5)
 
-  fit <- fit_irt(responses, model = "Rasch")
+  fit <- fit_irt(responses, model = "Rasch", se = FALSE)
 
   expect_output(print(fit), "IRT Model")
   expect_output(print(fit), "Rasch")
@@ -132,4 +132,30 @@ test_that("IRT handles missing data", {
     # fit <- fit_irt(responses, model = "Rasch")
     # Would work after TMB compilation
   })
+})
+
+
+test_that("fit_irt computes standard errors by default", {
+  set.seed(42)
+  np <- 150; ni <- 8
+  resp <- matrix(rbinom(np * ni, 1,
+                        plogis(outer(rnorm(np), rnorm(ni), "-"))), np, ni)
+
+  # Default se = TRUE: auto resolves to Laplace and runs sdreport
+  fit <- fit_irt(resp, model = "Rasch")
+  expect_true(fit$se_ok)
+  expect_s3_class(fit$tmb_sdr, "sdreport")
+  ses <- summary(fit$tmb_sdr, select = "fixed")[, "Std. Error"]
+  expect_true(all(is.finite(ses)))
+  expect_true(all(ses > 0))
+
+  # se = FALSE skips SE computation (fast EM path under method = "auto")
+  fit0 <- fit_irt(resp, model = "Rasch", se = FALSE)
+  expect_null(fit0$tmb_sdr)
+
+  # Non-integer weights are an EM-only feature: "auto" must still reach
+  # them under the new default (SEs silently skipped)
+  fit_w <- fit_irt(resp, model = "Rasch", weights = runif(np, 0.5, 2))
+  expect_true(fit_w$convergence$converged)
+  expect_null(fit_w$tmb_sdr)
 })

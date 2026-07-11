@@ -113,12 +113,12 @@ test_that("simulate methods exist and behave for every model class", {
   resp <- sapply(1:ni, function(j) rbinom(np, 1, plogis(theta - b[j])))
 
   # IRT (EM fit): parametric-bootstrap round trip
-  f_irt <- fit_irt(resp, model = "Rasch")
+  f_irt <- fit_irt(resp, model = "Rasch", se = FALSE)
   s <- simulate(f_irt, nsim = 2, seed = 9)
   expect_equal(length(s), 2)
   expect_equal(dim(s[[1]]), c(np, ni))
   expect_false(anyNA(s[[1]]))
-  f_rt <- fit_irt(s[[1]], model = "Rasch")
+  f_rt <- fit_irt(s[[1]], model = "Rasch", se = FALSE)
   expect_lt(mean(abs(f_rt$item_parameters$difficulty -
                        f_irt$item_parameters$difficulty)), 0.3)
 
@@ -127,7 +127,7 @@ test_that("simulate methods exist and behave for every model class", {
     1L + rowSums(outer(theta - (j - 3) / 2 + rlogis(np),
                        c(-0.8, 0.8), ">"))
   })
-  f_grm <- fit_irt(resp3, model = "GRM")
+  f_grm <- fit_irt(resp3, model = "GRM", se = FALSE)
   s3 <- simulate(f_grm, nsim = 1, seed = 3)
   expect_true(all(s3[[1]] %in% 1:3))
   pr <- predict(f_grm, type = "probs")

@@ -23,9 +23,11 @@
 #'   Under \code{method = "laplace"} only integer frequency weights are
 #'   supported; they are implemented by exact replication of weighted
 #'   persons, so results are identical to fitting the duplicated data.
-#' @param method Estimation method. "auto" (default) uses "em" for
-#'   single-level models and "laplace" whenever multi-level structure
-#'   (\code{random}) or standard errors (\code{se = TRUE}) require it.
+#' @param method Estimation method. "auto" (default) uses "laplace"
+#'   whenever multi-level structure (\code{random}) or standard errors
+#'   (\code{se = TRUE}, the default) require it, and "em" otherwise --
+#'   i.e. for single-level fits with \code{se = FALSE}, or whenever
+#'   non-integer person weights (an EM-only feature) are supplied.
 #'   "em" is Bock-Aitkin marginal maximum likelihood with fixed
 #'   Gauss-Hermite quadrature (the mirt/TAM algorithm; typically 20-50x
 #'   faster and evaluates the marginal likelihood more exactly than the
@@ -35,8 +37,13 @@
 #' @param quad_points Number of quadrature nodes for method = "em"
 #'   (default 61)
 #' @param se Compute parameter standard errors via TMB::sdreport (default
-#'   FALSE, matching the default behavior of mirt; SE computation roughly
-#'   doubles the fitting time for large person samples)
+#'   TRUE, consistent with the rest of the package). SEs require the
+#'   Laplace path, so under \code{method = "auto"} the default selects
+#'   "laplace"; pass \code{se = FALSE} to get the faster EM path for
+#'   single-level models and skip SE computation (which roughly doubles
+#'   the fitting time for large person samples). SEs are not yet
+#'   available under \code{method = "em"}: an explicit \code{se = TRUE}
+#'   is then ignored with a warning.
 #' @param mc_items For 3PL model only: which items have guessing parameters.
 #'   Can be: NULL (default, all items have guessing), logical vector (length = n_items),
 #'   or integer vector (indices of MC items). Non-MC items use 2PL likelihood (no guessing).
@@ -110,22 +117,42 @@ fit_irt <- function(response_matrix,
                     mc_items = NULL,
                     method = c("auto", "em", "laplace"),
                     quad_points = 61,
-                    se = FALSE,
+                    se = TRUE,
                     start = NULL, control = list()) {
 
   model <- match.arg(model)
   method <- match.arg(method)
+  se_explicit <- !missing(se)
+
+  # Laplace supports integer frequency weights only; arbitrary non-negative
+  # weights are an EM-only feature, so "auto" must keep them reachable
+  non_integer_weights <- !is.null(weights) && is.numeric(weights) &&
+    any(abs(weights - round(weights)) > sqrt(.Machine$double.eps),
+        na.rm = TRUE)
 
   if (method == "auto") {
-    method <- if (!is.null(random) || isTRUE(se)) "laplace" else "em"
+    method <- if (!is.null(random)) {
+      "laplace"
+    } else if (non_integer_weights) {
+      "em"
+    } else if (isTRUE(se)) {
+      "laplace"
+    } else {
+      "em"
+    }
   }
   if (method == "em" && !is.null(random)) {
     stop("method = \"em\" supports single-level models; ",
          "use method = \"laplace\" for multi-level IRT")
   }
   if (method == "em" && isTRUE(se)) {
-    warning("Standard errors are not yet available under method = \"em\"; ",
-            "ignoring se = TRUE. Use method = \"laplace\" for SEs.")
+    # Only complain when the user explicitly asked for SEs; the default
+    # se = TRUE is skipped silently on the EM path
+    if (se_explicit) {
+      warning("Standard errors are not yet available under method = \"em\"; ",
+              "ignoring se = TRUE. Use method = \"laplace\" for SEs.")
+    }
+    se <- FALSE
   }
 
   # Validate multi-level parameters

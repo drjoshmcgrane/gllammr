@@ -31,7 +31,7 @@ test_that("GRM accepts valid polytomous input", {
   }
 
   # Fit GRM model
-  fit <- fit_irt(responses, model = "GRM")
+  fit <- fit_irt(responses, model = "GRM", se = FALSE)
 
   # Basic checks
   expect_s3_class(fit, "gllamm_irt")
@@ -68,7 +68,7 @@ test_that("GRM parameter recovery with known parameters", {
   }
 
   # Fit model
-  fit <- fit_irt(responses, model = "GRM")
+  fit <- fit_irt(responses, model = "GRM", se = FALSE)
 
   # Check parameter recovery (with reasonable tolerance)
   # Discrimination
@@ -113,7 +113,7 @@ test_that("GRM handles different numbers of categories", {
   }
 
   # Fit model
-  fit <- fit_irt(responses, model = "GRM")
+  fit <- fit_irt(responses, model = "GRM", se = FALSE)
 
   # Check that different categories are recognized
   expect_equal(fit$n_categories[1:4], rep(3, 4))
@@ -139,7 +139,7 @@ test_that("GRM handles missing data", {
   responses[missing_idx] <- NA
 
   # Fit model
-  fit <- fit_irt(responses, model = "GRM")
+  fit <- fit_irt(responses, model = "GRM", se = FALSE)
 
   # Should complete without error
   expect_s3_class(fit, "gllamm_irt")
@@ -158,7 +158,7 @@ test_that("GRM print method works for polytomous models", {
   responses <- matrix(sample(1:n_categories, n_persons * n_items, replace = TRUE),
                       n_persons, n_items)
 
-  fit <- fit_irt(responses, model = "GRM")
+  fit <- fit_irt(responses, model = "GRM", se = FALSE)
 
   # Print should work without error
   expect_output(print(fit), "GRM")
@@ -177,13 +177,13 @@ test_that("GRM validates response coding", {
   # 0-based coding is auto-recoded to 1-based with a message
   responses_zero_based <- matrix(sample(0:4, n_persons * n_items, replace = TRUE),
                                  n_persons, n_items)
-  expect_message(fit_irt(responses_zero_based, model = "GRM"),
+  expect_message(fit_irt(responses_zero_based, model = "GRM", se = FALSE),
                  "Auto-recoding")
 
   # Truly invalid coding (categories starting at 2) must error
   responses_invalid <- matrix(sample(2:6, n_persons * n_items, replace = TRUE),
                               n_persons, n_items)
-  expect_error(fit_irt(responses_invalid, model = "GRM"),
+  expect_error(fit_irt(responses_invalid, model = "GRM", se = FALSE),
                "invalid response coding")
 })
 
@@ -200,7 +200,7 @@ test_that("GRM model type dispatch works correctly", {
                               n_persons, n_items)
 
   # Should error when trying to fit GRM to binary data
-  expect_warning(fit_irt(responses_binary, model = "GRM"),
+  expect_warning(fit_irt(responses_binary, model = "GRM", se = FALSE),
                  "data appears dichotomous")
 
   # Polytomous data
@@ -208,6 +208,6 @@ test_that("GRM model type dispatch works correctly", {
                            n_persons, n_items)
 
   # Should error when trying to fit Rasch to polytomous data
-  expect_error(fit_irt(responses_poly, model = "Rasch"),
+  expect_error(fit_irt(responses_poly, model = "Rasch", se = FALSE),
                "Dichotomous models.*require binary responses")
 })

@@ -227,7 +227,7 @@ gllammr_validate <- function(cases = "all", scale = c("standard", "large", "all"
 
   # Pin the Laplace path: this case validates exact agreement with the
   # identical approximation in glmer (nAGQ = 1)
-  fit <- fit_irt(resp, model = "Rasch", method = "laplace")
+  fit <- fit_irt(resp, model = "Rasch", method = "laplace", se = FALSE)
 
   # De Boeck-style Rasch as a GLMM: same model, same Laplace approximation
   long <- data.frame(
@@ -271,7 +271,7 @@ gllammr_validate <- function(cases = "all", scale = c("standard", "large", "all"
   p <- plogis(outer(theta, b_true, "-") * matrix(a_true, np, ni, byrow = TRUE))
   resp <- matrix(rbinom(np * ni, 1, p), np, ni)
 
-  fit <- fit_irt(resp, model = "2PL")
+  fit <- fit_irt(resp, model = "2PL", se = FALSE)
   ref <- mirt::mirt(as.data.frame(resp), 1, itemtype = "2PL", verbose = FALSE)
   co <- mirt::coef(ref, simplify = TRUE)$items
   b_ref <- -co[, "d"] / co[, "a1"]
@@ -325,7 +325,7 @@ gllammr_validate <- function(cases = "all", scale = c("standard", "large", "all"
   data("Science", package = "mirt", envir = environment())
   resp <- as.matrix(Science)
 
-  fit <- fit_irt(resp, model = "GRM")
+  fit <- fit_irt(resp, model = "GRM", se = FALSE)
   ref <- mirt::mirt(Science, 1, itemtype = "graded", verbose = FALSE)
 
   # mirt: a*theta + d_k; threshold b_k = -d_k / a (theta ~ N(0,1) fixed).
@@ -690,7 +690,7 @@ gllammr_validate <- function(cases = "all", scale = c("standard", "large", "all"
 
   # Their Table 5 agreement check: step difficulties calculated from the
   # explanatory model vs the directly estimated (descriptive) PCM
-  pcm <- fit_irt(resp3, model = "PCM")
+  pcm <- fit_irt(resp3, model = "PCM", se = FALSE)
   delta_pcm <- do.call(rbind, pcm$item_parameters$thresholds)
   pf <- fit$tmb_obj$env$last.par.best
   s1 <- fit$tmb_obj$env$parList(par = pf)$step_param[, 1]
@@ -920,7 +920,7 @@ gllammr_validate <- function(cases = "all", scale = c("standard", "large", "all"
     1L + rowSums(matrix(runif(np), np, 4) < cum)
   })
 
-  fit <- fit_irt(resp, model = "GRM")
+  fit <- fit_irt(resp, model = "GRM", se = FALSE)
   ref <- mirt::mirt(as.data.frame(resp), 1, itemtype = "graded",
                     verbose = FALSE)
   co <- mirt::coef(ref, simplify = TRUE)$items

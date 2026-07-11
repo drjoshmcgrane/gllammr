@@ -13,7 +13,7 @@ test_that("multilevel IRT recovers class-level intercept and slope variance", {
   pdata <- data.frame(class = factor(class_id), ses = ses)
 
   fit <- fit_irt(resp, model = "Rasch", person_data = pdata,
-                 random = ~ (ses | class))
+                 random = ~ (ses | class), se = FALSE)
 
   expect_true(fit$convergence$converged)
   expect_setequal(fit$random_effects$group_names, c("class", "class:ses"))
@@ -23,7 +23,7 @@ test_that("multilevel IRT recovers class-level intercept and slope variance", {
 
   # The slope model must dominate the intercept-only fit
   fit0 <- fit_irt(resp, model = "Rasch", person_data = pdata,
-                  random = ~ (1 | class))
+                  random = ~ (1 | class), se = FALSE)
   expect_gt(fit$logLik, fit0$logLik)
 })
 
@@ -39,7 +39,7 @@ test_that("slope-only specification (0 + x | g) works", {
   pdata <- data.frame(class = factor(class_id), ses = ses)
 
   fit <- fit_irt(resp, model = "Rasch", person_data = pdata,
-                 random = ~ (0 + ses | class))
+                 random = ~ (0 + ses | class), se = FALSE)
   expect_true(fit$convergence$converged)
   expect_equal(fit$random_effects$group_names, "class:ses")
 })
@@ -48,5 +48,5 @@ test_that("unknown slope covariate errors clearly", {
   resp <- matrix(rbinom(200, 1, 0.5), 20, 10)
   pdata <- data.frame(class = factor(rep(1:4, each = 5)))
   expect_error(fit_irt(resp, model = "Rasch", person_data = pdata,
-                       random = ~ (nope | class)), "not found")
+                       random = ~ (nope | class), se = FALSE), "not found")
 })

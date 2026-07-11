@@ -33,7 +33,7 @@ test_that("NRM accepts unordered categorical data", {
   }
 
   # Fit NRM
-  fit <- fit_irt(responses, model = "NRM")
+  fit <- fit_irt(responses, model = "NRM", se = FALSE)
 
   # Basic checks
   expect_s3_class(fit, "gllamm_irt")
@@ -66,8 +66,8 @@ test_that("NRM vs GRM on ordered data", {
   }
 
   # Fit both models
-  fit_grm <- fit_irt(responses, model = "GRM")
-  fit_nrm <- fit_irt(responses, model = "NRM")
+  fit_grm <- fit_irt(responses, model = "GRM", se = FALSE)
+  fit_nrm <- fit_irt(responses, model = "NRM", se = FALSE)
 
   # GRM should fit better (lower AIC) for ordered data
   expect_lt(fit_grm$AIC, fit_nrm$AIC)
@@ -105,7 +105,7 @@ test_that("NRM handles truly unordered categories", {
   }
 
   # Fit NRM
-  fit <- fit_irt(responses, model = "NRM")
+  fit <- fit_irt(responses, model = "NRM", se = FALSE)
 
   # Should complete successfully
   expect_s3_class(fit, "gllamm_irt")
@@ -136,7 +136,7 @@ test_that("NRM with 5 unordered categories", {
     }
   }
 
-  fit <- fit_irt(responses, model = "NRM")
+  fit <- fit_irt(responses, model = "NRM", se = FALSE)
 
   expect_equal(fit$max_categories, 5)
   expect_equal(length(fit$item_parameters$thresholds[[1]]), 4)  # K-1 thresholds
@@ -154,7 +154,7 @@ test_that("NRM print method", {
   responses <- matrix(sample(1:n_categories, n_persons * n_items, replace = TRUE),
                       n_persons, n_items)
 
-  fit <- fit_irt(responses, model = "NRM")
+  fit <- fit_irt(responses, model = "NRM", se = FALSE)
 
   expect_output(print(fit), "NRM")
   expect_output(print(fit), "Polytomous")
@@ -176,7 +176,7 @@ test_that("NRM with missing data", {
   missing_idx <- sample(1:(n_persons * n_items), 0.25 * n_persons * n_items)
   responses[missing_idx] <- NA
 
-  fit <- fit_irt(responses, model = "NRM")
+  fit <- fit_irt(responses, model = "NRM", se = FALSE)
 
   expect_s3_class(fit, "gllamm_irt")
   expect_true(fit$convergence$converged)
@@ -194,7 +194,7 @@ test_that("NRM parameter structure", {
   responses <- matrix(sample(1:n_categories, n_persons * n_items, replace = TRUE),
                       n_persons, n_items)
 
-  fit <- fit_irt(responses, model = "NRM")
+  fit <- fit_irt(responses, model = "NRM", se = FALSE)
 
   # Check parameter structure
   expect_true(is.list(fit$item_parameters))
@@ -221,7 +221,7 @@ test_that("NRM convergence on difficult data", {
                       n_persons, n_items)
 
   # Should still converge (though parameters may not be well-estimated)
-  fit <- fit_irt(responses, model = "NRM")
+  fit <- fit_irt(responses, model = "NRM", se = FALSE)
 
   expect_s3_class(fit, "gllamm_irt")
   # May or may not converge perfectly on random data, so don't assert convergence

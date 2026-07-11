@@ -135,7 +135,7 @@ dif_test <- function(response_matrix, dif, person_data = NULL,
   matching <- function(anchor_set, studied = NULL) {
     if (match == "theta") {
       f <- fit_irt(response_matrix[, anchor_set, drop = FALSE],
-                   model = model)
+                   model = model, se = FALSE)
       unname(f$person_abilities)
     } else {
       # Observed score over the anchors plus the studied item (the

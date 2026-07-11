@@ -12,7 +12,7 @@ test_that("IRT handles all zero responses for a person", {
   responses[1:3, ] <- 0
 
   # Should handle this (extreme low ability)
-  fit <- fit_irt(responses, model = "Rasch")
+  fit <- fit_irt(responses, model = "Rasch", se = FALSE)
 
   expect_s3_class(fit, "gllamm_irt")
 
@@ -39,7 +39,7 @@ test_that("IRT handles all maximum responses for a person", {
   # Force last 3 persons to have all maximum responses
   responses[98:100, ] <- n_categories
 
-  fit <- fit_irt(responses, model = "GRM")
+  fit <- fit_irt(responses, model = "GRM", se = FALSE)
 
   expect_s3_class(fit, "gllamm_irt")
 
@@ -61,7 +61,7 @@ test_that("IRT handles item with no variance", {
   responses[, 5] <- 1
 
   # Should still fit (though that item may not be informative)
-  fit <- fit_irt(responses, model = "Rasch")
+  fit <- fit_irt(responses, model = "Rasch", se = FALSE)
 
   expect_s3_class(fit, "gllamm_irt")
 
@@ -80,7 +80,7 @@ test_that("IRT handles very small sample size", {
   responses <- matrix(rbinom(n_persons * n_items, 1, 0.5), n_persons, n_items)
 
   # Should complete but may not converge well
-  fit <- fit_irt(responses, model = "Rasch")
+  fit <- fit_irt(responses, model = "Rasch", se = FALSE)
 
   expect_s3_class(fit, "gllamm_irt")
   expect_equal(fit$n_persons, 20)
@@ -97,7 +97,7 @@ test_that("IRT handles very few items", {
 
   responses <- matrix(rbinom(n_persons * n_items, 1, 0.5), n_persons, n_items)
 
-  fit <- fit_irt(responses, model = "2PL")
+  fit <- fit_irt(responses, model = "2PL", se = FALSE)
 
   expect_s3_class(fit, "gllamm_irt")
   expect_equal(fit$n_items, 3)
@@ -124,7 +124,7 @@ test_that("IRT handles extreme discrimination values in simulation", {
     }
   }
 
-  fit <- fit_irt(responses, model = "2PL")
+  fit <- fit_irt(responses, model = "2PL", se = FALSE)
 
   expect_s3_class(fit, "gllamm_irt")
 
@@ -146,7 +146,7 @@ test_that("Polytomous IRT handles 2 categories (edge of polytomous)", {
                       n_persons, n_items)
 
   # Should warn but may still fit
-  expect_warning(fit_irt(responses, model = "GRM"),
+  expect_warning(fit_irt(responses, model = "GRM", se = FALSE),
                  "data appears dichotomous")
 })
 
@@ -165,7 +165,7 @@ test_that("IRT handles highly sparse response matrix", {
   responses[missing_idx] <- NA
 
   # Should handle this (though estimates will have high uncertainty)
-  fit <- fit_irt(responses, model = "Rasch")
+  fit <- fit_irt(responses, model = "Rasch", se = FALSE)
 
   expect_s3_class(fit, "gllamm_irt")
 
@@ -188,7 +188,7 @@ test_that("Polytomous IRT handles unbalanced category frequencies", {
                              prob = c(0.4, 0.3, 0.15, 0.1, 0.05)),
                       n_persons, n_items)
 
-  fit <- fit_irt(responses, model = "GRM")
+  fit <- fit_irt(responses, model = "GRM", se = FALSE)
 
   expect_s3_class(fit, "gllamm_irt")
   expect_true(fit$convergence$converged)
@@ -209,7 +209,7 @@ test_that("IRT validates impossible response values", {
                                n_persons, n_items)
 
   # Should error due to inconsistent coding
-  expect_error(fit_irt(responses_invalid, model = "GRM"),
+  expect_error(fit_irt(responses_invalid, model = "GRM", se = FALSE),
                "invalid response coding")
 })
 
@@ -225,7 +225,7 @@ test_that("IRT handles single person (degenerate case)", {
 
   # May not converge well but should not crash
   # Expect warning about insufficient data
-  fit <- try(fit_irt(responses, model = "Rasch"), silent = TRUE)
+  fit <- try(fit_irt(responses, model = "Rasch", se = FALSE), silent = TRUE)
 
   # Either succeeds or fails gracefully
   expect_true(inherits(fit, "gllamm_irt") || inherits(fit, "try-error"))
@@ -251,7 +251,7 @@ test_that("IRT handles all items same difficulty", {
     }
   }
 
-  fit <- fit_irt(responses, model = "Rasch")
+  fit <- fit_irt(responses, model = "Rasch", se = FALSE)
 
   expect_s3_class(fit, "gllamm_irt")
 
@@ -273,7 +273,7 @@ test_that("Polytomous IRT with ragged data structure", {
   responses[, 4:7] <- matrix(sample(1:4, n_persons * 4, replace = TRUE), n_persons, 4)
   responses[, 8:10] <- matrix(sample(1:5, n_persons * 3, replace = TRUE), n_persons, 3)
 
-  fit <- fit_irt(responses, model = "GRM")
+  fit <- fit_irt(responses, model = "GRM", se = FALSE)
 
   expect_s3_class(fit, "gllamm_irt")
 
@@ -296,7 +296,7 @@ test_that("IRT handles negative values gracefully", {
   responses_invalid <- matrix(sample(-1:1, n_persons * n_items, replace = TRUE),
                                n_persons, n_items)
 
-  expect_error(fit_irt(responses_invalid, model = "Rasch"))
+  expect_error(fit_irt(responses_invalid, model = "Rasch", se = FALSE))
 })
 
 
@@ -309,7 +309,7 @@ test_that("IRT convergence message is informative", {
 
   responses <- matrix(rbinom(n_persons * n_items, 1, 0.5), n_persons, n_items)
 
-  fit <- fit_irt(responses, model = "Rasch")
+  fit <- fit_irt(responses, model = "Rasch", se = FALSE)
 
   # Check convergence info is present
   expect_true("convergence" %in% names(fit))
@@ -332,7 +332,7 @@ test_that("Polytomous IRT with perfect scores on some items", {
   # Make one item have perfect scores (all category 4)
   responses[, 3] <- n_categories
 
-  expect_warning(fit <- fit_irt(responses, model = "PCM"),
+  expect_warning(fit <- fit_irt(responses, model = "PCM", se = FALSE),
                  "no response variance")
 
   expect_s3_class(fit, "gllamm_irt")

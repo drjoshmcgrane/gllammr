@@ -26,7 +26,7 @@ test_that("PCM constrains discriminations to 1", {
   }
 
   # Fit PCM model
-  fit <- fit_irt(responses, model = "PCM")
+  fit <- fit_irt(responses, model = "PCM", se = FALSE)
 
   # Check that model type is correct
   expect_equal(fit$model, "PCM")
@@ -62,7 +62,7 @@ test_that("GPCM estimates varying discriminations", {
   }
 
   # Fit GPCM model
-  fit <- fit_irt(responses, model = "GPCM")
+  fit <- fit_irt(responses, model = "GPCM", se = FALSE)
 
   # Check that discriminations vary
   expect_gt(sd(fit$item_parameters$discrimination), 0.1)
@@ -96,8 +96,8 @@ test_that("PCM vs GPCM model comparison", {
   }
 
   # Fit both models
-  fit_pcm <- fit_irt(responses, model = "PCM")
-  fit_gpcm <- fit_irt(responses, model = "GPCM")
+  fit_pcm <- fit_irt(responses, model = "PCM", se = FALSE)
+  fit_gpcm <- fit_irt(responses, model = "GPCM", se = FALSE)
 
   # Both should converge
   expect_true(fit_pcm$convergence$converged)
@@ -133,7 +133,7 @@ test_that("PCM parameter recovery", {
   }
 
   # Fit model
-  fit <- fit_irt(responses, model = "PCM")
+  fit <- fit_irt(responses, model = "PCM", se = FALSE)
 
   # Check ability correlation
   expect_gt(cor(fit$person_abilities, true_theta), 0.8)
@@ -173,7 +173,7 @@ test_that("GPCM with 7 categories", {
   }
 
   # Fit GPCM
-  fit <- fit_irt(responses, model = "GPCM")
+  fit <- fit_irt(responses, model = "GPCM", se = FALSE)
 
   # Should handle 7 categories
   expect_equal(fit$max_categories, 7)
@@ -213,7 +213,7 @@ test_that("PCM with missing data patterns", {
   responses[50:70, 7:10] <- NA  # Middle group missing last 4 items
 
   # Fit model
-  fit <- fit_irt(responses, model = "PCM")
+  fit <- fit_irt(responses, model = "PCM", se = FALSE)
 
   # Should complete successfully
   expect_s3_class(fit, "gllamm_irt")
@@ -232,7 +232,7 @@ test_that("GPCM print and summary methods", {
   responses <- matrix(sample(1:n_categories, n_persons * n_items, replace = TRUE),
                       n_persons, n_items)
 
-  fit <- fit_irt(responses, model = "GPCM")
+  fit <- fit_irt(responses, model = "GPCM", se = FALSE)
 
   # Print should show polytomous model info
   expect_output(print(fit), "GPCM")
@@ -256,8 +256,8 @@ test_that("PCM vs GPCM discrimination constraints", {
   responses <- matrix(sample(1:n_categories, n_persons * n_items, replace = TRUE),
                       n_persons, n_items)
 
-  fit_pcm <- fit_irt(responses, model = "PCM")
-  fit_gpcm <- fit_irt(responses, model = "GPCM")
+  fit_pcm <- fit_irt(responses, model = "PCM", se = FALSE)
+  fit_gpcm <- fit_irt(responses, model = "GPCM", se = FALSE)
 
   # PCM discriminations should be close to 1
   expect_true(all(abs(fit_pcm$item_parameters$discrimination - 1) < 0.3))
@@ -285,8 +285,8 @@ test_that("PCM/GPCM handle extreme responses", {
   responses[96:100, ] <- 5  # High ability persons
 
   # Both models should handle this
-  fit_pcm <- fit_irt(responses, model = "PCM")
-  fit_gpcm <- fit_irt(responses, model = "GPCM")
+  fit_pcm <- fit_irt(responses, model = "PCM", se = FALSE)
+  fit_gpcm <- fit_irt(responses, model = "GPCM", se = FALSE)
 
   expect_s3_class(fit_pcm, "gllamm_irt")
   expect_s3_class(fit_gpcm, "gllamm_irt")

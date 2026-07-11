@@ -10,8 +10,8 @@ test_that("compare_models builds a coherent table across model classes", {
     rbinom(np, 1, plogis(a[j] * (theta - b[j])))
   })
 
-  rasch <- fit_irt(resp, model = "Rasch")
-  twopl <- fit_irt(resp, model = "2PL")
+  rasch <- fit_irt(resp, model = "Rasch", se = FALSE)
+  twopl <- fit_irt(resp, model = "2PL", se = FALSE)
   lca2 <- fit_lca(resp, nclass = 2, control = list(n_starts = 3))
 
   cmp <- compare_models(rasch = rasch, twopl = twopl, lca2 = lca2)
@@ -36,7 +36,7 @@ test_that("compare_models builds a coherent table across model classes", {
 test_that("compare_models sorts and labels unnamed arguments", {
   set.seed(7)
   resp <- matrix(rbinom(2000, 1, 0.5), 200, 10)
-  f1 <- fit_irt(resp, model = "Rasch")
+  f1 <- fit_irt(resp, model = "Rasch", se = FALSE)
   f2 <- fit_lca(resp, nclass = 2, control = list(n_starts = 2))
   cmp <- compare_models(f1, f2, sort_by = "BIC")
   expect_equal(cmp$BIC, sort(cmp$BIC))
@@ -46,8 +46,8 @@ test_that("compare_models sorts and labels unnamed arguments", {
 test_that("compare_models warns on differing observation counts", {
   set.seed(9)
   resp <- matrix(rbinom(3000, 1, 0.5), 300, 10)
-  f_full <- fit_irt(resp, model = "Rasch")
-  f_half <- fit_irt(resp[1:150, ], model = "Rasch")
+  f_full <- fit_irt(resp, model = "Rasch", se = FALSE)
+  f_half <- fit_irt(resp[1:150, ], model = "Rasch", se = FALSE)
   expect_warning(compare_models(full = f_full, half = f_half),
                  "different numbers of observations")
   expect_error(compare_models(f_full), "at least two")

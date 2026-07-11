@@ -402,7 +402,7 @@ test_that("EIRT comparison with two-stage approach", {
   )
 
   # Two-stage: fit_irt() then regress difficulties
-  fit_irt <- fit_irt(responses, model = "Rasch")
+  fit_irt <- fit_irt(responses, model = "Rasch", se = FALSE)
   difficulties <- fit_irt$item_parameters$difficulty
 
   two_stage_lm <- lm(difficulties ~ word_freq, data = item_data)

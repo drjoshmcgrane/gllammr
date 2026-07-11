@@ -23,7 +23,7 @@ create_multilevel_fit <- function() {
 
   fit_irt(responses, model = "Rasch",
           person_data = person_data,
-          random = ~ (1 | group_id))
+          random = ~ (1 | group_id), se = FALSE)
 }
 
 test_that("VarCorr returns correct structure", {
@@ -182,7 +182,7 @@ test_that("coef.gllamm_irt_multilevel works for random type", {
 test_that("VarCorr fails for standard IRT model", {
   set.seed(123)
   responses <- matrix(rbinom(500, 1, 0.5), 50, 10)
-  fit_std <- fit_irt(responses, model = "Rasch")
+  fit_std <- fit_irt(responses, model = "Rasch", se = FALSE)
 
   expect_error(VarCorr(fit_std), "random effects")
 })
@@ -190,7 +190,7 @@ test_that("VarCorr fails for standard IRT model", {
 test_that("icc fails for standard IRT model", {
   set.seed(123)
   responses <- matrix(rbinom(500, 1, 0.5), 50, 10)
-  fit_std <- fit_irt(responses, model = "Rasch")
+  fit_std <- fit_irt(responses, model = "Rasch", se = FALSE)
 
   expect_error(icc(fit_std), "random effects")
 })
@@ -198,7 +198,7 @@ test_that("icc fails for standard IRT model", {
 test_that("ranef fails for standard IRT model", {
   set.seed(123)
   responses <- matrix(rbinom(500, 1, 0.5), 50, 10)
-  fit_std <- fit_irt(responses, model = "Rasch")
+  fit_std <- fit_irt(responses, model = "Rasch", se = FALSE)
 
   expect_error(ranef(fit_std), "random effects")
 })
@@ -206,7 +206,7 @@ test_that("ranef fails for standard IRT model", {
 test_that("abilities works for standard IRT model", {
   set.seed(123)
   responses <- matrix(rbinom(500, 1, 0.5), 50, 10)
-  fit_std <- fit_irt(responses, model = "Rasch")
+  fit_std <- fit_irt(responses, model = "Rasch", se = FALSE)
 
   theta <- abilities(fit_std)
 
@@ -233,7 +233,7 @@ test_that("Methods work with multiple random effects", {
 
   fit <- fit_irt(responses, model = "Rasch",
                  person_data = person_data,
-                 random = ~ (1 | level1) + (1 | level2))
+                 random = ~ (1 | level1) + (1 | level2), se = FALSE)
 
   # VarCorr should have 4 rows (2 REs + Person + Residual)
   vc <- VarCorr(fit)

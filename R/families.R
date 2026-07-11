@@ -211,6 +211,8 @@ binomial <- function(link = c("logit", "probit", "cloglog")) {
 #'   "GRM", "PCM", "GPCM", "NRM" (polytomous)
 #' @param mc_items For 3PL only: which items have guessing parameters
 #'   (NULL = all; logical or integer index vector)
+#' @param se Compute standard errors (default TRUE); see
+#'   \code{\link{fit_irt}}
 #'
 #' @return A family object of class \code{irt_family}
 #'
@@ -224,10 +226,10 @@ binomial <- function(link = c("logit", "probit", "cloglog")) {
 #'
 #' @export
 irt <- function(model = c("Rasch", "2PL", "3PL", "GRM", "PCM", "GPCM", "NRM"),
-                mc_items = NULL) {
+                mc_items = NULL, se = TRUE) {
   model <- match.arg(model)
   structure(
-    list(family = "irt", model = model, mc_items = mc_items),
+    list(family = "irt", model = model, mc_items = mc_items, se = se),
     class = c("irt_family", "family")
   )
 }

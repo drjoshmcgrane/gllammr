@@ -6,7 +6,8 @@
 \usage{
 irt(
   model = c("Rasch", "2PL", "3PL", "GRM", "PCM", "GPCM", "NRM"),
-  mc_items = NULL
+  mc_items = NULL,
+  se = TRUE
 )
 }
 \arguments{
@@ -15,6 +16,9 @@ irt(
 
 \item{mc_items}{For 3PL only: which items have guessing parameters
 (NULL = all; logical or integer index vector)}
+
+\item{se}{Compute standard errors (default TRUE); see
+\code{\link{fit_irt}}}
 }
 \value{
 A family object of class \code{irt_family}

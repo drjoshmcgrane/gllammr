@@ -148,7 +148,7 @@ test_that("IRT plotting functions work", {
   responses <- sapply(seq_len(n_items), function(j)
     rbinom(n_persons, 1, plogis(theta - b[j])))
 
-  fit_irt_2pl <- fit_irt(responses, model = "2PL")
+  fit_irt_2pl <- fit_irt(responses, model = "2PL", se = FALSE)
 
   expect_silent({
     pdf(tempfile())

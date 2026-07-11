@@ -255,6 +255,7 @@ gllamm <- function(formula,
                    random = random,
                    weights = weights,
                    mc_items = family$mc_items,
+                   se = family$se %||% TRUE,
                    start = start,
                    control = control))
   }

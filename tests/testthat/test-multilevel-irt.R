@@ -30,7 +30,7 @@ simulate_multilevel_data <- function(n_persons = 100, n_items = 10, n_groups = 1
 test_that("fit_irt works without random effects (standard model)", {
   data <- simulate_multilevel_data(n_persons = 50, n_items = 8)
 
-  fit <- fit_irt(data$responses, model = "Rasch")
+  fit <- fit_irt(data$responses, model = "Rasch", se = FALSE)
 
   expect_s3_class(fit, "gllamm_irt")
   expect_false(inherits(fit, "gllamm_irt_multilevel"))
@@ -43,7 +43,7 @@ test_that("fit_irt with random effects creates multilevel model", {
 
   fit <- fit_irt(data$responses, model = "Rasch",
                  person_data = data$person_data,
-                 random = ~ (1 | group_id))
+                 random = ~ (1 | group_id), se = FALSE)
 
   expect_s3_class(fit, "gllamm_irt_multilevel")
   expect_s3_class(fit, "gllamm_irt")
@@ -57,7 +57,7 @@ test_that("multilevel model recovers variance components", {
 
   fit <- fit_irt(data$responses, model = "Rasch",
                  person_data = data$person_data,
-                 random = ~ (1 | group_id))
+                 random = ~ (1 | group_id), se = FALSE)
 
   # Recovered SDs should be reasonably close to true values
   # (allowing for sampling variability)
@@ -69,10 +69,10 @@ test_that("multilevel model improves fit over standard model", {
   data <- simulate_multilevel_data(n_persons = 100, n_items = 10,
                                     sigma_group = 0.6)  # Substantial group effect
 
-  fit_std <- fit_irt(data$responses, model = "Rasch")
+  fit_std <- fit_irt(data$responses, model = "Rasch", se = FALSE)
   fit_ml <- fit_irt(data$responses, model = "Rasch",
                     person_data = data$person_data,
-                    random = ~ (1 | group_id))
+                    random = ~ (1 | group_id), se = FALSE)
 
   # Multilevel should have better (higher) log-likelihood
   expect_true(fit_ml$logLik >= fit_std$logLik)
@@ -83,7 +83,7 @@ test_that("multilevel model returns correct random effects structure", {
 
   fit <- fit_irt(data$responses, model = "Rasch",
                  person_data = data$person_data,
-                 random = ~ (1 | group_id))
+                 random = ~ (1 | group_id), se = FALSE)
 
   expect_false(is.null(fit$random_effects))
   expect_equal(fit$random_effects$group_names, "group_id")
@@ -99,7 +99,7 @@ test_that("VarCorr extracts variance components correctly", {
 
   fit <- fit_irt(data$responses, model = "Rasch",
                  person_data = data$person_data,
-                 random = ~ (1 | group_id))
+                 random = ~ (1 | group_id), se = FALSE)
 
   vc <- VarCorr(fit)
 
@@ -115,7 +115,7 @@ test_that("icc computes intraclass correlations correctly", {
 
   fit <- fit_irt(data$responses, model = "Rasch",
                  person_data = data$person_data,
-                 random = ~ (1 | group_id))
+                 random = ~ (1 | group_id), se = FALSE)
 
   # All ICCs
   icc_all <- icc(fit)
@@ -134,7 +134,7 @@ test_that("ranef extracts random effects correctly", {
 
   fit <- fit_irt(data$responses, model = "Rasch",
                  person_data = data$person_data,
-                 random = ~ (1 | group_id))
+                 random = ~ (1 | group_id), se = FALSE)
 
   # All random effects
   re_all <- ranef(fit)
@@ -153,7 +153,7 @@ test_that("abilities extracts person abilities correctly", {
 
   fit <- fit_irt(data$responses, model = "Rasch",
                  person_data = data$person_data,
-                 random = ~ (1 | group_id))
+                 random = ~ (1 | group_id), se = FALSE)
 
   # Person deviations only
   theta_0 <- abilities(fit, composite = FALSE)
@@ -172,7 +172,7 @@ test_that("multilevel 2PL model works", {
 
   fit <- fit_irt(data$responses, model = "2PL",
                  person_data = data$person_data,
-                 random = ~ (1 | group_id))
+                 random = ~ (1 | group_id), se = FALSE)
 
   expect_s3_class(fit, "gllamm_irt_multilevel")
   expect_true(fit$convergence$converged)
@@ -184,7 +184,7 @@ test_that("multilevel 3PL model works", {
 
   fit <- fit_irt(data$responses, model = "3PL",
                  person_data = data$person_data,
-                 random = ~ (1 | group_id))
+                 random = ~ (1 | group_id), se = FALSE)
 
   expect_s3_class(fit, "gllamm_irt_multilevel")
   expect_true(fit$convergence$converged)
@@ -205,7 +205,7 @@ test_that("multilevel polytomous model works", {
 
   fit <- fit_irt(responses, model = "GRM",
                  person_data = person_data,
-                 random = ~ (1 | group_id))
+                 random = ~ (1 | group_id), se = FALSE)
 
   expect_s3_class(fit, "gllamm_irt_multilevel")
   expect_true(fit$convergence$converged)
@@ -220,7 +220,7 @@ test_that("partial nesting (NA in grouping variable) works", {
 
   fit <- fit_irt(data$responses, model = "Rasch",
                  person_data = data$person_data,
-                 random = ~ (1 | group_id))
+                 random = ~ (1 | group_id), se = FALSE)
 
   expect_s3_class(fit, "gllamm_irt_multilevel")
   expect_true(fit$convergence$converged)
@@ -249,7 +249,7 @@ test_that("multiple random effects work", {
 
   fit <- fit_irt(responses, model = "Rasch",
                  person_data = person_data,
-                 random = ~ (1 | school_id) + (1 | class_id))
+                 random = ~ (1 | school_id) + (1 | class_id), se = FALSE)
 
   expect_s3_class(fit, "gllamm_irt_multilevel")
   expect_equal(length(fit$random_effects$group_names), 2)
@@ -262,7 +262,7 @@ test_that("print method works for multilevel models", {
 
   fit <- fit_irt(data$responses, model = "Rasch",
                  person_data = data$person_data,
-                 random = ~ (1 | group_id))
+                 random = ~ (1 | group_id), se = FALSE)
 
   # Should not error
   expect_output(print(fit), "Multi-Level IRT Model")
@@ -276,7 +276,7 @@ test_that("validation catches errors", {
 
   # random without person_data
   expect_error(
-    fit_irt(data$responses, model = "Rasch", random = ~ (1 | group_id)),
+    fit_irt(data$responses, model = "Rasch", random = ~ (1 | group_id), se = FALSE),
     "person_data must be provided"
   )
 
@@ -284,14 +284,14 @@ test_that("validation catches errors", {
   wrong_data <- data$person_data[1:50, ]
   expect_error(
     fit_irt(data$responses, model = "Rasch",
-            person_data = wrong_data, random = ~ (1 | group_id)),
+            person_data = wrong_data, random = ~ (1 | group_id), se = FALSE),
     "same number of rows"
   )
 
   # nonexistent grouping variable
   expect_error(
     fit_irt(data$responses, model = "Rasch",
-            person_data = data$person_data, random = ~ (1 | nonexistent)),
+            person_data = data$person_data, random = ~ (1 | nonexistent), se = FALSE),
     "not found in person_data"
   )
 })

@@ -112,8 +112,8 @@ test_that("matrix-response models use observed responses under MAR", {
   resp_na <- resp
   resp_na[sample(length(resp_na), 0.15 * length(resp_na))] <- NA
 
-  f_full <- fit_irt(resp, model = "Rasch")
-  f_na <- fit_irt(resp_na, model = "Rasch")
+  f_full <- fit_irt(resp, model = "Rasch", se = FALSE)
+  f_na <- fit_irt(resp_na, model = "Rasch", se = FALSE)
   expect_lt(max(abs(f_full$item_parameters$difficulty -
                       f_na$item_parameters$difficulty)), 0.25)
 

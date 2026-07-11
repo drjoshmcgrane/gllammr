@@ -23,7 +23,7 @@ test_that("saturated EIRT difficulty model equals descriptive IRT exactly", {
   fe <- fit_eirt(d$resp, data.frame(item = factor(seq_len(ni))),
                  difficulty_formula = ~ item, model = "Rasch",
                  item_residuals = FALSE)
-  fi <- fit_irt(d$resp, model = "Rasch", method = "laplace")
+  fi <- fit_irt(d$resp, model = "Rasch", method = "laplace", se = FALSE)
   expect_equal(as.numeric(logLik(fe)), as.numeric(logLik(fi)),
                tolerance = 1e-5)
 })
@@ -47,8 +47,8 @@ test_that("EIRT person fweights reproduce duplicated-data fits exactly", {
   expect_equal(fa$ability_sd, fb$ability_sd, tolerance = 1e-5)
 
   # EM route weights the log marginal likelihood directly: also exact
-  ea <- fit_irt(d$resp, model = "Rasch", weights = w)
-  eb <- fit_irt(d$resp[idx, ], model = "Rasch")
+  ea <- fit_irt(d$resp, model = "Rasch", weights = w, se = FALSE)
+  eb <- fit_irt(d$resp[idx, ], model = "Rasch", se = FALSE)
   expect_equal(as.numeric(logLik(ea)), as.numeric(logLik(eb)),
                tolerance = 1e-4)
 
@@ -59,7 +59,7 @@ test_that("EIRT person fweights reproduce duplicated-data fits exactly", {
              model = "Rasch", weights = w + 0.5),
     "Non-integer")
   expect_error(
-    fit_irt(d$resp, model = "Rasch", method = "laplace", weights = w + 0.5),
+    fit_irt(d$resp, model = "Rasch", method = "laplace", weights = w + 0.5, se = FALSE),
     "Non-integer")
 })
 
@@ -153,7 +153,7 @@ test_that("multilevel fit_irt simulate and marginal use the group REs", {
   d <- make_dichot(np = 200, ni = 10, seed = 21, school = TRUE)
   fm <- fit_irt(d$resp, model = "Rasch",
                 person_data = data.frame(sch = d$sch),
-                random = ~ (1 | sch))
+                random = ~ (1 | sch), se = FALSE)
   sm <- simulate(fm, nsim = 20, seed = 2)
   smean <- mean(sapply(sm, function(s)
     var(tapply(rowMeans(s), d$sch, mean))))

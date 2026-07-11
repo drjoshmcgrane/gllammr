@@ -50,7 +50,7 @@ test_that("irt_category_probs rows sum to one for all models", {
 
 test_that("polytomous IRT marginal predictions return category matrix", {
   s <- simulate_poly_data()
-  fit <- fit_irt(s$resp, model = "GRM")
+  fit <- fit_irt(s$resp, model = "GRM", se = FALSE)
   m <- predict(fit, type = "marginal")
 
   expect_true(is.matrix(m))
@@ -148,8 +148,8 @@ test_that("cooks.distance respects max_groups guard", {
 
 test_that("polytomous ICC and DIF plots draw without error", {
   s <- simulate_poly_data()
-  fit_grm <- fit_irt(s$resp, model = "GRM")
-  fit_pcm <- fit_irt(s$resp, model = "PCM")
+  fit_grm <- fit_irt(s$resp, model = "GRM", se = FALSE)
+  fit_pcm <- fit_irt(s$resp, model = "PCM", se = FALSE)
 
   pdf(NULL)
   on.exit(dev.off(), add = TRUE)

@@ -11,10 +11,10 @@ test_that("Rasch model: equal weights match unweighted", {
   responses <- matrix(rbinom(n_persons * n_items, 1, prob), n_persons, n_items)
 
   # Fit without weights
-  fit_nowt <- fit_irt(responses, model = "Rasch")
+  fit_nowt <- fit_irt(responses, model = "Rasch", se = FALSE)
 
   # Fit with equal weights
-  fit_eqwt <- fit_irt(responses, model = "Rasch", weights = rep(1, n_persons))
+  fit_eqwt <- fit_irt(responses, model = "Rasch", weights = rep(1, n_persons), se = FALSE)
 
   # Should get identical results
   expect_equal(fit_nowt$item_parameters$difficulty,
@@ -45,10 +45,10 @@ test_that("2PL model: doubled weights double log-likelihood contribution", {
   }
 
   # Fit with unit weights
-  fit_wt1 <- fit_irt(responses, model = "2PL", weights = rep(1, n_persons))
+  fit_wt1 <- fit_irt(responses, model = "2PL", weights = rep(1, n_persons), se = FALSE)
 
   # Fit with doubled weights
-  fit_wt2 <- fit_irt(responses, model = "2PL", weights = rep(2, n_persons))
+  fit_wt2 <- fit_irt(responses, model = "2PL", weights = rep(2, n_persons), se = FALSE)
 
   # Parameters should be similar (estimates don't change with constant weights)
   expect_equal(fit_wt1$item_parameters$difficulty,
@@ -91,10 +91,10 @@ test_that("GRM model: equal weights match unweighted", {
   }
 
   # Fit without weights
-  fit_nowt <- fit_irt(responses, model = "GRM")
+  fit_nowt <- fit_irt(responses, model = "GRM", se = FALSE)
 
   # Fit with equal weights
-  fit_eqwt <- fit_irt(responses, model = "GRM", weights = rep(1, n_persons))
+  fit_eqwt <- fit_irt(responses, model = "GRM", weights = rep(1, n_persons), se = FALSE)
 
   # Should get very similar results
   expect_equal(fit_nowt$item_parameters$discrimination,
@@ -136,7 +136,7 @@ test_that("PCM model: variable weights affect estimates appropriately", {
   weights <- c(rep(1, 30), rep(2, 30))
 
   # Fit with weights
-  fit_weighted <- fit_irt(responses, model = "PCM", weights = weights)
+  fit_weighted <- fit_irt(responses, model = "PCM", weights = weights, se = FALSE)
 
   # Should converge successfully
   expect_true(fit_weighted$convergence$converged)
@@ -176,24 +176,24 @@ test_that("GPCM model: weights validation", {
 
   # Test: wrong length weights should error
   expect_error(
-    fit_irt(responses, model = "GPCM", weights = rep(1, n_persons - 1)),
+    fit_irt(responses, model = "GPCM", weights = rep(1, n_persons - 1), se = FALSE),
     "Length of weights"
   )
 
   # Test: negative weights should error
   expect_error(
-    fit_irt(responses, model = "GPCM", weights = c(rep(1, n_persons - 1), -1)),
+    fit_irt(responses, model = "GPCM", weights = c(rep(1, n_persons - 1), -1), se = FALSE),
     "non-negative"
   )
 
   # Test: NA weights should error
   expect_error(
-    fit_irt(responses, model = "GPCM", weights = c(rep(1, n_persons - 1), NA)),
+    fit_irt(responses, model = "GPCM", weights = c(rep(1, n_persons - 1), NA), se = FALSE),
     "cannot contain missing"
   )
 
   # Test: valid weights should work
-  fit <- fit_irt(responses, model = "GPCM", weights = runif(n_persons, 0.5, 2))
+  fit <- fit_irt(responses, model = "GPCM", weights = runif(n_persons, 0.5, 2), se = FALSE)
   expect_true(fit$convergence$converged)
 })
 
@@ -221,11 +221,11 @@ test_that("3PL model: weights support", {
   # Fit with and without weights (3PL guessing parameters are weakly
   # identified at this sample size, so nlminb may report false convergence;
   # the meaningful check is that weights are honoured)
-  fit_nowt <- suppressWarnings(fit_irt(responses, model = "3PL"))
+  fit_nowt <- suppressWarnings(fit_irt(responses, model = "3PL", se = FALSE))
   fit_eqwt <- suppressWarnings(
-    fit_irt(responses, model = "3PL", weights = rep(1, n_persons)))
+    fit_irt(responses, model = "3PL", weights = rep(1, n_persons), se = FALSE))
   fit_weighted <- suppressWarnings(
-    fit_irt(responses, model = "3PL", weights = runif(n_persons, 0.8, 1.2)))
+    fit_irt(responses, model = "3PL", weights = runif(n_persons, 0.8, 1.2), se = FALSE))
 
   # Equal weights must reproduce the unweighted fit
   expect_equal(fit_nowt$logLik, fit_eqwt$logLik, tolerance = 1e-6)
