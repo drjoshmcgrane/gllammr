@@ -1,0 +1,28 @@
+# EM estimation for cognitive diagnosis models
+
+Marginal ML for CDMs. The entire EM loop runs in compiled C++
+(src/em_cdm.cpp): one pass per iteration accumulates the
+person-by-profile posterior and the group-pooled expected counts; the
+M-step is the closed-form weighted proportion per reduced-profile group,
+isotonically projected over the group lattice when monotone; safeguarded
+Ramsay acceleration monitors the true marginal log-likelihood. R draws
+the random starting values (one C call per start) and keeps the best
+solution.
+
+## Usage
+
+``` r
+fit_cdm_em(
+  Y,
+  profiles,
+  group_id,
+  n_groups,
+  group_edges,
+  group_levels,
+  monotone = TRUE,
+  weights = NULL,
+  n_starts = 3,
+  max_iter = 2000,
+  tol = 1e-07
+)
+```

@@ -1,0 +1,764 @@
+# gllammr: Generalized Linear Latent and Mixed Models in R
+
+[![License: GPL
+v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![codecov](https://codecov.io/gh/drjoshmcgrane/gllammr/branch/main/graph/badge.svg)](https://codecov.io/gh/drjoshmcgrane/gllammr)
+
+An R implementation of **Generalized Linear Latent and Mixed Models
+(GLLAMM)** following the Stata GLLAMM framework of Rabe-Hesketh,
+Skrondal, and Pickles, with a fast TMB (Template Model Builder) backend.
+
+## Overview
+
+gllammr fits a wide class of multilevel latent variable models through
+one interface:
+
+- **Multilevel GLMMs** (Gaussian, binomial, Poisson, gamma;
+  logit/probit/cloglog links), with random slopes, nested and crossed
+  terms, adaptive quadrature, and level-specific survey weights
+- **Ordinal and multinomial models** (cumulative, adjacent-category,
+  forward/backward continuation-ratio, partial proportional odds), with
+  crossed/multi-term random effects
+- **Item response theory**: Rasch, 2PL, 3PL (with item-specific
+  guessing), GRM, PCM, GPCM, NRM; EM or Laplace estimation; multilevel
+  IRT with school/cluster random effects and person-level random slopes
+- **Explanatory IRT (EIRT)**: regress item difficulty, discrimination,
+  or polytomous step thresholds on item properties (LLTM,
+  LLTM-plus-error, latent regression, and the polytomous LPCM framework
+  of Kim & Wilson), plus genuinely step-level covariates that vary
+  within items across steps; single- or multilevel
+- **Differential item functioning**: logistic-regression DIF with
+  multiple grouping factors, interactions, iterative purification, and
+  effect-size classification; and model-based IRT-likelihood-ratio DIF
+  with anchor items, latent impact regression, and Wald or LR tests
+- **Latent class analysis**: binary, categorical, and continuous
+  indicators; order-restricted and partially ordered (poset) classes;
+  Rasch-structured located classes (LCR); and a latent-structure
+  comparison spanning unrestricted, monotone, invariant-item-ordering,
+  double-monotone, LCR, and Rasch models
+- **Cognitive diagnosis models**: DINA, DINO, and G-DINA with
+  Q-matrices, attribute hierarchies, and monotonicity constraints
+- **Structural equation models**: CFA, structural regressions, MIMIC,
+  FIML for missing data, lavaan-matching fit indices (chi-square, CFI,
+  TLI, RMSEA with CI, SRMR), standardized solutions
+- **Joint mixed-response models** sharing a random effect across
+  Gaussian/binomial/Poisson outcomes
+- **Parametric survival/frailty models** (exponential, Weibull AFT)
+- **Rank-ordered (exploded) logit** (Plackett-Luce) with taste-shifter
+  random effects and partial rankings
+- **NPML**: nonparametric maximum likelihood with estimated mass points
+  replacing the normal latent distribution
+- **Model comparison and inference**:
+  [`compare_models()`](https://drjoshmcgrane.github.io/gllammr/reference/compare_models.md)
+  (AIC/BIC deltas, Akaike weights, for any mix of model classes),
+  cluster-robust sandwich covariances, marginal (population-averaged)
+  predictions, parametric-bootstrap
+  [`simulate()`](https://rdrr.io/r/stats/simulate.html) for every class
+
+All models are estimated by maximum likelihood via TMB automatic
+differentiation with the Laplace approximation (optionally adaptive
+Gauss-Hermite quadrature). The C++ templates compile once at install
+time into a single shared library — no compilation happens at run time.
+
+## Installation
+
+``` r
+
+# install.packages("remotes")
+remotes::install_github("drjoshmcgrane/gllammr")
+```
+
+Requires R \>= 4.0.0, TMB \>= 1.9.0, and a C++ compiler at install time
+(standard for source packages; Rtools on Windows, Xcode CLT on macOS).
+
+## Quick Start
+
+``` r
+
+library(gllammr)
+
+# Gaussian GLMM with random intercept
+fit1 <- gllamm(y ~ x + (1 | group), data = mydata, family = gaussian())
+
+# Logistic GLMM
+fit2 <- gllamm(y ~ x + (1 | group), data = mydata, family = binomial())
+
+# Random intercept and slope
+fit3 <- gllamm(y ~ x + (x | group), data = mydata)
+
+summary(fit1)
+fixef(fit1)     # fixed effects
+ranef(fit1)     # random effects (empirical Bayes)
+VarCorr(fit1)   # variance components
+```
+
+### Random slopes, nested, and crossed random effects
+
+``` r
+
+# Random intercept + slope with full covariance (sleepstudy example)
+data(sleepstudy, package = "lme4")
+fit <- gllamm(Reaction ~ Days + (Days | Subject), data = sleepstudy)
+
+# Nested: classes within schools
+fit_nested <- gllamm(score ~ ses + (1 | school/class), data = school_data)
+
+# Crossed: persons crossed with items
+fit_crossed <- gllamm(correct ~ x + (1 | person) + (1 | item),
+                      data = test_data, family = stats::binomial())
+```
+
+| Syntax                  | Description                             |
+|-------------------------|-----------------------------------------|
+| `(1 \| g)`              | Random intercept                        |
+| `(x \| g)`              | Correlated random intercept and slope   |
+| `(x \|\| g)`            | Uncorrelated random intercept and slope |
+| `(1 \| g1/g2)`          | Nested random effects                   |
+| `(1 \| g1) + (1 \| g2)` | Crossed random effects                  |
+
+Note: gllammr exports its own
+[`binomial()`](https://drjoshmcgrane.github.io/gllammr/reference/binomial.md)
+(adding probit and cloglog links), which routes to a dedicated
+single-random-term fitter. For crossed/nested random effects,
+`integration = aghq()`, or level-specific weights with binary outcomes,
+use [`stats::binomial()`](https://rdrr.io/r/stats/family.html) to reach
+the general estimator.
+
+### Unified family dispatch
+
+Latent variable models are available through
+[`gllamm()`](https://drjoshmcgrane.github.io/gllammr/reference/gllamm.md)
+with special family objects, or directly through `fit_*()` functions:
+
+``` r
+
+# IRT: first argument is the persons x items response matrix
+fit_2pl <- gllamm(resp_matrix, family = irt("2PL"))
+fit_2pl <- fit_irt(resp_matrix, model = "2PL")        # equivalent
+fit_2pl$item_parameters
+abilities(fit_2pl)
+
+# Latent class analysis
+fit_lca <- gllamm(indicator_matrix, family = lca(nclass = 3))
+fit_lca$class_probs
+fit_lca$posterior
+
+# Ordinal and multinomial
+fit_ord <- gllamm(rating ~ temp + (1 | judge), data = wine,
+                  family = ordinal("logit"))
+fit_mnl <- gllamm(choice ~ x + (1 | region), data = d, family = multinomial())
+```
+
+### Adaptive quadrature
+
+The default Laplace approximation can be replaced with adaptive
+Gauss-Hermite quadrature for small-cluster binary/count data:
+
+``` r
+
+fit <- gllamm(y ~ x + (1 | g), data = d, family = stats::binomial(),
+              integration = aghq(15))
+```
+
+### Survey weights
+
+Level-specific (pseudo-likelihood) weights, as in Stata GLLAMM’s
+`pweight()`:
+
+``` r
+
+fit <- gllamm(y ~ x + (1 | cluster), data = d, family = stats::binomial(),
+              weights = list(level1 = obs_weights, level2 = cluster_weights))
+```
+
+A plain numeric `weights` vector is treated as observation-level
+frequency/probability weights. IRT, EIRT, ordinal, LCA, CDM, and
+survival models accept weights too.
+
+Weighted fits reproduce duplicated-data fits exactly: EM-based fitters
+weight each person’s log marginal likelihood, Laplace-based fitters
+implement integer frequency weights by exact replication, and
+[`aghq()`](https://drjoshmcgrane.github.io/gllammr/reference/aghq.md)
+weights each group’s log marginal likelihood directly (supporting
+arbitrary non-integer level-2 weights).
+
+### Item response theory, explanatory IRT, and DIF
+
+``` r
+
+# Descriptive IRT (EM by default; Laplace for multilevel or SEs)
+fit <- fit_irt(resp_matrix, model = "GPCM")
+fit_ml <- fit_irt(resp_matrix, model = "Rasch",
+                  person_data = data.frame(school = school),
+                  random = ~ (1 | school))          # multilevel IRT
+
+# Explanatory IRT: regress item parameters on item properties
+fit_lltm <- fit_eirt(resp_matrix, item_data,
+                     difficulty_formula = ~ complexity + word_count,
+                     item_residuals = TRUE)          # LLTM + error
+fit_poly <- fit_eirt(poly_matrix, item_data,
+                     difficulty_formula = ~ domain,
+                     threshold_formula = ~ step_type, # LPCM step regression
+                     model = "PCM")
+fit_step <- fit_eirt(poly_matrix, item_data,
+                     difficulty_formula = ~ domain,
+                     step_formula = ~ skill_demand,   # varies within item
+                     step_data = step_properties,     # one row per item-step
+                     model = "PCM")
+
+# DIF: logistic-regression DIF with multiple factors and purification ...
+dif <- dif_test(resp_matrix, ~ gender * language,
+                person_data = person_data, purify = TRUE)
+# ... or confirmatory IRT-likelihood-ratio DIF with anchor items
+# (group impact handled by a latent ability regression)
+dif2 <- dif_irt(resp_matrix, ~ gender, person_data = person_data,
+                anchors = 1:4)
+```
+
+### Latent class, latent structure, and cognitive diagnosis
+
+``` r
+
+# Ordered, poset, and Rasch-structured latent classes
+fit_ord  <- fit_lca(Y, nclass = 3, ordering = "increasing")
+fit_lcr  <- fit_lca(Y, nclass = 4, structure = "rasch")  # located classes
+
+# Fit the full latent-structure hierarchy (UN/MON/IIO/DM/LCR/RM) at once
+comp <- latent_structure_comparison(Y, nclass = 4)
+
+# Cognitive diagnosis with a Q-matrix and attribute hierarchy
+fit_cdm <- fit_cdm(Y, Q, model = "gdina",
+                   hierarchy = list(c(1, 2)))   # attribute 1 before 2
+
+# Generic model comparison for any fitted models
+compare_models(fit_ord, fit_lcr, fit_cdm)
+```
+
+### Other model classes
+
+``` r
+
+# Parametric survival with shared frailty
+fit_surv <- fit_survival(Surv(time, status) ~ x + (1 | center),
+                         data = d, distribution = "weibull")
+
+# Joint mixed responses sharing a random effect
+fit_mr <- fit_mixed(formulas = list(gaussian = yc ~ x, binomial = yb ~ x),
+                    random = ~ (1 | grp), data = d)
+
+# Structural equation model
+fit_sem <- fit_sem(measurement = list(f1 = ~ x1 + x2 + x3,
+                                      f2 = ~ y1 + y2 + y3),
+                   structural = list(f2 ~ f1), data = d)
+
+# Rank-ordered (exploded) logit with random coefficients
+fit_rank <- fit_rank(rank ~ price + quality, case = ~ id,
+                     random = ~ (0 + price | region), data = d)
+
+# Nonparametric maximum likelihood (discrete mass points)
+fit_np <- fit_npml(y ~ x + (1 | grp), data = d, k = 3, family = binomial())
+```
+
+### Robust standard errors
+
+``` r
+
+vcov(fit, type = "sandwich")   # cluster-robust (sandwich) covariance
+```
+
+### Predictions and simulation
+
+``` r
+
+pred_cond <- predict(fit, type = "response")             # conditional on u = 0
+pred_marg <- predict(fit, type = "marginal", n_sim = 1000) # population-averaged
+sims <- simulate(fit, nsim = 100)                        # data frame of draws
+```
+
+For nonlinear links, conditional and marginal predictions differ;
+marginal predictions integrate over the random effects by Monte Carlo
+(`se.fit = TRUE` available). See
+[`vignette("marginal-predictions")`](https://drjoshmcgrane.github.io/gllammr/articles/marginal-predictions.md).
+
+## Validation
+
+Parameter estimates, standard errors, and log-likelihoods are
+cross-validated against established packages — lme4, glmmTMB, ordinal,
+VGAM, nnet, mirt, TAM, ltm, eRm-style cross-walks, poLCA, CDM, difR,
+survival, npmlreg, lavaan, and clubSandwich — by an automated harness of
+80+ checks covering GLMMs, ordinal/multinomial models, dichotomous and
+polytomous IRT, explanatory IRT (including the De Boeck & Wilson
+verbal-aggression benchmarks), DIF, latent class and cognitive diagnosis
+models, SEM (including FIML), survival, rank-ordered logit, NPML,
+adaptive quadrature, and sandwich standard errors:
+
+``` r
+
+results <- gllammr_validate()   # requires the reference packages (Suggests)
+```
+
+## Documentation
+
+``` r
+
+?gllamm
+help(package = "gllammr")
+browseVignettes("gllammr")
+```
+
+Thirteen vignettes: getting started, multilevel GLMMs, IRT models,
+multilevel IRT, explanatory IRT, DIF analysis, latent class analysis
+(including the latent-structure framework), cognitive diagnosis, SEM,
+marginal predictions, weights, advanced features, and migrating from
+Stata GLLAMM.
+
+## References
+
+- Rabe-Hesketh, S., Skrondal, A., & Pickles, A. (2004). Generalized
+  multilevel structural equation modeling. *Psychometrika*, 69(2),
+  167-190.
+- Skrondal, A., & Rabe-Hesketh, S. (2004). *Generalized Latent Variable
+  Modeling: Multilevel, Longitudinal, and Structural Equation Models*.
+  Chapman & Hall/CRC.
+- De Boeck, P., & Wilson, M. (Eds.) (2004). *Explanatory Item Response
+  Models: A Generalized Linear and Nonlinear Approach*. Springer.
+- Kristensen, K., Nielsen, A., Berg, C. W., Skaug, H., & Bell, B. M.
+  (2016). TMB: Automatic differentiation and Laplace approximation.
+  *Journal of Statistical Software*, 70(5), 1-21.
+
+## License
+
+GPL-3. See [LICENSE](https://drjoshmcgrane.github.io/gllammr/LICENSE).
+
+# Package index
+
+## Model fitting
+
+Top-level fitting entry points (the unified
+[`gllamm()`](https://drjoshmcgrane.github.io/gllammr/reference/gllamm.md)
+interface plus the standalone eirt/DIF/NPML/LCA fitters) and the
+`fit_*()` engines that
+[`gllamm()`](https://drjoshmcgrane.github.io/gllammr/reference/gllamm.md)
+dispatches to internally but which can also be called directly.
+
+- [`gllamm()`](https://drjoshmcgrane.github.io/gllammr/reference/gllamm.md)
+  : Fit Generalized Linear Latent and Mixed Models
+- [`eirt()`](https://drjoshmcgrane.github.io/gllammr/reference/eirt.md)
+  : Explanatory IRT Family
+- [`dif_irt()`](https://drjoshmcgrane.github.io/gllammr/reference/dif_irt.md)
+  : Confirmatory model-based DIF (IRT likelihood-ratio tests)
+- [`npml()`](https://drjoshmcgrane.github.io/gllammr/reference/npml.md)
+  : Nonparametric maximum likelihood integration
+- [`fit()`](https://drjoshmcgrane.github.io/gllammr/reference/fit.md) :
+  Generic Fit Statistics Function
+- [`fit_binomial()`](https://drjoshmcgrane.github.io/gllammr/reference/fit_binomial.md)
+  : Fit Binomial Regression Models with Random Effects
+- [`fit_cdm()`](https://drjoshmcgrane.github.io/gllammr/reference/fit_cdm.md)
+  : Fit Cognitive Diagnosis Models
+- [`fit_eirt()`](https://drjoshmcgrane.github.io/gllammr/reference/fit_eirt.md)
+  : Fit Explanatory Item Response Theory Models
+- [`fit_irt()`](https://drjoshmcgrane.github.io/gllammr/reference/fit_irt.md)
+  : Fit Item Response Theory Models
+- [`fit_lca()`](https://drjoshmcgrane.github.io/gllammr/reference/fit_lca.md)
+  : Fit Latent Class Analysis Models
+- [`fit_mixed()`](https://drjoshmcgrane.github.io/gllammr/reference/fit_mixed.md)
+  : Fit Joint Models for Mixed Response Types
+- [`fit_multinomial()`](https://drjoshmcgrane.github.io/gllammr/reference/fit_multinomial.md)
+  : Fit Multinomial Regression Models with Random Effects
+- [`fit_npml()`](https://drjoshmcgrane.github.io/gllammr/reference/fit_npml.md)
+  : Fit Two-Level GLMMs by Nonparametric Maximum Likelihood (NPML)
+- [`fit_ordinal()`](https://drjoshmcgrane.github.io/gllammr/reference/fit_ordinal.md)
+  : Fit Ordinal Regression Models with Random Effects
+- [`fit_rank()`](https://drjoshmcgrane.github.io/gllammr/reference/fit_rank.md)
+  : Fit Rank-Ordered Logit Models with Taste Heterogeneity
+- [`fit_sem()`](https://drjoshmcgrane.github.io/gllammr/reference/fit_sem.md)
+  : Fit Structural Equation Models with Latent Variables
+- [`fit_survival()`](https://drjoshmcgrane.github.io/gllammr/reference/fit_survival.md)
+  : Fit Parametric Survival Models with Random Effects (Frailty)
+
+## Family and spec constructors
+
+Family objects passed as `gllamm(family = ...)`, plus the adaptive
+quadrature integration specification used as
+`gllamm(integration = ...)`.
+
+- [`ordinal()`](https://drjoshmcgrane.github.io/gllammr/reference/ordinal.md)
+  : Ordinal Family for Proportional and Non-Proportional Odds Models
+- [`binomial()`](https://drjoshmcgrane.github.io/gllammr/reference/binomial.md)
+  : Binomial Family for Binary and Binomial Outcomes
+- [`multinomial()`](https://drjoshmcgrane.github.io/gllammr/reference/multinomial.md)
+  : Multinomial Family for Unordered Categorical Outcomes
+- [`irt()`](https://drjoshmcgrane.github.io/gllammr/reference/irt.md) :
+  IRT Family for Item Response Theory Models
+- [`lca()`](https://drjoshmcgrane.github.io/gllammr/reference/lca.md) :
+  Latent Class Family for Finite Mixture Models
+- [`cdm()`](https://drjoshmcgrane.github.io/gllammr/reference/cdm.md) :
+  Cognitive Diagnosis Family for Q-Matrix Models
+- [`sem()`](https://drjoshmcgrane.github.io/gllammr/reference/sem.md) :
+  SEM Family for Structural Equation Models
+- [`mixed_response()`](https://drjoshmcgrane.github.io/gllammr/reference/mixed_response.md)
+  : Mixed-Response Family for Joint Outcome Models
+- [`ranking()`](https://drjoshmcgrane.github.io/gllammr/reference/ranking.md)
+  : Rank-Ordered Logit Family
+- [`survival_family()`](https://drjoshmcgrane.github.io/gllammr/reference/survival_family.md)
+  : Parametric Frailty Survival Family
+- [`aghq()`](https://drjoshmcgrane.github.io/gllammr/reference/aghq.md)
+  : Adaptive quadrature integration specification
+
+## Methods and diagnostics
+
+Extractors, plots, model comparison, and diagnostic/testing helpers for
+fitted `gllammr` models.
+
+- [`VarCorr()`](https://drjoshmcgrane.github.io/gllammr/reference/VarCorr.md)
+  : Extract Variance Components from Multi-Level Models
+- [`abilities()`](https://drjoshmcgrane.github.io/gllammr/reference/abilities.md)
+  : Extract Person Abilities from IRT Models
+- [`fixef()`](https://drjoshmcgrane.github.io/gllammr/reference/fixef.md)
+  : Generic fixef
+- [`ranef()`](https://drjoshmcgrane.github.io/gllammr/reference/ranef.md)
+  : Generic ranef
+- [`icc()`](https://drjoshmcgrane.github.io/gllammr/reference/icc.md) :
+  Compute Intraclass Correlation Coefficients
+- [`gof.gllamm()`](https://drjoshmcgrane.github.io/gllammr/reference/gof.gllamm.md)
+  : Goodness-of-fit tests for GLLAMM
+- [`predict_difficulty()`](https://drjoshmcgrane.github.io/gllammr/reference/predict_difficulty.md)
+  : Predict Item Difficulties from Covariates
+- [`find_outliers()`](https://drjoshmcgrane.github.io/gllammr/reference/find_outliers.md)
+  : Outlier detection for GLLAMM
+- [`plot_classification_uncertainty()`](https://drjoshmcgrane.github.io/gllammr/reference/plot_classification_uncertainty.md)
+  : Plot Individual Classification Uncertainty
+- [`plot_item_covariates()`](https://drjoshmcgrane.github.io/gllammr/reference/plot_item_covariates.md)
+  : Plot Item Covariate Effects
+- [`plot_ordinal_effects()`](https://drjoshmcgrane.github.io/gllammr/reference/plot_ordinal_effects.md)
+  : Plot Ordinal Model Effects for Multiple Covariates
+- [`dif_plot()`](https://drjoshmcgrane.github.io/gllammr/reference/dif_plot.md)
+  : Plot item response curves by DIF group
+- [`dif_test()`](https://drjoshmcgrane.github.io/gllammr/reference/dif_test.md)
+  : Test for Differential Item Functioning (DIF)
+- [`dif_test_with_data()`](https://drjoshmcgrane.github.io/gllammr/reference/dif_test_with_data.md)
+  : Test for DIF with explicit response data (deprecated)
+- [`compare_eirt()`](https://drjoshmcgrane.github.io/gllammr/reference/compare_eirt.md)
+  : Compare Explanatory IRT Models
+- [`compare_models()`](https://drjoshmcgrane.github.io/gllammr/reference/compare_models.md)
+  : Compare fitted gllammr models
+- [`latent_structure_comparison()`](https://drjoshmcgrane.github.io/gllammr/reference/latent_structure_comparison.md)
+  : Latent structure comparison: categorization, ordering or
+  quantification
+- [`eirt_r_squared()`](https://drjoshmcgrane.github.io/gllammr/reference/eirt_r_squared.md)
+  : Compute R-squared for Item Parameter Regression
+- [`test_item_covariates()`](https://drjoshmcgrane.github.io/gllammr/reference/test_item_covariates.md)
+  : Test Item Covariate Effects
+- [`test_proportional_odds()`](https://drjoshmcgrane.github.io/gllammr/reference/test_proportional_odds.md)
+  : Test Proportional Odds Assumption
+
+## Validation and utilities
+
+Cross-package validation harness.
+
+- [`gllammr_validate()`](https://drjoshmcgrane.github.io/gllammr/reference/gllammr_validate.md)
+  : Cross-package validation of gllammr estimates
+
+## Internal
+
+S3 methods (print/plot/predict/simulate/coef/VarCorr/… implementations
+for each model class) and unexported helper functions. Documented for
+maintainer reference but not part of the public modeling API described
+in the sections above.
+
+- [`.dif_item_fullfit()`](https://drjoshmcgrane.github.io/gllammr/reference/dot-dif_item_fullfit.md)
+  : Full-model (M2) fit for one item, kept for plotting
+- [`.dif_item_tests()`](https://drjoshmcgrane.github.io/gllammr/reference/dot-dif_item_tests.md)
+  : Nested-model LR tests for one item
+- [`.gllamm_re_parts()`](https://drjoshmcgrane.github.io/gllammr/reference/dot-gllamm_re_parts.md)
+  : Per-term random-effects pieces of a fitted GLMM
+- [`.isotonic_poset()`](https://drjoshmcgrane.github.io/gllammr/reference/dot-isotonic_poset.md)
+  : Weighted isotonic regression over a partial order
+- [`.mvn_em_saturated()`](https://drjoshmcgrane.github.io/gllammr/reference/dot-mvn_em_saturated.md)
+  : EM for the saturated multivariate-normal model under missingness
+- [`.ordinal_category_probs()`](https://drjoshmcgrane.github.io/gllammr/reference/dot-ordinal_category_probs.md)
+  : Category probabilities for every ordinal link
+- [`.ordinal_re_parts()`](https://drjoshmcgrane.github.io/gllammr/reference/dot-ordinal_re_parts.md)
+  : Per-term random-effects pieces of a fitted ordinal model
+- [`.pava_weighted()`](https://drjoshmcgrane.github.io/gllammr/reference/dot-pava_weighted.md)
+  : Weighted isotonic regression (pool-adjacent-violators)
+- [`.rasch_mstep()`](https://drjoshmcgrane.github.io/gllammr/reference/dot-rasch_mstep.md)
+  : Weighted logistic M-step for the located latent class (Rasch) model
+- [`.rmsea_ci()`](https://drjoshmcgrane.github.io/gllammr/reference/dot-rmsea_ci.md)
+  : RMSEA 90 percent confidence interval (noncentral chi-square
+  inversion)
+- [`.topological_order()`](https://drjoshmcgrane.github.io/gllammr/reference/dot-topological_order.md)
+  : Topological order of classes under a partial order (Kahn's
+  algorithm)
+- [`.val_row()`](https://drjoshmcgrane.github.io/gllammr/reference/dot-val_row.md)
+  : Build one validation result row
+- [`abilities(`*`<gllamm_irt_multilevel>`*`)`](https://drjoshmcgrane.github.io/gllammr/reference/abilities.gllamm_irt_multilevel.md)
+  : Total abilities for multi-level IRT fits
+- [`align_weights()`](https://drjoshmcgrane.github.io/gllammr/reference/align_weights.md)
+  : Align observation weights with listwise-deleted model data
+- [`coef(`*`<gllamm_eirt>`*`)`](https://drjoshmcgrane.github.io/gllammr/reference/coef.gllamm_eirt.md)
+  : Extract Item Parameters from EIRT Model
+- [`coef(`*`<gllamm_irt>`*`)`](https://drjoshmcgrane.github.io/gllammr/reference/coef.gllamm_irt.md)
+  : Extract Coefficients from IRT Models
+- [`compute_irt_reliability()`](https://drjoshmcgrane.github.io/gllammr/reference/compute_irt_reliability.md)
+  : Compute IRT reliability
+- [`compute_item_fit_sx2()`](https://drjoshmcgrane.github.io/gllammr/reference/compute_item_fit_sx2.md)
+  : Compute S-X^2 item fit statistic
+- [`compute_multinomial_probs()`](https://drjoshmcgrane.github.io/gllammr/reference/compute_multinomial_probs.md)
+  : Compute multinomial probabilities
+- [`compute_person_fit_outfit_infit()`](https://drjoshmcgrane.github.io/gllammr/reference/compute_person_fit_outfit_infit.md)
+  : Compute outfit/infit person fit statistics
+- [`compute_test_information_summary()`](https://drjoshmcgrane.github.io/gllammr/reference/compute_test_information_summary.md)
+  : Compute test information summary
+- [`construct_Z_matrix()`](https://drjoshmcgrane.github.io/gllammr/reference/construct_Z_matrix.md)
+  : Construct random effects design matrix for newdata
+- [`cooks.distance(`*`<gllamm>`*`)`](https://drjoshmcgrane.github.io/gllammr/reference/cooks.distance.gllamm.md)
+  : Group-level Cook's distance for GLLAMM models
+- [`create_grouping_matrix()`](https://drjoshmcgrane.github.io/gllammr/reference/create_grouping_matrix.md)
+  : Create grouping factor matrix
+- [`diagnostics`](https://drjoshmcgrane.github.io/gllammr/reference/diagnostics.md)
+  : Diagnostic Methods for GLLAMM Models
+- [`drop_intercept_column()`](https://drjoshmcgrane.github.io/gllammr/reference/drop_intercept_column.md)
+  : Drop the intercept column from a fixed-effects design matrix
+- [`eirt_item_thresholds()`](https://drjoshmcgrane.github.io/gllammr/reference/eirt_item_thresholds.md)
+  : Reconstruct per-item threshold parameters from a fitted polytomous
+  EIRT model
+- [`eirt_poly_model_name()`](https://drjoshmcgrane.github.io/gllammr/reference/eirt_poly_model_name.md)
+  : Map an EIRT poly_model_type code to the shared probability helper's
+  model name
+- [`expand_nested_random_term()`](https://drjoshmcgrane.github.io/gllammr/reference/expand_nested_random_term.md)
+  : Expand a nested random-effects term into one term per level
+- [`expand_nested_terms()`](https://drjoshmcgrane.github.io/gllammr/reference/expand_nested_terms.md)
+  : Expand nested terms
+- [`extract_random_terms()`](https://drjoshmcgrane.github.io/gllammr/reference/extract_random_terms.md)
+  : Extract random effects terms from formula
+- [`extract_random_vcov()`](https://drjoshmcgrane.github.io/gllammr/reference/extract_random_vcov.md)
+  : Extract random effects variance-covariance matrix from fitted model
+- [`families`](https://drjoshmcgrane.github.io/gllammr/reference/families.md)
+  : Family Objects for GLLAMM Models
+- [`fit_cdm_em()`](https://drjoshmcgrane.github.io/gllammr/reference/fit_cdm_em.md)
+  : EM estimation for cognitive diagnosis models
+- [`fit_irt_dichotomous()`](https://drjoshmcgrane.github.io/gllammr/reference/fit_irt_dichotomous.md)
+  : Internal function for dichotomous IRT models
+- [`fit_irt_em()`](https://drjoshmcgrane.github.io/gllammr/reference/fit_irt_em.md)
+  : MML-EM estimation for IRT models (Bock-Aitkin)
+- [`fit_irt_polytomous()`](https://drjoshmcgrane.github.io/gllammr/reference/fit_irt_polytomous.md)
+  : Internal function for polytomous IRT models
+- [`fit_lca_em()`](https://drjoshmcgrane.github.io/gllammr/reference/fit_lca_em.md)
+  : EM estimation for latent class models
+- [`fit_multinomial_multi()`](https://drjoshmcgrane.github.io/gllammr/reference/fit_multinomial_multi.md)
+  : Multinomial model with multiple random-effects terms
+- [`fit_ordinal_multi()`](https://drjoshmcgrane.github.io/gllammr/reference/fit_ordinal_multi.md)
+  : Ordinal model with multiple random-effects terms
+- [`fit_sem_ml()`](https://drjoshmcgrane.github.io/gllammr/reference/fit_sem_ml.md)
+  : Covariance-based ML estimation for SEM (Wishart / FIML likelihood)
+- [`fit_statistics`](https://drjoshmcgrane.github.io/gllammr/reference/fit_statistics.md)
+  : Model Fit Statistics
+- [`fit_tmb_gllamm_aghq()`](https://drjoshmcgrane.github.io/gllammr/reference/fit_tmb_gllamm_aghq.md)
+  : Fit a two-level GLMM by adaptive Gauss-Hermite quadrature
+- [`fit_tmb_gllamm_multi()`](https://drjoshmcgrane.github.io/gllammr/reference/fit_tmb_gllamm_multi.md)
+  : GLMM engine for multiple random-effects terms (crossed/nested)
+- [`fit_tmb_gllamm_v2()`](https://drjoshmcgrane.github.io/gllammr/reference/fit_tmb_gllamm_v2.md)
+  : Enhanced interface to TMB for gllammr models
+- [`fit_tmb_objective_only()`](https://drjoshmcgrane.github.io/gllammr/reference/fit_tmb_objective_only.md)
+  : Build a TMB objective (no optimization) for one cluster
+- [`fit(`*`<gllamm>`*`)`](https://drjoshmcgrane.github.io/gllammr/reference/fit.gllamm.md)
+  : Fit Statistics for Standard GLLAMM Models
+- [`fit(`*`<gllamm_eirt>`*`)`](https://drjoshmcgrane.github.io/gllammr/reference/fit.gllamm_eirt.md)
+  : Fit Statistics for Explanatory IRT Models
+- [`fit(`*`<gllamm_irt>`*`)`](https://drjoshmcgrane.github.io/gllammr/reference/fit.gllamm_irt.md)
+  : Fit Statistics for IRT Models
+- [`fit(`*`<gllamm_lca>`*`)`](https://drjoshmcgrane.github.io/gllammr/reference/fit.gllamm_lca.md)
+  : Fit Statistics for Latent Class Analysis
+- [`fit(`*`<gllamm_multinomial>`*`)`](https://drjoshmcgrane.github.io/gllammr/reference/fit.gllamm_multinomial.md)
+  : Fit Statistics for Multinomial Regression Models
+- [`fit(`*`<gllamm_ordinal>`*`)`](https://drjoshmcgrane.github.io/gllammr/reference/fit.gllamm_ordinal.md)
+  : Fit Statistics for Ordinal Regression Models
+- [`fixef(`*`<gllamm>`*`)`](https://drjoshmcgrane.github.io/gllammr/reference/fixef.gllamm.md)
+  : Extract fixed effects
+- [`gauss_hermite()`](https://drjoshmcgrane.github.io/gllammr/reference/gauss_hermite.md)
+  : Gauss-Hermite nodes and weights (Golub-Welsch)
+- [`get_inverse_link()`](https://drjoshmcgrane.github.io/gllammr/reference/get_inverse_link.md)
+  : Get inverse link function for a family
+- [`print(`*`<gllamm>`*`)`](https://drjoshmcgrane.github.io/gllammr/reference/gllamm-class.md)
+  [`summary(`*`<gllamm>`*`)`](https://drjoshmcgrane.github.io/gllammr/reference/gllamm-class.md)
+  [`coef(`*`<gllamm>`*`)`](https://drjoshmcgrane.github.io/gllammr/reference/gllamm-class.md)
+  [`vcov(`*`<gllamm>`*`)`](https://drjoshmcgrane.github.io/gllammr/reference/gllamm-class.md)
+  [`logLik(`*`<gllamm>`*`)`](https://drjoshmcgrane.github.io/gllammr/reference/gllamm-class.md)
+  [`fitted(`*`<gllamm>`*`)`](https://drjoshmcgrane.github.io/gllammr/reference/gllamm-class.md)
+  [`residuals(`*`<gllamm>`*`)`](https://drjoshmcgrane.github.io/gllammr/reference/gllamm-class.md)
+  : GLLAMM model object class
+- [`gllammr`](https://drjoshmcgrane.github.io/gllammr/reference/gllammr-package.md)
+  [`gllammr-package`](https://drjoshmcgrane.github.io/gllammr/reference/gllammr-package.md)
+  : gllammr: Generalized Linear Latent and Mixed Models
+- [`icc(`*`<gllamm>`*`)`](https://drjoshmcgrane.github.io/gllammr/reference/icc.gllamm.md)
+  : Variance decomposition (ICC)
+- [`influence(`*`<gllamm>`*`)`](https://drjoshmcgrane.github.io/gllammr/reference/influence.gllamm.md)
+  : Influence diagnostics for GLLAMM
+- [`irt_category_probs()`](https://drjoshmcgrane.github.io/gllammr/reference/irt_category_probs.md)
+  : Category response probabilities for polytomous IRT models
+- [`make_model_matrices()`](https://drjoshmcgrane.github.io/gllammr/reference/make_model_matrices.md)
+  : Extract model matrices
+- [`marginal_utils`](https://drjoshmcgrane.github.io/gllammr/reference/marginal_utils.md)
+  : Utility Functions for Marginal Predictions
+- [`mc_integrate_fixed_samples()`](https://drjoshmcgrane.github.io/gllammr/reference/mc_integrate_fixed_samples.md)
+  : Monte Carlo integration for marginal predictions
+- [`mc_integrate_marginal()`](https://drjoshmcgrane.github.io/gllammr/reference/mc_integrate_marginal.md)
+  : Monte Carlo integration for marginal predictions (one sample at a
+  time)
+- [`parse_formula()`](https://drjoshmcgrane.github.io/gllammr/reference/parse_formula.md)
+  : Parse GLLAMM formula
+- [`parse_level_weights()`](https://drjoshmcgrane.github.io/gllammr/reference/parse_level_weights.md)
+  : Parse observation-level and group-level survey weights
+- [`parse_random_formula()`](https://drjoshmcgrane.github.io/gllammr/reference/parse_random_formula.md)
+  : Parse Random Effects Formula
+- [`parse_random_term()`](https://drjoshmcgrane.github.io/gllammr/reference/parse_random_term.md)
+  : Parse a single random effects term
+- [`parse_single_random_term()`](https://drjoshmcgrane.github.io/gllammr/reference/parse_single_random_term.md)
+  : Parse a single random effects term
+- [`plot_ability_distribution_irt()`](https://drjoshmcgrane.github.io/gllammr/reference/plot_ability_distribution_irt.md)
+  : Plot Person Ability Distribution
+- [`plot_category_probs_ordinal()`](https://drjoshmcgrane.github.io/gllammr/reference/plot_category_probs_ordinal.md)
+  : Plot Category Probabilities
+- [`plot_class_profiles_lca()`](https://drjoshmcgrane.github.io/gllammr/reference/plot_class_profiles_lca.md)
+  : Plot Class Profiles
+- [`plot_classification_lca()`](https://drjoshmcgrane.github.io/gllammr/reference/plot_classification_lca.md)
+  : Plot Classification Summary
+- [`plot_covariate_effects_ordinal()`](https://drjoshmcgrane.github.io/gllammr/reference/plot_covariate_effects_ordinal.md)
+  : Plot Covariate Effects
+- [`plot_cumulative_probs_ordinal()`](https://drjoshmcgrane.github.io/gllammr/reference/plot_cumulative_probs_ordinal.md)
+  : Plot Cumulative Probabilities
+- [`plot_icc_irt()`](https://drjoshmcgrane.github.io/gllammr/reference/plot_icc_irt.md)
+  : Plot Item Characteristic Curves
+- [`plot_iif_irt()`](https://drjoshmcgrane.github.io/gllammr/reference/plot_iif_irt.md)
+  : Plot Item Information Functions
+- [`plot_irt`](https://drjoshmcgrane.github.io/gllammr/reference/plot_irt.md)
+  : Plotting Functions for IRT Models
+- [`plot_item_probabilities_lca()`](https://drjoshmcgrane.github.io/gllammr/reference/plot_item_probabilities_lca.md)
+  : Plot Item Probability Heatmap
+- [`plot_lca`](https://drjoshmcgrane.github.io/gllammr/reference/plot_lca.md)
+  : Plotting Functions for Latent Class Analysis
+- [`plot_ordinal`](https://drjoshmcgrane.github.io/gllammr/reference/plot_ordinal.md)
+  : Plotting Functions for Ordinal Regression Models
+- [`plot_thresholds_ordinal()`](https://drjoshmcgrane.github.io/gllammr/reference/plot_thresholds_ordinal.md)
+  : Plot Threshold Parameters
+- [`plot_tif_irt()`](https://drjoshmcgrane.github.io/gllammr/reference/plot_tif_irt.md)
+  : Plot Test Information Function
+- [`plot(`*`<gllamm>`*`)`](https://drjoshmcgrane.github.io/gllammr/reference/plot.gllamm.md)
+  : Plot diagnostics for GLLAMM models
+- [`plot(`*`<gllamm_irt>`*`)`](https://drjoshmcgrane.github.io/gllammr/reference/plot.gllamm_irt.md)
+  : Plot IRT Model Diagnostics
+- [`plot(`*`<gllamm_lca>`*`)`](https://drjoshmcgrane.github.io/gllammr/reference/plot.gllamm_lca.md)
+  : Plot Latent Class Analysis Results
+- [`plot(`*`<gllamm_ordinal>`*`)`](https://drjoshmcgrane.github.io/gllammr/reference/plot.gllamm_ordinal.md)
+  : Plot Ordinal Regression Model Diagnostics
+- [`predict_marginal_gllamm()`](https://drjoshmcgrane.github.io/gllammr/reference/predict_marginal_gllamm.md)
+  : Internal function for marginal predictions
+- [`predict_marginal_irt()`](https://drjoshmcgrane.github.io/gllammr/reference/predict_marginal_irt.md)
+  : Internal function for marginal IRT predictions
+- [`predict_marginal_ordinal()`](https://drjoshmcgrane.github.io/gllammr/reference/predict_marginal_ordinal.md)
+  : Internal function for marginal ordinal predictions
+- [`predict(`*`<gllamm>`*`)`](https://drjoshmcgrane.github.io/gllammr/reference/predict.gllamm.md)
+  : Predict method for GLLAMM models
+- [`predict(`*`<gllamm_eirt>`*`)`](https://drjoshmcgrane.github.io/gllammr/reference/predict.gllamm_eirt.md)
+  : Predict method for EIRT models
+- [`predict(`*`<gllamm_irt>`*`)`](https://drjoshmcgrane.github.io/gllammr/reference/predict.gllamm_irt.md)
+  : Predict method for IRT models
+- [`predict(`*`<gllamm_irt_poly>`*`)`](https://drjoshmcgrane.github.io/gllammr/reference/predict.gllamm_irt_poly.md)
+  : Predicted category probabilities for polytomous IRT fits
+- [`predict(`*`<gllamm_mixed>`*`)`](https://drjoshmcgrane.github.io/gllammr/reference/predict.gllamm_mixed.md)
+  : Predict from a fitted mixed-response model
+- [`predict(`*`<gllamm_multinomial>`*`)`](https://drjoshmcgrane.github.io/gllammr/reference/predict_multinomial.md)
+  : Predict method for multinomial models
+- [`predict(`*`<gllamm_npml>`*`)`](https://drjoshmcgrane.github.io/gllammr/reference/predict.gllamm_npml.md)
+  : Predict from a fitted NPML model
+- [`predict(`*`<gllamm_ordinal>`*`)`](https://drjoshmcgrane.github.io/gllammr/reference/predict.gllamm_ordinal.md)
+  : Predict method for ordinal models
+- [`predict(`*`<gllamm_survival>`*`)`](https://drjoshmcgrane.github.io/gllammr/reference/predict_survival.md)
+  : Predict method for survival models
+- [`print(`*`<binomial_family>`*`)`](https://drjoshmcgrane.github.io/gllammr/reference/print.binomial_family.md)
+  : Print method for binomial family
+- [`print(`*`<eirt_comparison>`*`)`](https://drjoshmcgrane.github.io/gllammr/reference/print.eirt_comparison.md)
+  : Print EIRT comparison
+- [`print(`*`<eirt_test>`*`)`](https://drjoshmcgrane.github.io/gllammr/reference/print.eirt_test.md)
+  : Print EIRT test results
+- [`print(`*`<fit_statistics>`*`)`](https://drjoshmcgrane.github.io/gllammr/reference/print.fit_statistics.md)
+  : Print Method for Fit Statistics
+- [`print(`*`<gllamm_eirt>`*`)`](https://drjoshmcgrane.github.io/gllammr/reference/print.gllamm_eirt.md)
+  : Print EIRT model results
+- [`print(`*`<ordinal_family>`*`)`](https://drjoshmcgrane.github.io/gllammr/reference/print.ordinal_family.md)
+  : Print method for ordinal family
+- [`print(`*`<po_test>`*`)`](https://drjoshmcgrane.github.io/gllammr/reference/print.po_test.md)
+  : Print method for proportional odds test
+- [`ranef(`*`<gllamm>`*`)`](https://drjoshmcgrane.github.io/gllammr/reference/ranef.gllamm.md)
+  : Extract random effects
+- [`ranef(`*`<gllamm_irt_multilevel>`*`)`](https://drjoshmcgrane.github.io/gllammr/reference/ranef.gllamm_irt_multilevel.md)
+  : Extract Random Effects from Multi-Level IRT Models
+- [`rmvnorm_chol()`](https://drjoshmcgrane.github.io/gllammr/reference/rmvnorm_chol.md)
+  : Draw samples from a zero-mean multivariate normal
+- [`sandwich_vcov_gllamm()`](https://drjoshmcgrane.github.io/gllammr/reference/sandwich_vcov_gllamm.md)
+  : Cluster-robust (sandwich) covariance for GLLAMM fixed effects
+- [`simulate(`*`<gllamm>`*`)`](https://drjoshmcgrane.github.io/gllammr/reference/simulate.gllamm.md)
+  : Simulate from a GLLAMM model
+- [`simulate(`*`<gllamm_cdm>`*`)`](https://drjoshmcgrane.github.io/gllammr/reference/simulate.gllamm_cdm.md)
+  : Simulate response matrices from a fitted cognitive diagnosis model
+- [`simulate(`*`<gllamm_eirt>`*`)`](https://drjoshmcgrane.github.io/gllammr/reference/simulate.gllamm_eirt.md)
+  : Simulate response matrices from a fitted explanatory IRT model
+- [`simulate(`*`<gllamm_irt>`*`)`](https://drjoshmcgrane.github.io/gllammr/reference/simulate.gllamm_irt.md)
+  : Simulate response matrices from a fitted IRT model
+- [`simulate(`*`<gllamm_lca>`*`)`](https://drjoshmcgrane.github.io/gllammr/reference/simulate.gllamm_lca.md)
+  : Simulate response matrices from a fitted latent class model
+- [`simulate(`*`<gllamm_mixed>`*`)`](https://drjoshmcgrane.github.io/gllammr/reference/simulate.gllamm_mixed.md)
+  : Simulate from a fitted mixed-response model
+- [`simulate(`*`<gllamm_multinomial>`*`)`](https://drjoshmcgrane.github.io/gllammr/reference/simulate.gllamm_multinomial.md)
+  : Simulate from a fitted multinomial model
+- [`simulate(`*`<gllamm_npml>`*`)`](https://drjoshmcgrane.github.io/gllammr/reference/simulate.gllamm_npml.md)
+  : Simulate from a fitted NPML model
+- [`simulate(`*`<gllamm_ordinal>`*`)`](https://drjoshmcgrane.github.io/gllammr/reference/simulate.gllamm_ordinal.md)
+  : Simulate from a fitted ordinal model
+- [`simulate(`*`<gllamm_sem>`*`)`](https://drjoshmcgrane.github.io/gllammr/reference/simulate.gllamm_sem.md)
+  : Simulate indicator data from a fitted SEM
+- [`simulate(`*`<gllamm_survival>`*`)`](https://drjoshmcgrane.github.io/gllammr/reference/simulate.gllamm_survival.md)
+  : Simulate from a fitted parametric frailty survival model
+- [`summary(`*`<gllamm_eirt>`*`)`](https://drjoshmcgrane.github.io/gllammr/reference/summary.gllamm_eirt.md)
+  : Summary of EIRT model
+- [`validate_formula()`](https://drjoshmcgrane.github.io/gllammr/reference/validate_formula.md)
+  : Validate formula
+- [`validate_poly_responses()`](https://drjoshmcgrane.github.io/gllammr/reference/validate_poly_responses.md)
+  : Validate and auto-recode polytomous response matrices (shared by the
+  Laplace and EM estimation paths)
+- [`VarCorr(`*`<gllamm>`*`)`](https://drjoshmcgrane.github.io/gllammr/reference/VarCorr.gllamm.md)
+  : Extract variance components
+- [`VarCorr(`*`<gllamm_irt_multilevel>`*`)`](https://drjoshmcgrane.github.io/gllammr/reference/VarCorr.gllamm_irt_multilevel.md)
+  : Extract Variance Components from Multi-Level IRT Models
+
+# Articles
+
+### All vignettes
+
+- [Advanced Features in
+  gllammr](https://drjoshmcgrane.github.io/gllammr/articles/advanced-features.md):
+- [Cognitive Diagnosis
+  Models](https://drjoshmcgrane.github.io/gllammr/articles/cognitive-diagnosis.md):
+- [Differential Item Functioning: Screening and
+  Confirmation](https://drjoshmcgrane.github.io/gllammr/articles/dif-analysis.md):
+- [Explanatory IRT: the De Boeck & Wilson
+  Framework](https://drjoshmcgrane.github.io/gllammr/articles/explanatory-irt.md):
+- [Getting Started with
+  gllammr](https://drjoshmcgrane.github.io/gllammr/articles/getting-started.md):
+- [Item Response Theory Models with
+  gllammr](https://drjoshmcgrane.github.io/gllammr/articles/irt-models.md):
+- [Latent Class Analysis with
+  gllammr](https://drjoshmcgrane.github.io/gllammr/articles/latent-class.md):
+- [Marginal vs Conditional Predictions in
+  gllammr](https://drjoshmcgrane.github.io/gllammr/articles/marginal-predictions.md):
+- [Multilevel GLMMs with
+  gllammr](https://drjoshmcgrane.github.io/gllammr/articles/multilevel-glmm.md):
+- [Multi-Level IRT Models in
+  gllammr](https://drjoshmcgrane.github.io/gllammr/articles/multilevel-irt.md):
+- [Structural Equation
+  Models](https://drjoshmcgrane.github.io/gllammr/articles/sem-models.md):
+- [Migrating from Stata
+  GLLAMM](https://drjoshmcgrane.github.io/gllammr/articles/stata-migration.md):
+- [Using Weights in
+  gllammr](https://drjoshmcgrane.github.io/gllammr/articles/weights.md):

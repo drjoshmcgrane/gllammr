@@ -1,0 +1,238 @@
+# Explanatory IRT: the De Boeck & Wilson Framework
+
+## Items as outcomes, not just instruments
+
+Classical IRT treats each item as a separate entity with its own freely
+estimated parameters. De Boeck & Wilson (2004, *Explanatory Item
+Response Models*) reframed the field: an IRT model is a generalized
+linear mixed model, and once you see it that way, item properties become
+*predictors*. Instead of asking “how difficult is item 7?”, you ask
+“*why* is item 7 difficult — and how well do its design features explain
+that?”
+
+gllammr implements this framework in
+[`fit_eirt()`](https://drjoshmcgrane.github.io/gllammr/reference/fit_eirt.md)
+(equivalently `gllamm(resp, family = eirt(...))`). This vignette
+reproduces the canonical analysis: the **verbal aggression data** (316
+persons x 24 items, shipped with lme4), where each item is built from a
+2 x 2 x 3 design — behaviour mode (want/do), situation type
+(other/self-to-blame), and behaviour type (curse/scold/shout).
+
+``` r
+
+library(gllammr)
+#> 
+#> Attaching package: 'gllammr'
+#> The following object is masked from 'package:stats':
+#> 
+#>     binomial
+data("VerbAgg", package = "lme4")
+
+# Persons x items response matrix (1 = "yes")
+VerbAgg$y <- as.integer(VerbAgg$r2 == "Y")
+resp <- with(VerbAgg, tapply(y, list(id, item), identity))
+resp <- matrix(as.integer(resp), nrow = nrow(resp),
+               dimnames = dimnames(resp))
+
+# Item design factors, one row per item
+item_info <- unique(VerbAgg[, c("item", "btype", "situ", "mode")])
+item_info <- item_info[match(colnames(resp),
+                             as.character(item_info$item)), ]
+item_data <- data.frame(btype = factor(item_info$btype, ordered = FALSE),
+                        situ  = factor(item_info$situ, ordered = FALSE),
+                        mode  = factor(item_info$mode, ordered = FALSE))
+str(item_data)
+#> 'data.frame':    24 obs. of  3 variables:
+#>  $ btype: Factor w/ 3 levels "curse","scold",..: 1 2 3 1 2 3 1 2 3 1 ...
+#>  $ situ : Factor w/ 2 levels "other","self": 1 1 1 1 1 1 2 2 2 2 ...
+#>  $ mode : Factor w/ 2 levels "want","do": 1 1 1 1 1 1 1 1 1 1 ...
+```
+
+## The LLTM: difficulty explained by design
+
+The linear logistic test model (LLTM) replaces the 24 free item
+difficulties with a regression on the three design factors:
+$`b_i = \mathbf{w}_i'\boldsymbol\gamma`$. Five parameters instead of 24.
+
+``` r
+
+lltm <- fit_eirt(resp, item_data,
+                 difficulty_formula = ~ btype + situ + mode,
+                 model = "Rasch", item_residuals = FALSE)
+lltm$regression_coefficients$difficulty
+#> (Intercept)  btypescold  btypeshout    situself      modedo 
+#>  -1.7442950   1.0555368   2.0429407   1.0282206   0.6718105
+```
+
+Positive coefficients mean *harder to endorse*: shouting is about two
+logits harder to admit to than cursing, self-blame situations are about
+one logit harder than other-blame, and actually *doing* is harder than
+merely *wanting to*.
+
+## LLTM + error: random item residuals
+
+The pure LLTM assumes the design explains item difficulty *perfectly* —
+almost never true. The LLTM-plus-error model adds a random item
+residual, $`b_i = \mathbf{w}_i'\boldsymbol\gamma + \epsilon_i`$, which
+is the
+[`fit_eirt()`](https://drjoshmcgrane.github.io/gllammr/reference/fit_eirt.md)
+default:
+
+``` r
+
+lltm_e <- fit_eirt(resp, item_data,
+                   difficulty_formula = ~ btype + situ + mode,
+                   model = "Rasch", item_residuals = TRUE)
+lltm_e$regression_coefficients$difficulty
+#> (Intercept)  btypescold  btypeshout    situself      modedo 
+#>  -1.7763969   1.0597404   2.1038939   1.0543858   0.7070393
+lltm_e$residual_sd$difficulty
+#> [1] 0.3423613
+```
+
+The residual SD (~0.34) against design effects of 0.7–2.1 logits says
+the three facets explain *most* — but not all — of the difficulty
+variation. The likelihood-ratio statistic between the two models makes
+the point formally:
+
+``` r
+
+2 * (lltm_e$logLik - lltm$logLik)
+#> [1] 88.09839
+```
+
+## The GLMM connection, verified
+
+The LLTM-plus-error is *exactly* a binomial GLMM with crossed person and
+item random effects — De Boeck & Wilson’s central insight. You can check
+this inside gllammr itself: an intercept-only explanatory model equals
+the crossed-effects GLMM through the unified interface (and both equal
+[`lme4::glmer`](https://rdrr.io/pkg/lme4/man/glmer.html)).
+
+``` r
+
+e0 <- fit_eirt(resp, data.frame(int = rep(1, 24)),
+               difficulty_formula = ~ 1, model = "Rasch",
+               item_residuals = TRUE)
+g0 <- gllamm(y ~ 1 + (1 | id) + (1 | item), data = VerbAgg,
+             family = binomial())
+c(eirt = e0$logLik, gllamm = g0$logLik)
+#>      eirt    gllamm 
+#> -4101.549 -4101.549
+```
+
+Identical marginal likelihoods: the explanatory IRT model *is* a GLLAMM.
+
+## Polytomous items: the Kim & Wilson extension
+
+The original responses have three categories (no / perhaps / yes). Kim &
+Wilson (2019) extended item-explanatory models to polytomous data; their
+“location-explanatory” partial credit model is `model = "PCM"` with the
+same difficulty formula. (Their reference categories are want / self /
+shout, so we relevel.)
+
+``` r
+
+VerbAgg$y3 <- as.integer(VerbAgg$resp)   # 1 = no, 2 = perhaps, 3 = yes
+resp3 <- with(VerbAgg, tapply(y3, list(id, item), identity))
+resp3 <- matrix(as.integer(resp3), nrow = nrow(resp3),
+                dimnames = dimnames(resp3))
+item_kw <- data.frame(
+  btype = relevel(item_data$btype, ref = "shout"),
+  situ  = relevel(item_data$situ, ref = "self"),
+  mode  = item_data$mode)
+
+pcm_e <- fit_eirt(resp3, item_kw,
+                  difficulty_formula = ~ mode + situ + btype,
+                  model = "PCM", item_residuals = TRUE)
+pcm_e$regression_coefficients$difficulty
+#> (Intercept)      modedo   situother  btypecurse  btypescold 
+#>   1.6744426   0.4777779  -0.8735078  -1.3687650  -0.6891325
+```
+
+These reproduce Kim & Wilson’s published “MFRM + OIE” estimates
+(intercept 1.69, Do 0.49, Other −0.89, Curse −1.38, Scold −0.70) within
+a few hundredths — their numbers are Bayesian posterior means, ours
+maximum likelihood. Step-specific item properties (their LPCM) are
+available through `threshold_formula`.
+
+## Covariates at the step level
+
+Two distinct kinds of “step predictor” arise in practice, and the
+package separates them:
+
+- `threshold_formula`: **item properties whose effects differ by step**.
+  Each covariate gets one coefficient per threshold, constrained to sum
+  to zero across an item’s thresholds — they are step-specific
+  *deviations* around the item-level effect, which belongs in
+  `difficulty_formula`. (The two are jointly identified this way.)
+- `step_formula` with `step_data`: **covariates that vary within an item
+  across its steps**, each with a single common coefficient — e.g. each
+  scoring step of a rubric demands a different skill. `step_data` has
+  one row per item-step cell in item-major order.
+
+The full decomposition is
+$`\delta_{im} = b_i + \xi_{0m} + \sum_k \eta_k x_{imk} + e_{im}`$: item
+location from the difficulty regression, per-step baselines, step-level
+covariate effects, and (with `item_residuals = TRUE`) step residuals.
+
+``` r
+
+# Suppose each item-step is rated for the cognitive demand of that step
+set.seed(1)
+step_props <- data.frame(
+  demand = rnorm(ncol(resp3) * 2)   # 3 categories -> 2 steps per item
+)
+pcm_step <- fit_eirt(resp3, item_kw,
+                     difficulty_formula = ~ mode + situ + btype,
+                     step_formula = ~ demand, step_data = step_props,
+                     model = "PCM", item_residuals = TRUE)
+pcm_step$regression_coefficients$step
+#>           estimate         se
+#> demand -0.03855178 0.06051621
+```
+
+A step covariate that happens to be constant within items is exactly
+equivalent to entering it in `difficulty_formula`; genuinely redundant
+cross-level specifications are rejected with a rank-deficiency error
+rather than fit on a ridge.
+
+## Explaining discrimination too
+
+For models with a discrimination parameter (2PL, GRM, GPCM),
+`discrimination_formula` regresses the *log* discrimination on item
+properties:
+$`a_i = \exp(\mathbf{w}_i'\boldsymbol\delta + \epsilon_{a,i})`$, so
+coefficients are multiplicative effects.
+
+``` r
+
+gpcm_e <- fit_eirt(resp3, item_kw,
+                   difficulty_formula = ~ mode + situ + btype,
+                   discrimination_formula = ~ mode,
+                   model = "GPCM", item_residuals = TRUE)
+exp(gpcm_e$regression_coefficients$discrimination)
+#> (Intercept)      modedo 
+#>   0.8480214   1.3109455
+```
+
+“Do” items discriminate about 30% better than “want” items: behavioural
+commitment separates people more sharply than hypothetical inclination.
+
+## Relation to the GLLAMM framework
+
+Difficulties enter the linear predictor linearly — canonical GLLAMM.
+Discriminations are GLLAMM factor loadings modelled on the log scale, a
+standard positivity-preserving reparameterization. Multilevel person
+structures (`random = ~ (1 | school)`) and person-level random slopes
+compose with all of the above; see
+[`vignette("multilevel-irt")`](https://drjoshmcgrane.github.io/gllammr/articles/multilevel-irt.md).
+
+## References
+
+- De Boeck, P., & Wilson, M. (2004). *Explanatory Item Response Models:
+  A Generalized Linear and Nonlinear Approach*. Springer.
+- Kim, J., & Wilson, M. (2019). Polytomous item explanatory IRT models
+  with random item effects. *Measurement*, 151, 107062.
+- Fischer, G. H. (1973). The linear logistic test model as an instrument
+  in educational research. *Acta Psychologica*, 37, 359–374.
