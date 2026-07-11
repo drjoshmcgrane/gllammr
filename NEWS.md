@@ -2,6 +2,15 @@
 
 ## Post-1.2.0 development
 
+* **Category-probability predictions (`predict(fit, type = "probs")`)
+  now work for Laplace-fitted polytomous IRT models, not just EM.**
+  Previously the Laplace path (`fit_irt(..., method = "laplace")`, and
+  the `se = TRUE` default via `gllamm(family = irt())`) never assigned
+  the `gllamm_irt_poly` S3 class, so the `predict.gllamm_irt_poly`
+  method was unreachable and `type = "probs"`/`"expected"` errored.
+  Laplace polytomous fits (PCM, GPCM, GRM, NRM), including multi-level
+  ones, now carry that class and return the same category-probability
+  structure as EM fits.
 * **Behavior change: `fit_irt()` (and `gllamm(family = irt())`) now
   compute standard errors by default (`se = TRUE`),** aligning the IRT
   fitter with `fit_sem()`/`sem()` and standard R practice. Because SEs

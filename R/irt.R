@@ -1097,11 +1097,16 @@ fit_irt_polytomous <- function(response_matrix, model, weights, re_info, se, sta
       composite_theta = composite_theta
     )
 
-    # Update class to indicate multi-level
-    class(result) <- c("gllamm_irt_multilevel", "gllamm_irt", "gllamm")
+    # Update class to indicate multi-level. gllamm_irt_poly comes first so
+    # predict(type = "probs") dispatches to the polytomous method; the
+    # multilevel class is retained for VarCorr()/icc()/ranef()/coef().
+    class(result) <- c("gllamm_irt_poly", "gllamm_irt_multilevel",
+                       "gllamm_irt", "gllamm")
   } else {
     result$random_effects <- NULL
-    class(result) <- c("gllamm_irt", "gllamm")
+    # gllamm_irt_poly enables category-probability prediction; the general
+    # gllamm_irt method handles ability/probability/marginal via NextMethod().
+    class(result) <- c("gllamm_irt_poly", "gllamm_irt", "gllamm")
   }
 
   return(result)
