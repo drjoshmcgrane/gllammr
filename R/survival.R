@@ -165,9 +165,11 @@ fit_survival <- function(formula, data,
   control_defaults <- list(eval.max = 2000, iter.max = 1000, trace = 0)
   control <- modifyList(control_defaults, control)
 
-  opt <- nlminb(obj$par, obj$fn, obj$gr, control = control)
+  opt <- safe_nlminb(obj$par, obj$fn, obj$gr, control = control,
+                     context = "survival model")
 
   sdr <- try(TMB::sdreport(obj), silent = TRUE)
+  se_ok <- check_sdreport(sdr, "survival model")$se_ok
   par_full <- obj$env$last.par.best
 
   beta_hat <- par_full[names(par_full) == "beta"]
@@ -213,7 +215,8 @@ fit_survival <- function(formula, data,
     event_var = event_var,
     tmb_obj = obj,
     tmb_opt = opt,
-    tmb_sdr = sdr
+    tmb_sdr = sdr,
+    se_ok = se_ok
   )
 
   class(result) <- c("gllamm_survival", "gllamm")

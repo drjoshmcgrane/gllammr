@@ -124,6 +124,7 @@ predict.gllamm_ordinal <- function(object,
                                    type = c("class", "probs", "cumprobs", "marginal"),
                                    n_sim = 1000,
                                    ...) {
+  warn_not_converged(object)
   type <- match.arg(type)
 
   # Extract model components

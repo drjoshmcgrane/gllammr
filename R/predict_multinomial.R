@@ -27,6 +27,7 @@ predict.gllamm_multinomial <- function(object,
                                        type = c("class", "probs", "marginal"),
                                        n_sim = 1000,
                                        ...) {
+  warn_not_converged(object)
   predict_multinomial(object, newdata = newdata, type = type,
                       n_sim = n_sim, ...)
 }

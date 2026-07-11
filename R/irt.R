@@ -429,17 +429,19 @@ fit_irt_dichotomous <- function(response_matrix, model, weights, mc_items, re_in
   lower[par_names == "guessing"] <- 1e-3
   upper[par_names == "guessing"] <- 0.5
 
-  opt <- nlminb(
+  opt <- safe_nlminb(
     start = obj$par,
     objective = obj$fn,
     gradient = obj$gr,
     lower = lower,
     upper = upper,
-    control = control
+    control = control,
+    context = "IRT model"
   )
 
   # Standard errors on request only (sdreport roughly doubles fit time)
   sdr <- if (se) try(TMB::sdreport(obj), silent = TRUE) else NULL
+  se_ok <- check_sdreport(sdr, "IRT model")$se_ok
 
   # Extract parameters
   par_full <- obj$env$last.par.best
@@ -510,7 +512,8 @@ fit_irt_dichotomous <- function(response_matrix, model, weights, mc_items, re_in
     n_items = n_items,
     tmb_obj = obj,
     tmb_opt = opt,
-    tmb_sdr = sdr
+    tmb_sdr = sdr,
+    se_ok = se_ok
   )
 
   # Add random effects information if multi-level model
@@ -935,17 +938,19 @@ fit_irt_polytomous <- function(response_matrix, model, weights, re_info, se, sta
   lower[par_names == "discrimination"] <- 0.05
   upper[par_names == "discrimination"] <- 10
 
-  opt <- nlminb(
+  opt <- safe_nlminb(
     start = obj$par,
     objective = obj$fn,
     gradient = obj$gr,
     lower = lower,
     upper = upper,
-    control = control
+    control = control,
+    context = "IRT model"
   )
 
   # Standard errors on request only (sdreport roughly doubles fit time)
   sdr <- if (se) try(TMB::sdreport(obj), silent = TRUE) else NULL
+  se_ok <- check_sdreport(sdr, "IRT model")$se_ok
 
   # Extract parameters
   par_full <- obj$env$last.par.best
@@ -1029,7 +1034,8 @@ fit_irt_polytomous <- function(response_matrix, model, weights, re_info, se, sta
     max_categories = max_categories,
     tmb_obj = obj,
     tmb_opt = opt,
-    tmb_sdr = sdr
+    tmb_sdr = sdr,
+    se_ok = se_ok
   )
 
   # Add random effects information if multi-level model

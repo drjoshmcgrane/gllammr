@@ -109,6 +109,7 @@ summary.gllamm <- function(object, ...) {
 #' @export
 #' @rdname gllamm-class
 coef.gllamm <- function(object, ...) {
+  warn_not_converged(object)
   object$coefficients
 }
 
@@ -117,6 +118,7 @@ coef.gllamm <- function(object, ...) {
 #' @rdname gllamm-class
 vcov.gllamm <- function(object, which = "fixed",
                         type = c("model", "sandwich"), ...) {
+  warn_not_converged(object)
   type <- match.arg(type)
   if (type == "sandwich") {
     V <- sandwich_vcov_gllamm(object)

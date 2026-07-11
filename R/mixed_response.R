@@ -145,9 +145,11 @@ fit_mixed <- function(formulas, random, data, start = NULL, control = list()) {
 
   control_defaults <- list(eval.max = 2000, iter.max = 1000, trace = 0)
   control <- modifyList(control_defaults, control)
-  opt <- nlminb(obj$par, obj$fn, obj$gr, control = control)
+  opt <- safe_nlminb(obj$par, obj$fn, obj$gr, control = control,
+                     context = "mixed-response model")
 
   sdr <- try(TMB::sdreport(obj), silent = TRUE)
+  se_ok <- check_sdreport(sdr, "mixed-response model")$se_ok
   par_full <- obj$env$last.par.best
 
   coefs <- list()
@@ -189,7 +191,8 @@ fit_mixed <- function(formulas, random, data, start = NULL, control = list()) {
     data = data,
     tmb_obj = obj,
     tmb_opt = opt,
-    tmb_sdr = sdr
+    tmb_sdr = sdr,
+    se_ok = se_ok
   )
   class(result) <- c("gllamm_mixed", "gllamm")
   result
@@ -227,6 +230,7 @@ print.gllamm_mixed <- function(x, ...) {
 #' @export
 predict.gllamm_mixed <- function(object, newdata = NULL,
                                  type = c("response", "link"), ...) {
+  warn_not_converged(object)
   type <- match.arg(type)
   data <- if (is.null(newdata)) object$data else newdata
   re_term <- attr(stats::terms(object$random), "term.labels")

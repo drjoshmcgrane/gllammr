@@ -2,6 +2,25 @@
 
 ## Post-1.2.0 development
 
+* **Fit-time robustness diagnostics.** Shared internal helpers now give
+  consistent, informative diagnostics across every fitter:
+  - Standard errors are validated after `TMB::sdreport()`: a warning is
+    emitted when the Hessian is not positive definite (standard errors
+    unreliable, e.g. an over-parameterized model or a variance component
+    near zero), and each fitted object carries an `se_ok` flag.
+  - `coef()`, `vcov()`, and `predict()` warn when called on a model that
+    did not converge ("estimates may be unreliable").
+  - Optimization failures (an nlminb error or a non-finite objective) now
+    raise a single informative error suggesting different starting values
+    or a simpler model.
+  - The marginal-prediction sampler falls back to the nearest
+    positive-definite matrix (`Matrix::nearPD`) when the random-effects
+    covariance is not positive definite, instead of erroring.
+  - `solve()` is guarded in the sandwich (robust) variance estimator and
+    in Cook's-distance diagnostics: a singular matrix now warns and
+    returns an `NA`-filled result of the expected shape rather than
+    aborting.
+
 * **Step-level predictors in explanatory IRT.** `fit_eirt()` (and the
   `eirt()` family) gain `step_formula`/`step_data` for PCM/GPCM:
   covariates that vary WITHIN an item across its steps, each with a

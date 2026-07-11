@@ -51,6 +51,7 @@ predict.gllamm_irt <- function(object,
                                ability = NULL,
                                n_sim = 1000,
                                ...) {
+  warn_not_converged(object)
   type <- match.arg(type)
 
   # Type: ability

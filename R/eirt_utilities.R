@@ -248,6 +248,7 @@ print.eirt_test <- function(x, ...) {
 #'
 #' @export
 coef.gllamm_eirt <- function(object, se = FALSE, ...) {
+  warn_not_converged(object)
   result <- data.frame(
     item = paste0("Item", 1:object$n_items),
     difficulty = object$item_parameters$difficulty,

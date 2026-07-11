@@ -156,7 +156,7 @@ fit_sem_ml <- function(Y, lambda_pattern, beta_pattern, theta_zero = NULL,
 
   control_defaults <- list(eval.max = 10000, iter.max = 5000, trace = 0)
   ctl <- modifyList(control_defaults, control)
-  opt <- nlminb(th0, nll, control = ctl)
+  opt <- safe_nlminb(th0, nll, control = ctl, context = "SEM model")
 
   est <- implied(opt$par)
   loglik <- -opt$objective

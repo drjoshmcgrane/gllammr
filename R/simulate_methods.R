@@ -321,6 +321,7 @@ predict.gllamm_irt_poly <- function(object,
                                              "marginal", "probability",
                                              "ability"),
                                     ...) {
+  warn_not_converged(object)
   type <- match.arg(type)
   # Marginal/ability/probability predictions are handled by the general
   # IRT method (Monte Carlo over the ability distribution etc.)

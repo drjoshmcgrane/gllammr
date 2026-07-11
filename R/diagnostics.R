@@ -392,7 +392,12 @@ cooks.distance.gllamm <- function(model, max_groups = 50, ...) {
   if (is.null(V) || anyNA(V)) {
     stop("Fixed-effects covariance unavailable; cannot scale Cook's distance")
   }
-  V_inv <- solve(V)
+  V_inv <- safe_solve(V, context = "Cook's distance")
+  if (is.null(V_inv)) {
+    D <- rep(NA_real_, n_groups)
+    names(D) <- paste0("Group", seq_len(n_groups))
+    return(D)
+  }
 
   # Tight iteration caps: refits start near the full-data optimum
   refit_control <- list(iter.max = 200, eval.max = 400)

@@ -67,10 +67,45 @@ mc_integrate_fixed_samples <- function(X, Z, beta, u_samples, inv_link_fn) {
 rmvnorm_chol <- function(n, Sigma) {
   q <- ncol(Sigma)
   if (q == 1) {
-    return(matrix(rnorm(n, 0, sqrt(Sigma[1, 1])), n, 1))
+    v <- Sigma[1, 1]
+    if (v < 0) {
+      warning("Random-effects variance is negative; using zero.",
+              call. = FALSE)
+      v <- 0
+    }
+    return(matrix(rnorm(n, 0, sqrt(max(v, 0))), n, 1))
   }
-  L <- chol(Sigma)  # upper triangular: Sigma = t(L) %*% L
+  L <- safe_chol(Sigma)  # upper triangular: Sigma = t(L) %*% L
   matrix(rnorm(n * q), n, q) %*% L
+}
+
+
+#' Cholesky factor with a positive-definite fallback
+#'
+#' Returns the upper-triangular Cholesky factor of \code{Sigma}. If
+#' \code{Sigma} is not positive definite, warns and retries on the nearest
+#' positive-definite matrix (\code{Matrix::nearPD}); if that also fails,
+#' stops with an informative message.
+#'
+#' @param Sigma A covariance matrix.
+#' @return Upper-triangular Cholesky factor such that \code{t(L) \%*\% L == Sigma}.
+#' @keywords internal
+#' @noRd
+safe_chol <- function(Sigma) {
+  L <- tryCatch(chol(Sigma), error = function(e) NULL)
+  if (!is.null(L)) return(L)
+  warning("Random-effects covariance is not positive definite; using ",
+          "nearest positive-definite approximation.", call. = FALSE)
+  Sigma_pd <- tryCatch(
+    as.matrix(Matrix::nearPD(Sigma)$mat),
+    error = function(e) NULL
+  )
+  if (!is.null(Sigma_pd)) {
+    L <- tryCatch(chol(Sigma_pd), error = function(e) NULL)
+    if (!is.null(L)) return(L)
+  }
+  stop("Random-effects covariance is not positive definite and could not ",
+       "be repaired; cannot draw random-effects samples.", call. = FALSE)
 }
 
 

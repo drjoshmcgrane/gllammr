@@ -280,9 +280,11 @@ fit_sem <- function(measurement, structural = NULL, data,
 
   control_defaults <- list(eval.max = 3000, iter.max = 2000, trace = 0)
   control <- modifyList(control_defaults, control)
-  opt <- nlminb(obj$par, obj$fn, obj$gr, control = control)
+  opt <- safe_nlminb(obj$par, obj$fn, obj$gr, control = control,
+                     context = "SEM model")
 
   sdr <- try(TMB::sdreport(obj), silent = TRUE)
+  se_ok <- check_sdreport(sdr, "SEM model")$se_ok
   par_full <- obj$env$last.par.best
 
   Lambda <- matrix(0, n_indicators, n_latent,
@@ -329,7 +331,8 @@ fit_sem <- function(measurement, structural = NULL, data,
     structural_formulas = structural,
     tmb_obj = obj,
     tmb_opt = opt,
-    tmb_sdr = sdr
+    tmb_sdr = sdr,
+    se_ok = se_ok
   )
   class(result) <- c("gllamm_sem", "gllamm")
   result

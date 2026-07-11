@@ -57,9 +57,15 @@ sandwich_vcov_gllamm <- function(object) {
   }
 
   meat <- crossprod(scores)
-  H_inv <- solve(H)
-  V <- H_inv %*% meat %*% H_inv
-  dimnames(V) <- list(names(theta_hat), names(theta_hat))
+  H_inv <- safe_solve(H, context = "sandwich covariance")
+  if (is.null(H_inv)) {
+    p_all <- length(theta_hat)
+    V <- matrix(NA_real_, p_all, p_all,
+                dimnames = list(names(theta_hat), names(theta_hat)))
+  } else {
+    V <- H_inv %*% meat %*% H_inv
+    dimnames(V) <- list(names(theta_hat), names(theta_hat))
+  }
 
   beta_idx <- which(names(theta_hat) == "beta")
   V_fixed <- V[beta_idx, beta_idx, drop = FALSE]

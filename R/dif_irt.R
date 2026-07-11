@@ -169,7 +169,8 @@ dif_irt <- function(response_matrix, dif, person_data = NULL,
                           DLL = "gllammr", silent = TRUE)
     ctl <- modifyList(list(eval.max = 2000, iter.max = 1000, trace = 0),
                       control)
-    opt <- nlminb(obj$par, obj$fn, obj$gr, control = ctl)
+    opt <- safe_nlminb(obj$par, obj$fn, obj$gr, control = ctl,
+                       context = "DIF model")
     out <- list(logLik = -opt$objective,
                 converged = (opt$convergence == 0), obj = obj)
     pf <- obj$env$last.par.best
@@ -182,6 +183,7 @@ dif_irt <- function(response_matrix, dif, person_data = NULL,
     }
     if (want_sdr) {
       out$sdr <- try(TMB::sdreport(obj), silent = TRUE)
+      out$se_ok <- check_sdreport(out$sdr, "DIF model")$se_ok
     }
     out
   }

@@ -29,6 +29,7 @@ predict.gllamm_survival <- function(object,
                                     times = NULL,
                                     n_sim = 1000,
                                     ...) {
+  warn_not_converged(object)
   predict_survival(object, newdata = newdata, type = type,
                    times = times, n_sim = n_sim, ...)
 }

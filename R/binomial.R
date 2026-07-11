@@ -204,15 +204,17 @@ fit_binomial <- function(formula, data, link = c("logit", "probit", "cloglog"),
   control_defaults <- list(eval.max = 2000, iter.max = 1000, trace = 0)
   control <- modifyList(control_defaults, control)
 
-  opt <- nlminb(
+  opt <- safe_nlminb(
     start = obj$par,
     objective = obj$fn,
     gradient = obj$gr,
-    control = control
+    control = control,
+    context = "binomial model"
   )
 
   # Get standard errors
   sdr <- try(TMB::sdreport(obj), silent = TRUE)
+  se_ok <- check_sdreport(sdr, "binomial model")$se_ok
 
   # Extract parameters
   par_full <- obj$env$last.par.best
@@ -285,7 +287,8 @@ fit_binomial <- function(formula, data, link = c("logit", "probit", "cloglog"),
     data = data,
     tmb_obj = obj,
     tmb_opt = opt,
-    tmb_sdr = sdr
+    tmb_sdr = sdr,
+    se_ok = se_ok
   )
 
   class(result) <- c("gllamm_binomial", "gllamm")

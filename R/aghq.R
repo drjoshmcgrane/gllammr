@@ -151,7 +151,8 @@ fit_tmb_gllamm_aghq <- function(model_data, family, random_terms,
   for (round in seq_len(max_adapt)) {
     obj <- TMB::MakeADFun(data = tmb_data, parameters = tmb_params,
                           map = tmb_map, DLL = "gllammr", silent = TRUE)
-    opt <- nlminb(obj$par, obj$fn, obj$gr, control = ctl)
+    opt <- safe_nlminb(obj$par, obj$fn, obj$gr, control = ctl,
+                       context = "AGHQ model")
     tmb_params$beta <- opt$par[names(opt$par) == "beta"]
     if (fam_code == 0L) {
       tmb_params$log_sigma <- unname(opt$par[names(opt$par) == "log_sigma"])
@@ -188,8 +189,10 @@ fit_tmb_gllamm_aghq <- function(model_data, family, random_terms,
   # Final fit at converged adaptation points
   obj <- TMB::MakeADFun(data = tmb_data, parameters = tmb_params,
                         map = tmb_map, DLL = "gllammr", silent = TRUE)
-  opt <- nlminb(obj$par, obj$fn, obj$gr, control = ctl)
+  opt <- safe_nlminb(obj$par, obj$fn, obj$gr, control = ctl,
+                     context = "AGHQ model")
   sdr <- try(TMB::sdreport(obj), silent = TRUE)
+  se_ok <- check_sdreport(sdr, "AGHQ model")$se_ok
 
   par_full <- obj$env$last.par.best
   beta_hat <- par_full[names(par_full) == "beta"]
@@ -230,6 +233,7 @@ fit_tmb_gllamm_aghq <- function(model_data, family, random_terms,
                        iterations = opt$iterations),
     tmb_obj = obj,
     tmb_opt = opt,
-    tmb_sdr = sdr
+    tmb_sdr = sdr,
+    se_ok = se_ok
   )
 }

@@ -574,15 +574,17 @@ fit_eirt <- function(response_matrix,
   control_defaults <- list(eval.max = 3000, iter.max = 2000, trace = 0)
   control <- modifyList(control_defaults, control)
 
-  opt <- nlminb(
+  opt <- safe_nlminb(
     start = obj$par,
     objective = obj$fn,
     gradient = obj$gr,
-    control = control
+    control = control,
+    context = "explanatory IRT model"
   )
 
   # Standard errors
   sdr <- try(TMB::sdreport(obj), silent = TRUE)
+  se_ok <- check_sdreport(sdr, "explanatory IRT model")$se_ok
 
   # Extract fixed-effect parameters
   par_full <- obj$env$last.par.best
@@ -693,7 +695,8 @@ fit_eirt <- function(response_matrix,
     item_data = item_data,
     tmb_obj = obj,
     tmb_opt = opt,
-    tmb_sdr = sdr
+    tmb_sdr = sdr,
+    se_ok = se_ok
   )
 
   class(result) <- c("gllamm_eirt", "gllamm")

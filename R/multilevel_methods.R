@@ -293,6 +293,7 @@ abilities.gllamm_irt_multilevel <- function(object, composite = FALSE, ...) {
 #'
 #' @export
 coef.gllamm_irt <- function(object, type = c("item", "person"), ...) {
+  warn_not_converged(object)
   type <- match.arg(type)
 
   if (type == "item") {
@@ -305,6 +306,7 @@ coef.gllamm_irt <- function(object, type = c("item", "person"), ...) {
 
 #' @export
 coef.gllamm_irt_multilevel <- function(object, type = c("item", "person", "random"), ...) {
+  warn_not_converged(object)
   type <- match.arg(type)
 
   if (type == "item") {

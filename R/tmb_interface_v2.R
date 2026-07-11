@@ -193,11 +193,12 @@ fit_tmb_gllamm_v2 <- function(model_data, family, random_terms, start_params = N
     }
   } else {
     opt <- try(
-      nlminb(
+      safe_nlminb(
         start = obj$par,
         objective = obj$fn,
         gradient = obj$gr,
-        control = control
+        control = control,
+        context = "model"
       ),
       silent = FALSE
     )
@@ -212,11 +213,9 @@ fit_tmb_gllamm_v2 <- function(model_data, family, random_terms, start_params = N
 
   # Get standard errors
   sdr <- try(TMB::sdreport(obj), silent = TRUE)
-
-  if (inherits(sdr, "try-error")) {
-    warning("Failed to compute standard errors")
-    sdr <- NULL
-  }
+  .sdr_chk <- check_sdreport(sdr, "model")
+  sdr <- .sdr_chk$sdr
+  se_ok <- .sdr_chk$se_ok
 
   # Extract results
   par_full <- obj$env$last.par.best
@@ -320,7 +319,8 @@ fit_tmb_gllamm_v2 <- function(model_data, family, random_terms, start_params = N
     ),
     tmb_obj = obj,
     tmb_opt = opt,
-    tmb_sdr = sdr
+    tmb_sdr = sdr,
+    se_ok = se_ok
   )
 }
 
@@ -443,7 +443,7 @@ fit_tmb_gllamm_multi <- function(model_data, family, random_terms,
   control <- modifyList(control_defaults, control)
 
   opt <- try(
-    nlminb(obj$par, obj$fn, obj$gr, control = control),
+    safe_nlminb(obj$par, obj$fn, obj$gr, control = control, context = "model"),
     silent = FALSE
   )
   if (inherits(opt, "try-error")) {
@@ -452,10 +452,9 @@ fit_tmb_gllamm_multi <- function(model_data, family, random_terms,
   converged <- (opt$convergence == 0)
 
   sdr <- try(TMB::sdreport(obj), silent = TRUE)
-  if (inherits(sdr, "try-error")) {
-    warning("Failed to compute standard errors")
-    sdr <- NULL
-  }
+  .sdr_chk <- check_sdreport(sdr, "model")
+  sdr <- .sdr_chk$sdr
+  se_ok <- .sdr_chk$se_ok
 
   par_full <- obj$env$last.par.best
 
@@ -544,6 +543,7 @@ fit_tmb_gllamm_multi <- function(model_data, family, random_terms,
     ),
     tmb_obj = obj,
     tmb_opt = opt,
-    tmb_sdr = sdr
+    tmb_sdr = sdr,
+    se_ok = se_ok
   )
 }

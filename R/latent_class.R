@@ -458,11 +458,12 @@ fit_lca <- function(formula, data = NULL, nclass = 2,
       )
     }
 
-    opt <- try(nlminb(
+    opt <- try(safe_nlminb(
       start = obj$par,
       objective = obj$fn,
       gradient = obj$gr,
-      control = list(eval.max = 2000, iter.max = 1000, trace = 0)
+      control = list(eval.max = 2000, iter.max = 1000, trace = 0),
+      context = "latent class model"
     ), silent = TRUE)
 
     if (!inherits(opt, "try-error") && opt$objective < best_obj_val) {
@@ -481,6 +482,7 @@ fit_lca <- function(formula, data = NULL, nclass = 2,
 
   # Get standard errors
   sdr <- try(TMB::sdreport(obj), silent = TRUE)
+  se_ok <- check_sdreport(sdr, "latent class model")$se_ok
 
   # Extract parameters: parList() reassembles full-shaped blocks (maps respected)
   pl <- obj$env$parList()
@@ -571,7 +573,8 @@ fit_lca <- function(formula, data = NULL, nclass = 2,
     n_items = n_items,
     tmb_obj = obj,
     tmb_opt = opt,
-    tmb_sdr = sdr
+    tmb_sdr = sdr,
+    se_ok = se_ok
   )
 
   class(result) <- c("gllamm_lca", "gllamm")

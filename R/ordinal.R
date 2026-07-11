@@ -240,13 +240,14 @@ fit_ordinal <- function(formula, data, link = c("logit", "probit", "acl",
   lower[par_names_opt == "log_sigma_u"] <- -10
   upper[par_names_opt == "log_sigma_u"] <- 10
 
-  opt <- nlminb(
+  opt <- safe_nlminb(
     start = obj$par,
     objective = obj$fn,
     gradient = obj$gr,
     lower = lower,
     upper = upper,
-    control = control
+    control = control,
+    context = "ordinal model"
   )
 
   if (any(abs(opt$par[par_names_opt == "beta"]) >= 29.5)) {
@@ -256,6 +257,7 @@ fit_ordinal <- function(formula, data, link = c("logit", "probit", "acl",
 
   # Get standard errors
   sdr <- try(TMB::sdreport(obj), silent = TRUE)
+  se_ok <- check_sdreport(sdr, "ordinal model")$se_ok
 
   # Extract parameters
   par_full <- obj$env$last.par.best
@@ -328,7 +330,8 @@ fit_ordinal <- function(formula, data, link = c("logit", "probit", "acl",
     X = model_data$X,
     tmb_obj = obj,
     tmb_opt = opt,
-    tmb_sdr = sdr
+    tmb_sdr = sdr,
+    se_ok = se_ok
   )
 
   class(result) <- c("gllamm_ordinal", "gllamm")
@@ -437,10 +440,12 @@ fit_ordinal_multi <- function(formula, data, link, link_code, parsed,
   lower[par_names_opt == "log_sigma_u"] <- -10
   upper[par_names_opt == "log_sigma_u"] <- 10
 
-  opt <- nlminb(obj$par, obj$fn, obj$gr,
-                lower = lower, upper = upper, control = control)
+  opt <- safe_nlminb(obj$par, obj$fn, obj$gr,
+                     lower = lower, upper = upper, control = control,
+                     context = "ordinal model")
 
   sdr <- try(TMB::sdreport(obj), silent = TRUE)
+  se_ok <- check_sdreport(sdr, "ordinal model")$se_ok
   par_full <- obj$env$last.par.best
 
   beta_hat <- par_full[names(par_full) == "beta"]
@@ -521,7 +526,8 @@ fit_ordinal_multi <- function(formula, data, link, link_code, parsed,
     X = model_data$X,
     tmb_obj = obj,
     tmb_opt = opt,
-    tmb_sdr = sdr
+    tmb_sdr = sdr,
+    se_ok = se_ok
   )
   class(result) <- c("gllamm_ordinal", "gllamm")
   result
@@ -707,15 +713,17 @@ fit_multinomial <- function(formula, data, reference = NULL,
   control_defaults <- list(eval.max = 2000, iter.max = 1000, trace = 0)
   control <- modifyList(control_defaults, control)
 
-  opt <- nlminb(
+  opt <- safe_nlminb(
     start = obj$par,
     objective = obj$fn,
     gradient = obj$gr,
-    control = control
+    control = control,
+    context = "ordinal model"
   )
 
   # Get standard errors
   sdr <- try(TMB::sdreport(obj), silent = TRUE)
+  se_ok <- check_sdreport(sdr, "ordinal model")$se_ok
 
   # Extract parameters
   par_full <- obj$env$last.par.best
@@ -757,7 +765,8 @@ fit_multinomial <- function(formula, data, reference = NULL,
     X = as.matrix(model_data$X),
     tmb_obj = obj,
     tmb_opt = opt,
-    tmb_sdr = sdr
+    tmb_sdr = sdr,
+    se_ok = se_ok
   )
 
   class(result) <- c("gllamm_multinomial", "gllamm")
@@ -845,9 +854,11 @@ fit_multinomial_multi <- function(formula, data, reference, parsed,
   control_defaults <- list(eval.max = 2000, iter.max = 1000, trace = 0)
   control$optimizer <- NULL
   control <- modifyList(control_defaults, control)
-  opt <- nlminb(obj$par, obj$fn, obj$gr, control = control)
+  opt <- safe_nlminb(obj$par, obj$fn, obj$gr, control = control,
+                     context = "ordinal model")
 
   sdr <- try(TMB::sdreport(obj), silent = TRUE)
+  se_ok <- check_sdreport(sdr, "ordinal model")$se_ok
   par_full <- obj$env$last.par.best
 
   beta_hat <- matrix(par_full[names(par_full) == "beta"],
@@ -919,7 +930,8 @@ fit_multinomial_multi <- function(formula, data, reference, parsed,
     X = as.matrix(model_data$X),
     tmb_obj = obj,
     tmb_opt = opt,
-    tmb_sdr = sdr
+    tmb_sdr = sdr,
+    se_ok = se_ok
   )
   class(result) <- c("gllamm_multinomial", "gllamm")
   result

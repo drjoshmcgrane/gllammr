@@ -52,6 +52,7 @@ predict.gllamm <- function(object,
                            se.fit = FALSE,
                            ...) {
 
+  warn_not_converged(object)
   type <- match.arg(type)
 
   # Handle marginal predictions separately

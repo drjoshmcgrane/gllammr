@@ -91,7 +91,8 @@ fit_npml <- function(formula, data, k = 2, family = stats::gaussian(),
                           map = tmb_map, DLL = "gllammr", silent = TRUE)
     control_defaults <- list(eval.max = 3000, iter.max = 1500, trace = 0)
     ctl <- modifyList(control_defaults, control)
-    opt <- try(nlminb(obj$par, obj$fn, obj$gr, control = ctl), silent = TRUE)
+    opt <- try(safe_nlminb(obj$par, obj$fn, obj$gr, control = ctl,
+                           context = "NPML model"), silent = TRUE)
     if (!inherits(opt, "try-error") &&
         (is.null(best) || opt$objective < best$opt$objective)) {
       best <- list(obj = obj, opt = opt)
@@ -102,6 +103,7 @@ fit_npml <- function(formula, data, k = 2, family = stats::gaussian(),
   obj <- best$obj; opt <- best$opt
 
   sdr <- try(TMB::sdreport(obj), silent = TRUE)
+  se_ok <- check_sdreport(sdr, "NPML model")$se_ok
   par_full <- obj$env$last.par.best
 
   beta_hat <- par_full[names(par_full) == "beta"]
@@ -142,7 +144,8 @@ fit_npml <- function(formula, data, k = 2, family = stats::gaussian(),
     data = data,
     tmb_obj = obj,
     tmb_opt = opt,
-    tmb_sdr = sdr
+    tmb_sdr = sdr,
+    se_ok = se_ok
   )
   class(result) <- c("gllamm_npml", "gllamm")
   result
@@ -182,6 +185,7 @@ print.gllamm_npml <- function(x, ...) {
 #' @export
 predict.gllamm_npml <- function(object, newdata = NULL,
                                 type = c("response", "link"), ...) {
+  warn_not_converged(object)
   type <- match.arg(type)
   parsed <- parse_formula(object$formula, object$data)
   md <- make_model_matrices(parsed, object$data)
