@@ -24,3 +24,7 @@
 ^validate_package\.R$
 ^compile_multilevel\.R$
 ^manual_test\.R$
+^GLLAMMR_.*\.tar\.gz$
+^gllammr_.*\.tar\.gz$
+^GLLAMMR\.Rcheck$
+^gllammr\.Rcheck$
