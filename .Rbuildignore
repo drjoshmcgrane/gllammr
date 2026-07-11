@@ -6,6 +6,10 @@
 ^LICENSE\.md$
 ^LICENSE$
 ^\.github$
+^\.lintr$
+^_pkgdown\.yml$
+^docs$
+^pkgdown$
 ^doc$
 ^Meta$
 ^cran-comments\.md$

@@ -12,6 +12,7 @@ Comprehensive implementation of Generalized Linear Latent and Mixed Models follo
 Useful links:
 \itemize{
   \item \url{https://github.com/drjoshmcgrane/gllammr}
+  \item \url{https://drjoshmcgrane.github.io/gllammr/}
   \item Report bugs at \url{https://github.com/drjoshmcgrane/gllammr/issues}
 }
 

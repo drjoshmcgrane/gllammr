@@ -1,6 +1,7 @@
 # gllammr: Generalized Linear Latent and Mixed Models in R
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![codecov](https://codecov.io/gh/drjoshmcgrane/gllammr/branch/main/graph/badge.svg)](https://codecov.io/gh/drjoshmcgrane/gllammr)
 
 An R implementation of **Generalized Linear Latent and Mixed Models (GLLAMM)** following the Stata GLLAMM framework of Rabe-Hesketh, Skrondal, and Pickles, with a fast TMB (Template Model Builder) backend.
 

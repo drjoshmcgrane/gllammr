@@ -55,7 +55,7 @@ Suggests:
     VGAM,
     nnet,
     clubSandwich
-URL: https://github.com/drjoshmcgrane/gllammr
+URL: https://github.com/drjoshmcgrane/gllammr, https://drjoshmcgrane.github.io/gllammr/
 BugReports: https://github.com/drjoshmcgrane/gllammr/issues
 Encoding: UTF-8
 RoxygenNote: 7.3.3

@@ -1,0 +1,69 @@
+# Workflow derived from https://github.com/r-lib/actions/tree/v2/examples
+# Need help debugging build failures? Start at https://github.com/r-lib/actions#where-to-find-help
+#
+# Runs the cross-package validation harness (validation/run_validation.R)
+# against the reference packages in Suggests (lme4, mirt, TAM, lavaan,
+# poLCA, ltm, CDM, difR, VGAM, ...) on a weekly schedule, so a silent
+# regression against those reference implementations is caught even
+# between releases.
+on:
+  schedule:
+    # Every Monday at 03:00 UTC
+    - cron: "0 3 * * 1"
+  workflow_dispatch:
+
+name: validation
+
+jobs:
+  validation:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: r-lib/actions/setup-pandoc@v2
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      # validation/run_validation.R exercises the full Suggests list
+      # (lme4, mirt, TAM, MASS, lavaan, npmlreg, glmmTMB, ordinal, poLCA,
+      # survival, HSAUR3, ltm, CDM, difR, VGAM, nnet, clubSandwich) as
+      # reference implementations, so install every dependency, not just
+      # the ones needed to R CMD check.
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: local::.
+          needs: check
+          dependencies: '"all"'
+
+      - name: Run validation harness
+        run: Rscript validation/run_validation.R
+
+      # run_validation.R always writes validation/RESULTS.md and never
+      # exits non-zero itself, so parse its "Overall: X / Y checks pass"
+      # summary line and fail the job if X < Y.
+      - name: Check validation results
+        run: |
+          summary_line=$(grep -m1 -oE '\*\*Overall: [0-9]+ / [0-9]+ checks pass\.\*\*' validation/RESULTS.md)
+          if [ -z "$summary_line" ]; then
+            echo "Could not find an 'Overall: X / Y checks pass' summary in validation/RESULTS.md"
+            exit 1
+          fi
+          echo "$summary_line"
+          read -r pass total <<< "$(echo "$summary_line" | grep -oE '[0-9]+' | tr '\n' ' ')"
+          echo "Passed $pass / $total checks"
+          if [ "$pass" -ne "$total" ]; then
+            echo "::error::Validation harness reported $pass / $total checks passing"
+            exit 1
+          fi
+
+      - name: Upload validation results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: validation-results
+          path: validation/RESULTS.md

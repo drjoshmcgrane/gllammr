@@ -2,6 +2,16 @@
 
 ## Post-1.2.0 development
 
+* **CI: coverage, lint, pkgdown, and scheduled-validation workflows.**
+  Added `.github/workflows/test-coverage.yaml` (covr + Codecov, with a
+  build-artifact fallback), `.github/workflows/lint.yaml` (non-blocking
+  `lintr::lint_package()` against a permissive `.lintr` baseline),
+  `.github/workflows/pkgdown.yaml` (builds and deploys the pkgdown site,
+  with a `_pkgdown.yml` reference index covering every exported and
+  internal documented topic), and `.github/workflows/validation.yaml`
+  (weekly cron plus manual dispatch running
+  `validation/run_validation.R` against the full Suggests reference
+  packages, failing the job if any cross-package check regresses).
 * **Bug fix: `fit()` on LCA models.** `fit.gllamm_lca()` always errored
   (`non-numeric argument to mathematical function`) because it read
   `object$n_classes`/`object$posterior_probs`, fields that don't exist
