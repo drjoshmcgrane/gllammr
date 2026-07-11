@@ -452,19 +452,11 @@ gllamm <- function(formula,
       control = control,
       weights = weights
     )
-  } else if (exists("fit_tmb_gllamm_v2")) {
+  } else {
     fit_result <- fit_tmb_gllamm_v2(
       model_data = model_data,
       family = family,
       random_terms = parsed$random_terms,
-      start_params = start,
-      control = control,
-      weights = weights
-    )
-  } else {
-    fit_result <- fit_tmb_gllamm(
-      model_data = model_data,
-      family = family,
       start_params = start,
       control = control,
       weights = weights

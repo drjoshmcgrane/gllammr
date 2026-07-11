@@ -2,6 +2,12 @@
 
 ## Post-1.2.0 development
 
+* **Internal TMB engine consolidation.** The legacy v1 TMB interface
+  (`fit_tmb_gllamm()`, `R/tmb_interface.R`) has been removed; it was
+  unreachable dead code (`gllamm()` always dispatched to the v2 engine
+  when available, which is always). `gllamm()` now calls
+  `fit_tmb_gllamm_v2()` unconditionally for the non-AGHQ path. No
+  user-facing change.
 * **Fit-time robustness diagnostics.** Shared internal helpers now give
   consistent, informative diagnostics across every fitter:
   - Standard errors are validated after `TMB::sdreport()`: a warning is
