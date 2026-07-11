@@ -329,25 +329,37 @@ predict_marginal_gllamm <- function(object, newdata = NULL, n_sim = 1000, se.fit
   beta <- object$coefficients$fixed
   inv_link <- get_inverse_link(object$family)
 
-  # Monte Carlo integration: one population draw per term per replicate,
-  # Welford accumulation of mean and variance
+  # Monte Carlo integration, vectorized: draw all n_sim population-level
+  # random effects up front (one draw per term per replicate) and reduce the
+  # inverse-link probabilities column-wise. The draws are generated in the
+  # exact order the former per-replicate loop consumed them - all terms of
+  # replicate 1, then replicate 2, ... - so a fixed seed reproduces the old
+  # results bit-for-bit while replacing n_sim R-level iterations with a couple
+  # of matrix operations.
   eta_fixed <- as.numeric(as.matrix(X) %*% beta)
-  n_obs <- length(eta_fixed)
-  mean_acc <- numeric(n_obs)
-  m2_acc <- numeric(n_obs)
-  for (sims in seq_len(n_sim)) {
-    eta <- eta_fixed
-    for (t in seq_len(parts$n_terms)) {
-      u_t <- rmvnorm_chol(1, parts$Sigmas[[t]])
-      eta <- eta + as.vector(parts$md$Z[[t]] %*% as.numeric(u_t))
-    }
-    mu <- inv_link(eta)
-    delta <- mu - mean_acc
-    mean_acc <- mean_acc + delta / sims
-    m2_acc <- m2_acc + delta * (mu - mean_acc)
+
+  q_terms <- vapply(parts$Sigmas, ncol, integer(1))
+  total_q <- sum(q_terms)
+  # byrow: row s holds replicate s's standard normals, laid out term by term.
+  raw <- matrix(stats::rnorm(n_sim * total_q),
+                nrow = n_sim, ncol = total_q, byrow = TRUE)
+
+  col <- 0L
+  terms <- vector("list", parts$n_terms)
+  for (t in seq_len(parts$n_terms)) {
+    qt <- q_terms[t]
+    block <- raw[, (col + 1L):(col + qt), drop = FALSE]
+    col <- col + qt
+    terms[[t]] <- list(
+      Z = as.matrix(parts$md$Z[[t]]),
+      U = .apply_chol(block, parts$Sigmas[[t]])
+    )
   }
-  result <- list(fit = mean_acc,
-                 se = sqrt(m2_acc / (n_sim * pmax(n_sim - 1, 1))))
+
+  mom <- .mc_integrate_columns(eta_fixed, terms, inv_link, n_sim)
+  # Standard error of the marginal (Monte Carlo) mean: sample SD / sqrt(n_sim).
+  result <- list(fit = mom$mean,
+                 se = sqrt(mom$m2 / (n_sim * pmax(n_sim - 1, 1))))
 
   if (se.fit) {
     return(list(fit = result$fit, se.fit = result$se))

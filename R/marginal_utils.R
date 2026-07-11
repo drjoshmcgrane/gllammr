@@ -21,38 +21,124 @@ NULL
 #' @return Vector of marginal predictions (length n)
 #' @keywords internal
 mc_integrate_fixed_samples <- function(X, Z, beta, u_samples, inv_link_fn) {
-  n_obs <- nrow(X)
   n_sim <- nrow(u_samples)
 
-  # Compute fixed part (same for all samples)
+  # Fixed part (same for all samples)
   eta_fixed <- as.vector(X %*% beta)
 
-  # Running mean and variance (Welford) instead of an n_obs x n_sim matrix
-  mean_pred <- numeric(n_obs)
-  m2_pred <- numeric(n_obs)
+  # A vector Z means a single random effect: coercing to a one-column matrix
+  # turns `Z %*% t(u_samples)` into outer(Z, u_samples[, 1]).
+  Zmat <- if (is.matrix(Z)) Z else matrix(Z, ncol = 1L)
 
-  for (s in 1:n_sim) {
-    u <- u_samples[s, ]
-
-    # Random part for all observations
-    if (is.matrix(Z)) {
-      eta_random <- as.vector(Z %*% u)
-    } else {
-      # Z is a vector (single random effect)
-      eta_random <- Z * u
-    }
-
-    pred_s <- inv_link_fn(eta_fixed + eta_random)
-
-    delta <- pred_s - mean_pred
-    mean_pred <- mean_pred + delta / s
-    m2_pred <- m2_pred + delta * (pred_s - mean_pred)
-  }
+  mom <- .mc_integrate_columns(
+    eta_fixed  = eta_fixed,
+    terms      = list(list(Z = Zmat, U = u_samples)),
+    inv_link_fn = inv_link_fn,
+    n_sim      = n_sim
+  )
 
   list(
-    fit = mean_pred,
-    se = sqrt(m2_pred / (n_sim - 1))
+    fit = mom$mean,
+    se  = sqrt(mom$m2 / (n_sim - 1))
   )
+}
+
+
+#' Column-wise Monte Carlo reduction for marginal predictions
+#'
+#' Vectorized replacement for the per-sample Welford loop. Builds the
+#' inverse-link probabilities for all Monte Carlo draws at once and reduces
+#' them to a per-observation mean and sum-of-squared-deviations (\code{m2}).
+#' Multiple random-effects terms are summed on the linear predictor.
+#'
+#' Memory guard: if the implied \code{n_obs x n_sim} probability matrix would
+#' exceed \code{chunk_threshold} entries, the draws are processed in blocks of
+#' \code{chunk_cols} columns and the moments combined with the numerically
+#' stable parallel-variance (Chan) formula, so peak memory stays bounded
+#' without ever falling back to a scalar per-sample loop.
+#'
+#' @param eta_fixed Length-\code{n_obs} fixed-effects linear predictor.
+#' @param terms List of terms, each a list with \code{Z} (n_obs x q design
+#'   matrix) and \code{U} (n_sim x q matrix of random-effect draws).
+#' @param inv_link_fn Inverse link function.
+#' @param n_sim Number of Monte Carlo draws (\code{nrow(U)}).
+#' @param chunk_threshold Maximum \code{n_obs * n_sim} before chunking.
+#' @param chunk_cols Columns per chunk when chunking.
+#'
+#' @return List with \code{mean} (per-observation marginal mean) and \code{m2}
+#'   (per-observation sum of squared deviations across the \code{n_sim} draws).
+#' @keywords internal
+#' @noRd
+.mc_integrate_columns <- function(eta_fixed, terms, inv_link_fn, n_sim,
+                                  chunk_threshold = 5e7, chunk_cols = 200L) {
+  n_obs <- length(eta_fixed)
+
+  # Random contribution (n_obs x k) for the draws indexed by `idx`.
+  random_block <- function(idx) {
+    Reduce(`+`, lapply(terms, function(tm) {
+      tm$Z %*% t(tm$U[idx, , drop = FALSE])
+    }))
+  }
+
+  # Fast path: build the whole n_obs x n_sim probability matrix at once.
+  if (n_obs * n_sim <= chunk_threshold) {
+    P <- inv_link_fn(eta_fixed + random_block(seq_len(n_sim)))
+    m <- rowMeans(P)
+    return(list(mean = m, m2 = rowSums((P - m)^2)))
+  }
+
+  # Chunked path: bounded memory, parallel-variance accumulation.
+  mean_acc <- numeric(n_obs)
+  m2_acc <- numeric(n_obs)
+  count <- 0L
+  starts <- seq.int(1L, n_sim, by = chunk_cols)
+  for (start in starts) {
+    idx <- start:min(start + chunk_cols - 1L, n_sim)
+    P <- inv_link_fn(eta_fixed + random_block(idx))
+    nk <- length(idx)
+    mk <- rowMeans(P)
+    m2k <- rowSums((P - mk)^2)
+    if (count == 0L) {
+      mean_acc <- mk
+      m2_acc <- m2k
+      count <- nk
+    } else {
+      tot <- count + nk
+      delta <- mk - mean_acc
+      mean_acc <- mean_acc + delta * (nk / tot)
+      m2_acc <- m2_acc + m2k + delta^2 * (count * nk / tot)
+      count <- tot
+    }
+  }
+  list(mean = mean_acc, m2 = m2_acc)
+}
+
+
+#' Transform standard-normal draws by a covariance's Cholesky factor
+#'
+#' Batched equivalent of \code{\link{rmvnorm_chol}} applied to pre-drawn
+#' standard normals: given an \code{n x q} matrix of iid N(0,1) values, returns
+#' draws with covariance \code{Sigma}. Consuming pre-drawn normals (rather than
+#' calling \code{rmvnorm_chol} once per replicate) lets the marginal integrator
+#' vectorize while preserving the exact random-number stream.
+#'
+#' @param Z_raw \code{n x q} matrix of standard-normal draws.
+#' @param Sigma \code{q x q} covariance matrix.
+#' @return \code{n x q} matrix of draws with covariance \code{Sigma}.
+#' @keywords internal
+#' @noRd
+.apply_chol <- function(Z_raw, Sigma) {
+  q <- ncol(Sigma)
+  if (q == 1L) {
+    v <- Sigma[1, 1]
+    if (v < 0) {
+      warning("Random-effects variance is negative; using zero.",
+              call. = FALSE)
+      v <- 0
+    }
+    return(Z_raw * sqrt(max(v, 0)))
+  }
+  Z_raw %*% safe_chol(Sigma)
 }
 
 

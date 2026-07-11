@@ -105,6 +105,48 @@ results$lca <- rbind(
   }
 )
 
+## ---- Marginal predictions: Monte Carlo integrator (n_sim = 1000/5000) ----
+# Population-averaged predict(type = "marginal") integrates over the random
+# effects by Monte Carlo. The integrator is vectorized (all draws reduced
+# column-wise in a couple of matrix ops), replacing the former per-replicate
+# R loop. Timed here on binomial random-intercept and random-slope fits.
+cat("Marginal predictions (Monte Carlo integrator)\n")
+time_predict <- function(label, fit, n_sim) {
+  gc()
+  ts <- replicate(5, {
+    set.seed(1)
+    system.time(predict(fit, type = "marginal", n_sim = n_sim,
+                        se.fit = TRUE))[["elapsed"]]
+  })
+  t <- median(ts)
+  cat(sprintf("  %-28s %8.3fs\n", label, t))
+  data.frame(fit = label, seconds = round(t, 3))
+}
+
+set.seed(42)
+gm <- 200; nm <- 5000
+grpm <- factor(rep(1:gm, length.out = nm)); xm <- rnorm(nm); um <- rnorm(gm)
+ybm <- rbinom(nm, 1, plogis(0.3 + 0.5 * xm + um[as.integer(grpm)]))
+fit_marg_ri <- gllamm(ybm ~ xm + (1 | grpm),
+                      data = data.frame(ybm = ybm, xm = xm, grpm = grpm),
+                      family = stats::binomial())
+
+gs <- 100; ns <- 2000
+grps <- factor(rep(1:gs, length.out = ns)); xs <- rnorm(ns)
+Us <- matrix(rnorm(gs * 2), gs) %*% chol(matrix(c(1, .3, .3, .5), 2))
+etas <- 0.2 + Us[as.integer(grps), 1] + (0.5 + Us[as.integer(grps), 2]) * xs
+ybs <- rbinom(ns, 1, plogis(etas))
+fit_marg_rs <- gllamm(ybs ~ xs + (xs | grps),
+                      data = data.frame(ybs = ybs, xs = xs, grps = grps),
+                      family = stats::binomial())
+
+results$marginal <- rbind(
+  time_predict("marginal RI n=5k nsim=1k", fit_marg_ri, 1000),
+  time_predict("marginal RI n=5k nsim=5k", fit_marg_ri, 5000),
+  time_predict("marginal RS n=2k nsim=1k", fit_marg_rs, 1000),
+  time_predict("marginal RS n=2k nsim=5k", fit_marg_rs, 5000)
+)
+
 ## ---- Write report ----
 all <- do.call(rbind, results)
 lines <- c(

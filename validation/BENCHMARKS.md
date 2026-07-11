@@ -57,3 +57,36 @@ the fixed-effects model only.
 - **Large-scale validation tier**: gllammr_validate(scale = "large") runs
   n=100k GLMM, 5000x100 GRM, n=20k LCA, and n=100k SEM agreement checks
   (9/9 passing; 61/61 across both tiers).
+
+## Marginal predictions (Monte Carlo integrator)
+
+`predict(type = "marginal")` integrates the inverse-link over the random
+effects by Monte Carlo. The integrator is now vectorized: all `n_sim` draws
+are generated up front (in the exact random-number order the former
+per-replicate loop consumed, so a fixed seed is bit-for-bit reproducible) and
+reduced column-wise in a couple of matrix operations, with a memory guard
+that processes the draws in column blocks once `n_obs * n_sim` exceeds 5e7.
+Medians of 5 warm runs, `se.fit = TRUE`, R 4.5 / macOS Apple Silicon:
+
+| Fit | n_sim | Before (loop) | After (vectorized) | Speedup |
+|---|---|---|---|---|
+| Binomial random-intercept, n=5000 | 1000 | 0.115s | 0.085s | 1.35x |
+| Binomial random-intercept, n=5000 | 5000 | 0.567s | 0.478s | 1.19x |
+| Binomial random-slope (q=2), n=2000 | 5000 | 0.266s | 0.169s | 1.57x |
+| Binomial random-intercept, n=200 | 50000 | 0.485s | 0.162s | **3.0x** |
+
+The speedup grows with the number of draws relative to observations (where
+R-level loop overhead dominated); for large `n_obs x n_sim` the runtime is
+bounded by the irreducible inverse-link evaluations. Random-slope fits gain
+most because the old loop re-factored the covariance (`chol`) on every one of
+the `n_sim` replicates; the vectorized path factors it once.
+
+## Refit-loop diagnostics (Cook's distance, DIF purification)
+
+Audited for hoistable per-iteration model matrices. The invariant design
+matrices are already built once outside the loops (`dif_test`, `dif_irt`,
+`cooks.distance`); the loops themselves are dominated by irreducible
+per-iteration refits (`glm.fit` ~88% of a purified `dif_test` run; TMB/nlminb
+optimization for Cook's-distance leave-one-out refits). The only remaining
+loop-invariant work (design formulas, `complete.cases`) measures ~1.7% of
+runtime - below a 10% threshold - so no further hoist was applied.

@@ -2,6 +2,24 @@
 
 ## Post-1.2.0 development
 
+* **Vectorized marginal-prediction integrator.** The Monte Carlo
+  integrator behind `predict(type = "marginal")` no longer loops in R
+  over the `n_sim` draws. All population-level random-effects draws are
+  generated up front and the inverse-link probabilities reduced
+  column-wise in a couple of matrix operations, with a memory guard that
+  processes the draws in column blocks once `n_obs * n_sim` exceeds 5e7.
+  Draws are produced in the exact random-number order the former
+  per-replicate loop consumed, so a fixed seed reproduces prior results
+  bit-for-bit (a new equivalence test locks this to 1e-10 end-to-end and
+  1e-12 against the old Welford integrator). Measured speedups range from
+  ~1.2x (large `n_obs x n_sim`, bounded by the inverse-link evaluations)
+  to ~3x when the draw count dominates the observation count; random-slope
+  fits gain most because the covariance is now Cholesky-factored once
+  rather than on every replicate. Cook's-distance and DIF purification
+  refit loops were audited for cacheable model matrices: their invariant
+  design matrices are already hoisted out of the loops and the loops are
+  refit-bound (`glm.fit`/TMB), so no further change was warranted.
+
 * **Internal TMB engine consolidation.** The legacy v1 TMB interface
   (`fit_tmb_gllamm()`, `R/tmb_interface.R`) has been removed; it was
   unreachable dead code (`gllamm()` always dispatched to the v2 engine
