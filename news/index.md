@@ -4,6 +4,20 @@
 
 ### Post-1.2.0 development
 
+- **Test/validation robustness against reference-package numerical
+  failures.** The cross-walk reference fits that back several IRT/DIF
+  tests and validation cases (`rasch_lsat`, `eirt_verbagg`,
+  `dif_irt_glmm`, and the `dif_irt` glmer cross-walk) now fit `lme4`
+  with the `bobyqa` optimizer, which avoids the “Downdated VtV is not
+  positive definite” breakdown the default `nloptwrap`/Nelder-Mead PWRSS
+  path can hit on some BLAS/Matrix builds (seen on Linux CI runners with
+  Matrix 1.7-5). Estimates are unchanged within every test’s existing
+  tolerance. As a belt-and-braces fallback, when a *reference-package*
+  fit still errors on a platform the test now `skip()`s with the reason
+  and the validation harness records the case as skipped (`pass = NA`)
+  rather than failed; a genuine gllammr-side error is still reported and
+  fails the suite. No tolerance was weakened.
+
 - **Category-probability predictions (`predict(fit, type = "probs")`)
   now work for Laplace-fitted polytomous IRT models, not just EM.**
   Previously the Laplace path (`fit_irt(..., method = "laplace")`, and
