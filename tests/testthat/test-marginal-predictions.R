@@ -14,13 +14,7 @@ test_that("Gaussian-identity: marginal equals conditional (fixed effects)", {
     group = rep(1:n_groups, each = n_per_group)
   )
 
-  # Fit model (skip if compilation issues)
-  fit <- tryCatch(
-    gllamm(y ~ x + (1 | group), data = data, family = gaussian()),
-    error = function(e) {
-      skip("Model fitting failed - likely compilation issue")
-    }
-  )
+  fit <- gllamm(y ~ x + (1 | group), data = data, family = gaussian())
 
   # Conditional at u=0
   pred_cond <- predict(fit, re.form = NA, type = "response")
@@ -47,13 +41,7 @@ test_that("Binomial-logit: marginal prediction runs without error", {
     group = rep(1:n_groups, each = n_per_group)
   )
 
-  # Fit model
-  fit <- tryCatch(
-    gllamm(y ~ x + (1 | group), data = data, family = binomial()),
-    error = function(e) {
-      skip("Model fitting failed")
-    }
-  )
+  fit <- gllamm(y ~ x + (1 | group), data = data, family = binomial())
 
   # Marginal predictions should run
   expect_no_error({
@@ -81,12 +69,7 @@ test_that("Marginal predictions: se.fit option works", {
     group = rep(1:n_groups, each = n_per_group)
   )
 
-  fit <- tryCatch(
-    gllamm(y ~ x + (1 | group), data = data, family = binomial()),
-    error = function(e) {
-      skip("Model fitting failed")
-    }
-  )
+  fit <- gllamm(y ~ x + (1 | group), data = data, family = binomial())
 
   # With se.fit
   result <- predict(fit, type = "marginal", se.fit = TRUE, n_sim = 100)
@@ -115,12 +98,7 @@ test_that("Marginal predictions: more samples = more stable", {
     group = rep(1:n_groups, each = n_per_group)
   )
 
-  fit <- tryCatch(
-    gllamm(y ~ x + (1 | group), data = data, family = binomial()),
-    error = function(e) {
-      skip("Model fitting failed")
-    }
-  )
+  fit <- gllamm(y ~ x + (1 | group), data = data, family = binomial())
 
   # Two runs with few samples should differ
   set.seed(111)
@@ -156,12 +134,7 @@ test_that("Marginal predictions: newdata works", {
     group = rep(1:n_groups, each = n_per_group)
   )
 
-  fit <- tryCatch(
-    gllamm(y ~ x + (1 | group), data = data, family = binomial()),
-    error = function(e) {
-      skip("Model fitting failed")
-    }
-  )
+  fit <- gllamm(y ~ x + (1 | group), data = data, family = binomial())
 
   # Create new data
   newdata <- data.frame(
@@ -194,12 +167,7 @@ test_that("Poisson-log: marginal predictions work", {
     group = rep(1:n_groups, each = n_per_group)
   )
 
-  fit <- tryCatch(
-    gllamm(y ~ x + (1 | group), data = data, family = poisson()),
-    error = function(e) {
-      skip("Model fitting failed")
-    }
-  )
+  fit <- gllamm(y ~ x + (1 | group), data = data, family = poisson())
 
   # Marginal predictions
   pred_marg <- predict(fit, type = "marginal", n_sim = 500)
@@ -224,12 +192,7 @@ test_that("Marginal predictions: input validation", {
     group = rep(1:5, each = 10)
   )
 
-  fit <- tryCatch(
-    gllamm(y ~ x + (1 | group), data = data, family = binomial()),
-    error = function(e) {
-      skip("Model fitting failed")
-    }
-  )
+  fit <- gllamm(y ~ x + (1 | group), data = data, family = binomial())
 
   # Invalid n_sim must give an informative error
   expect_error(

@@ -2,6 +2,34 @@
 
 ## Post-1.2.0 development
 
+* **Bug fix: `fit()` on LCA models.** `fit.gllamm_lca()` always errored
+  (`non-numeric argument to mathematical function`) because it read
+  `object$n_classes`/`object$posterior_probs`, fields that don't exist
+  on a `gllamm_lca` fit (the real fields are `nclass`/`posterior`).
+  Entropy, class proportions, and average posterior probabilities
+  (APPA) now compute correctly; caught by a new test exercising
+  `fit()` on an actual fitted LCA model.
+* **Test-suite hardening.** Seven `tryCatch(gllamm(...), error = ...
+  skip(...))` wrappers in the marginal-prediction tests were dead
+  scaffolding from a since-fixed bug (verified never to fire) and now
+  call `gllamm()` directly, so a future regression fails the suite
+  instead of silently skipping. The two `step_formula`/`step_data`
+  validation guards in `fit_eirt()` (unsupported model; missing
+  `step_data`) and the shared step/threshold "at least 3 categories"
+  guard are now covered by `expect_error()` tests, and `step_formula`
+  reachability through the `gllamm(family = eirt(...))` unified
+  interface is locked down by an equivalence test against `fit_eirt()`
+  directly. Former empty placeholder tests for `fit()` on LCA/IRT
+  models and IRT/LCA S3 `plot()` methods are now real fits exercising
+  the documented structure. Package version bumped to 1.2.0.9000
+  (development version) ahead of the next release.
+
+* **Packaging hygiene.** `.Rbuildignore` now excludes the built tarball
+  and `R CMD check` directory under either package-name casing
+  (`GLLAMMR_*.tar.gz`/`gllammr_*.tar.gz`, `GLLAMMR.Rcheck`/
+  `gllammr.Rcheck`); no compiled objects, tarballs, or check directories
+  were tracked in git.
+
 * **Vectorized marginal-prediction integrator.** The Monte Carlo
   integrator behind `predict(type = "marginal")` no longer loops in R
   over the `n_sim` draws. All population-level random-effects draws are

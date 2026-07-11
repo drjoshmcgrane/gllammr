@@ -189,8 +189,14 @@ test_that("fit() errors for unsupported classes", {
 
 
 test_that("fit() handles models without random effects", {
-  # Note: gllamm requires random effects, but if we had a model without them:
-  # For now, all gllamm models have random effects, so this is a placeholder
+  # gllamm() has no fixed-effects-only path (by design: use glm()/lm()
+  # for that); this documents the actual behavior rather than a
+  # hypothetical no-RE fit() output
+  set.seed(181920)
+  n <- 50
+  data <- data.frame(y = rnorm(n), x = rnorm(n))
+  expect_error(suppressWarnings(gllamm(y ~ x, data = data)),
+               "No random effects specified")
 })
 
 
@@ -212,28 +218,47 @@ test_that("fit() computes ICC correctly", {
 })
 
 
-test_that("fit() for LCA models would return correct structure", {
-  # Placeholder for LCA tests when LCA models are available
-  # This will test entropy, class proportions, etc.
+test_that("fit() for LCA models returns correct structure", {
+  skip_if_not_installed("TMB")
 
-  # When implemented:
-  # fit_lca <- fit_lca(data, nclass = 3)
-  # fit_stats <- fit(fit_lca)
-  # expect_true("entropy" %in% names(fit_stats))
-  # expect_true("class_proportions" %in% names(fit_stats))
-  # expect_true(fit_stats$entropy >= 0 && fit_stats$entropy <= 1)
+  set.seed(3031)
+  n <- 150; n_items <- 5
+  class1_probs <- c(0.8, 0.7, 0.9, 0.75, 0.85)
+  class2_probs <- c(0.2, 0.3, 0.1, 0.25, 0.15)
+  true_class <- sample(1:2, n, replace = TRUE, prob = c(0.6, 0.4))
+  data_lca <- matrix(NA, n, n_items)
+  for (i in seq_len(n)) {
+    probs <- if (true_class[i] == 1) class1_probs else class2_probs
+    data_lca[i, ] <- rbinom(n_items, 1, probs)
+  }
+  fit_lca_model <- fit_lca(data_lca, nclass = 2)
+  fit_stats <- fit(fit_lca_model)
+
+  expect_true("entropy" %in% names(fit_stats))
+  expect_true("class_proportions" %in% names(fit_stats))
+  expect_true(fit_stats$entropy >= 0 && fit_stats$entropy <= 1)
+  expect_equal(length(fit_stats$class_proportions), 2)
+  expect_equal(sum(fit_stats$class_proportions), 1, tolerance = 1e-8)
 })
 
 
-test_that("fit() for IRT models would return correct structure", {
-  # Placeholder for IRT tests when fit() is fully implemented for IRT
+test_that("fit() for IRT models returns correct structure", {
+  skip_if_not_installed("TMB")
 
-  # When implemented:
-  # fit_irt <- fit_irt(responses, model = "2PL")
-  # fit_stats <- fit(fit_irt)
-  # expect_true("item_fit" %in% names(fit_stats))
-  # expect_true("person_fit" %in% names(fit_stats))
-  # expect_true("reliability" %in% names(fit_stats))
+  set.seed(3233)
+  n_persons <- 150; n_items <- 8
+  theta <- rnorm(n_persons)
+  b <- seq(-1.2, 1.2, length.out = n_items)
+  responses <- sapply(seq_len(n_items), function(j)
+    rbinom(n_persons, 1, plogis(theta - b[j])))
+  fit_irt_model <- fit_irt(responses, model = "2PL")
+  fit_stats <- fit(fit_irt_model)
+
+  expect_true("item_fit" %in% names(fit_stats))
+  expect_true("person_fit" %in% names(fit_stats))
+  expect_true("reliability" %in% names(fit_stats))
+  expect_equal(nrow(fit_stats$item_fit), n_items)
+  expect_equal(nrow(fit_stats$person_fit), n_persons)
 })
 
 

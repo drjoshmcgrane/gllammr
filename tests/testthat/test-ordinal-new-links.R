@@ -170,12 +170,25 @@ test_that("test_proportional_odds errors for non-ordinal models", {
 
 
 test_that("test_proportional_odds errors for ACL/CRL models", {
-  # Note: This test will work once we actually support ACL/CRL in fit_ordinal
-  # For now it's a placeholder
+  skip_if_not_installed("MASS")
 
-  # When ACL/CRL are implemented:
-  # fit_acl <- fit_ordinal(y ~ x + (1 | group), data = data, link = "acl")
-  # expect_error(test_proportional_odds(fit_acl), "only applies to logit or probit")
+  set.seed(171819)
+  n <- 200
+  n_groups <- 5
+  data <- data.frame(
+    y = ordered(sample(1:4, n, replace = TRUE)),
+    x = rnorm(n),
+    group = rep(1:n_groups, each = n / n_groups)
+  )
+
+  fit_acl <- fit_ordinal(y ~ x + (1 | group), data = data, link = "acl")
+  expect_error(test_proportional_odds(fit_acl),
+               "only applies to logit or probit")
+
+  fit_crl <- fit_ordinal(y ~ x + (1 | group), data = data,
+                         link = "crl_forward")
+  expect_error(test_proportional_odds(fit_crl),
+               "only applies to logit or probit")
 })
 
 

@@ -243,3 +243,31 @@ test_that("threshold regression is identified with shared covariates", {
   xi <- f$regression_coefficients$threshold
   expect_equal(unname(rowSums(xi)), c(0, 0), tolerance = 1e-8)
 })
+
+test_that("step_formula guards reject unsupported models and missing step_data", {
+  d <- make_dichot(np = 150, ni = 8, seed = 11)
+  ni <- ncol(d$resp)
+  sd_dummy <- data.frame(x = rnorm(ni))
+
+  # Guard 1: step_formula has no interpretation outside PCM/GPCM (the
+  # adjacent-categories / LPCM framework) - must not be silently ignored
+  expect_error(
+    fit_eirt(d$resp, data.frame(z = rnorm(ni)), difficulty_formula = ~ 1,
+             step_formula = ~ x, step_data = sd_dummy, model = "Rasch"),
+    "step_formula is only supported for PCM and GPCM")
+
+  # Guard 2: step_formula requires step_data (one row per item-step
+  # combination); omitting it must error rather than proceed with NULL
+  expect_error(
+    fit_eirt(d$resp, data.frame(z = rnorm(ni)), difficulty_formula = ~ 1,
+             step_formula = ~ x, model = "PCM"),
+    "step_data must be provided with step_formula")
+
+  # Guard 3: step-level regression needs adjacent-categories steps, so
+  # items with fewer than 3 categories (e.g. dichotomous) are rejected
+  sd_full <- data.frame(x = rnorm(ni))
+  expect_error(
+    fit_eirt(d$resp, data.frame(z = rnorm(ni)), difficulty_formula = ~ 1,
+             step_formula = ~ x, step_data = sd_full, model = "PCM"),
+    "require items with at least")
+})

@@ -216,16 +216,16 @@ fit.gllamm_lca <- function(object, ...) {
     logLik = object$logLik,
     AIC = object$AIC,
     BIC = object$BIC,
-    n_classes = object$n_classes,
-    n_obs = nrow(object$posterior_probs),
+    n_classes = object$nclass,
+    n_obs = nrow(object$posterior),
     n_items = ncol(object$item_probs)
   )
 
   # Entropy: measure of classification certainty
   # E = 1 - [sum_i sum_k p_ik log(p_ik)] / (n log(K))
-  posterior <- object$posterior_probs
+  posterior <- object$posterior
   entropy_raw <- -sum(posterior * log(posterior + 1e-10), na.rm = TRUE)
-  max_entropy <- nrow(posterior) * log(object$n_classes)
+  max_entropy <- nrow(posterior) * log(object$nclass)
   fit_stats$entropy <- 1 - entropy_raw / max_entropy
 
   # Class proportions (from posterior probabilities)
@@ -234,14 +234,14 @@ fit.gllamm_lca <- function(object, ...) {
   # Average posterior probability per class (APPA)
   # For each class, average the posterior probability among those assigned to it
   modal_class <- apply(posterior, 1, which.max)
-  fit_stats$avg_posterior <- sapply(1:object$n_classes, function(k) {
+  fit_stats$avg_posterior <- sapply(1:object$nclass, function(k) {
     if (sum(modal_class == k) > 0) {
       mean(posterior[modal_class == k, k])
     } else {
       NA
     }
   })
-  names(fit_stats$avg_posterior) <- paste0("Class", 1:object$n_classes)
+  names(fit_stats$avg_posterior) <- paste0("Class", 1:object$nclass)
 
   # Classification quality based on entropy
   if (fit_stats$entropy > 0.8) {

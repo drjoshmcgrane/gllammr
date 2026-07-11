@@ -118,9 +118,7 @@ test_that("end-to-end predict(type='marginal') reproduces the old loop", {
   x <- rnorm(n); u <- rnorm(g)
   yb <- rbinom(n, 1, plogis(0.3 + 0.5 * x + u[as.integer(grp)]))
   d <- data.frame(yb = yb, x = x, grp = grp)
-  fit <- tryCatch(
-    gllamm(yb ~ x + (1 | grp), data = d, family = stats::binomial()),
-    error = function(e) skip("model fit failed"))
+  fit <- gllamm(yb ~ x + (1 | grp), data = d, family = stats::binomial())
 
   seed <- 2024L
   set.seed(seed)
@@ -137,9 +135,7 @@ test_that("end-to-end predict(type='marginal') reproduces the old loop", {
   eta2 <- 0.2 + U[as.integer(grp2), 1] + (0.5 + U[as.integer(grp2), 2]) * x2
   yb2 <- rbinom(n2, 1, plogis(eta2))
   d2 <- data.frame(y = yb2, x = x2, grp = grp2)
-  fit2 <- tryCatch(
-    gllamm(y ~ x + (x | grp), data = d2, family = stats::binomial()),
-    error = function(e) skip("slope model fit failed"))
+  fit2 <- gllamm(y ~ x + (x | grp), data = d2, family = stats::binomial())
 
   set.seed(seed)
   new2 <- predict(fit2, type = "marginal", n_sim = 800, se.fit = TRUE)

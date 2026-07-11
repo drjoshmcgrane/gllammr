@@ -20,6 +20,36 @@ test_that("eirt() family routes through gllamm()", {
   expect_equal(f1$logLik, f2$logLik, tolerance = 1e-6)
 })
 
+test_that("eirt() family routes step_formula/step_data through gllamm()", {
+  set.seed(9)
+  np <- 300; ni <- 8; K <- 3
+  theta <- rnorm(np)
+  z_item <- rnorm(ni)
+  x_step <- rnorm(ni * (K - 1))
+  b <- 0.2 + 0.5 * z_item
+  resp <- sapply(seq_len(ni), function(j) {
+    delta <- b[j] + 0.6 * x_step[((j - 1) * (K - 1) + 1):(j * (K - 1))] +
+      c(-0.7, 0.7)
+    sapply(seq_len(np), function(p) {
+      cs <- cumsum(c(0, theta[p] - delta))
+      sample.int(K, 1, prob = exp(cs) / sum(exp(cs)))
+    })
+  })
+  idata <- data.frame(z_item = z_item)
+  step_data <- data.frame(x = x_step)
+
+  set.seed(2)
+  f1 <- gllamm(resp, family = eirt(idata, difficulty_formula = ~ z_item,
+                                   step_formula = ~ x, step_data = step_data,
+                                   model = "PCM"))
+  set.seed(2)
+  f2 <- fit_eirt(resp, idata, difficulty_formula = ~ z_item,
+                 step_formula = ~ x, step_data = step_data, model = "PCM")
+  expect_s3_class(f1, "gllamm_eirt")
+  expect_equal(f1$logLik, f2$logLik, tolerance = 1e-6)
+  expect_equal(f1$regression_coefficients$step, f2$regression_coefficients$step)
+})
+
 test_that("sem() family routes through gllamm()", {
   set.seed(3)
   n <- 300

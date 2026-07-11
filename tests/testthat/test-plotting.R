@@ -137,29 +137,61 @@ test_that("plot_ordinal_effects works", {
 })
 
 
-test_that("IRT plotting functions work (when IRT models available)", {
-  skip("IRT plotting requires fitted IRT model with specific structure")
+test_that("IRT plotting functions work", {
+  skip_if_not_installed("TMB")
 
-  # When IRT models are available with proper structure:
-  # fit_irt <- fit_irt(responses, model = "2PL")
-  # expect_silent({
-  #   pdf(tempfile())
-  #   plot(fit_irt, which = 1:4, items = 1:3)
-  #   dev.off()
-  # })
+  set.seed(2024)
+  n_persons <- 100
+  n_items <- 6
+  theta <- rnorm(n_persons)
+  b <- seq(-1, 1, length.out = n_items)
+  responses <- sapply(seq_len(n_items), function(j)
+    rbinom(n_persons, 1, plogis(theta - b[j])))
+
+  fit_irt_2pl <- fit_irt(responses, model = "2PL")
+
+  expect_silent({
+    pdf(tempfile())
+    plot(fit_irt_2pl, which = 1:4, items = 1:3)
+    dev.off()
+  })
+
+  expect_silent({
+    pdf(tempfile())
+    plot(fit_irt_2pl, which = 1, items = 1:3)
+    dev.off()
+  })
 })
 
 
-test_that("LCA plotting functions work (when LCA models available)", {
-  skip("LCA plotting requires fitted LCA model with specific structure")
+test_that("LCA plotting functions work", {
+  skip_if_not_installed("TMB")
 
-  # When LCA models are available with proper structure:
-  # fit_lca <- fit_lca(data, nclass = 3)
-  # expect_silent({
-  #   pdf(tempfile())
-  #   plot(fit_lca, which = 1:3)
-  #   dev.off()
-  # })
+  set.seed(2025)
+  n <- 150
+  n_items <- 5
+  class1_probs <- c(0.8, 0.7, 0.9, 0.75, 0.85)
+  class2_probs <- c(0.2, 0.3, 0.1, 0.25, 0.15)
+  true_class <- sample(1:2, n, replace = TRUE, prob = c(0.6, 0.4))
+  data_lca <- matrix(NA, n, n_items)
+  for (i in seq_len(n)) {
+    probs <- if (true_class[i] == 1) class1_probs else class2_probs
+    data_lca[i, ] <- rbinom(n_items, 1, probs)
+  }
+
+  fit_lca_2 <- fit_lca(data_lca, nclass = 2)
+
+  expect_silent({
+    pdf(tempfile())
+    plot(fit_lca_2, which = 1:3)
+    dev.off()
+  })
+
+  expect_silent({
+    pdf(tempfile())
+    plot(fit_lca_2, which = 1)
+    dev.off()
+  })
 })
 
 

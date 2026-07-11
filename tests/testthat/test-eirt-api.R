@@ -63,20 +63,96 @@ test_that("Pure LLTM works (item_residuals = FALSE)", {
   expect_lt(length(fit_pure$tmb_obj$par), length(fit_error$tmb_obj$par))
 })
 
-test_that("PCM with threshold_formula works (former LPCM)", {
-  skip("Requires polytomous data - implement when testing framework ready")
+# Helper: simulate PCM/GPCM responses using adjacent-categories logit
+# P(Y = k) proportional to exp(sum_{m=1}^k a*(theta - delta_m))
+sim_pcm_api <- function(n_persons, n_items, theta, discrimination, thresholds_list) {
+  K <- length(thresholds_list[[1]]) + 1L
+  responses <- matrix(NA_integer_, n_persons, n_items)
+  for (i in seq_len(n_persons)) {
+    for (j in seq_len(n_items)) {
+      tau <- thresholds_list[[j]]
+      cumsums <- c(0, cumsum(discrimination[j] * (theta[i] - tau)))
+      probs <- exp(cumsums - max(cumsums))
+      probs <- probs / sum(probs)
+      responses[i, j] <- sample.int(K, 1, prob = probs)
+    }
+  }
+  responses
+}
 
-  # This will test:
-  # fit_eirt(..., model = "PCM", threshold_formula = ~ x)
-  # Should work identically to old model = "LPCM"
+test_that("PCM with threshold_formula works (former LPCM)", {
+  skip_if_not_installed("TMB")
+
+  set.seed(1202)
+  n_persons <- 120
+  n_items <- 12
+  n_categories <- 4
+
+  item_data <- data.frame(
+    abstractness = rnorm(n_items),
+    cognitive_level = rnorm(n_items)
+  )
+
+  theta <- rnorm(n_persons)
+  thresholds_list <- replicate(n_items, sort(rnorm(n_categories - 1)),
+                                simplify = FALSE)
+  responses <- sim_pcm_api(n_persons, n_items, theta, rep(1, n_items),
+                            thresholds_list)
+
+  fit <- fit_eirt(
+    responses,
+    item_data = item_data,
+    difficulty_formula = ~ abstractness,
+    threshold_formula = ~ cognitive_level,
+    model = "PCM"
+  )
+
+  expect_s3_class(fit, "gllamm_eirt")
+  expect_equal(fit$model, "PCM")
+  xi_hat <- fit$regression_coefficients$threshold
+  expect_false(is.null(xi_hat))
+  expect_true(all(is.finite(xi_hat)))
+  expect_equal(nrow(xi_hat), 2)
+  expect_equal(ncol(xi_hat), n_categories - 1L)
 })
 
 test_that("GPCM with threshold_formula works (new capability)", {
-  skip("Requires polytomous data - implement when testing framework ready")
+  skip_if_not_installed("TMB")
 
-  # This will test:
-  # fit_eirt(..., model = "GPCM", threshold_formula = ~ x)
-  # This is a NEW capability (GPCM couldn't have threshold predictors before)
+  # GPCM couldn't previously take threshold predictors; this fit exercises
+  # poly_model_type 4L (LPCM framework) with item-varying discrimination
+  set.seed(1203)
+  n_persons <- 150
+  n_items <- 12
+  n_categories <- 4
+
+  item_data <- data.frame(
+    abstractness = rnorm(n_items),
+    cognitive_level = rnorm(n_items)
+  )
+
+  theta <- rnorm(n_persons)
+  discrimination <- exp(rnorm(n_items, 0, 0.3))
+  thresholds_list <- replicate(n_items, sort(rnorm(n_categories - 1)),
+                                simplify = FALSE)
+  responses <- sim_pcm_api(n_persons, n_items, theta, discrimination,
+                            thresholds_list)
+
+  fit <- fit_eirt(
+    responses,
+    item_data = item_data,
+    difficulty_formula = ~ abstractness,
+    threshold_formula = ~ cognitive_level,
+    model = "GPCM"
+  )
+
+  expect_s3_class(fit, "gllamm_eirt")
+  expect_equal(fit$model, "GPCM")
+  xi_hat <- fit$regression_coefficients$threshold
+  expect_false(is.null(xi_hat))
+  expect_true(all(is.finite(xi_hat)))
+  expect_equal(nrow(xi_hat), 2)
+  expect_equal(ncol(xi_hat), n_categories - 1L)
 })
 
 test_that("2PL with discrimination predictors works", {

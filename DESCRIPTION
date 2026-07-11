@@ -1,7 +1,7 @@
 Package: gllammr
 Type: Package
 Title: Generalized Linear Latent and Mixed Models
-Version: 1.2.0
+Version: 1.2.0.9000
 Authors@R:
     person("Josh", "McGrane", email = "drjoshmcgrane@gmail.com",
            role = c("aut", "cre"))
