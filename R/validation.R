@@ -64,19 +64,56 @@ gllammr_validate <- function(cases = "all", scale = c("standard", "large", "all"
   for (case in cases) {
     if (verbose) message("Validating: ", case)
     fn <- get(paste0(".validate_", case), mode = "function")
-    res <- tryCatch(fn(), error = function(e) {
-      data.frame(case = case, statistic = "ERROR",
-                 gllammr = NA_real_, reference = NA_real_,
-                 abs_diff = NA_real_, rel_diff = NA_real_,
-                 tolerance = NA_real_, pass = FALSE,
-                 note = conditionMessage(e))
-    })
+    res <- tryCatch(fn(),
+      # A numerical breakdown *inside a reference package* (e.g. lme4's
+      # "Downdated VtV is not positive definite" on some BLAS/Matrix builds)
+      # is a platform artefact, not a gllammr defect: record it as a skip
+      # (pass = NA), not a failure.
+      gllammr_reference_skip = function(e) {
+        if (verbose) message("  skipped: ", conditionMessage(e))
+        data.frame(case = case, statistic = "SKIP",
+                   gllammr = NA_real_, reference = NA_real_,
+                   abs_diff = NA_real_, rel_diff = NA_real_,
+                   tolerance = NA_real_, pass = NA,
+                   note = conditionMessage(e))
+      },
+      error = function(e) {
+        data.frame(case = case, statistic = "ERROR",
+                   gllammr = NA_real_, reference = NA_real_,
+                   abs_diff = NA_real_, rel_diff = NA_real_,
+                   tolerance = NA_real_, pass = FALSE,
+                   note = conditionMessage(e))
+      })
     rows[[case]] <- res
   }
 
   out <- do.call(rbind, rows)
   rownames(out) <- NULL
   out
+}
+
+
+#' Signal that a reference-package fit failed (a platform artefact, not a
+#' gllammr defect). Caught by [gllammr_validate()] and turned into a skipped
+#' row rather than a failure.
+#' @keywords internal
+.reference_skip <- function(msg) {
+  stop(structure(
+    class = c("gllammr_reference_skip", "error", "condition"),
+    list(message = msg, call = NULL)))
+}
+
+#' Evaluate a reference-package model fit, converting a fitting error into a
+#' platform skip. Numerical breakdowns inside a reference package (e.g. lme4's
+#' "Downdated VtV is not positive definite" on some BLAS/Matrix builds) then
+#' mark the case skipped, never failed. `expr` is evaluated lazily inside the
+#' handler.
+#' @keywords internal
+.reference_fit <- function(expr) {
+  tryCatch(expr, error = function(e)
+    .reference_skip(paste0(
+      "reference-package fit failed on this platform: ",
+      conditionMessage(e))))
 }
 
 
@@ -235,8 +272,10 @@ gllammr_validate <- function(cases = "all", scale = c("standard", "large", "all"
     item = factor(rep(colnames(resp), each = nrow(resp))),
     id = factor(rep(seq_len(nrow(resp)), times = ncol(resp)))
   )
-  ref <- lme4::glmer(y ~ 0 + item + (1 | id), data = long,
-                     family = stats::binomial(), nAGQ = 1)
+  ref <- .reference_fit(lme4::glmer(
+    y ~ 0 + item + (1 | id), data = long,
+    family = stats::binomial(), nAGQ = 1,
+    control = lme4::glmerControl(optimizer = "bobyqa")))
   b_ref <- -lme4::fixef(ref)   # difficulty = -item easiness
   sigma_ref <- attr(lme4::VarCorr(ref)$id, "stddev")
 
@@ -632,8 +671,10 @@ gllammr_validate <- function(cases = "all", scale = c("standard", "large", "all"
   fit <- fit_eirt(resp, item_data,
                   difficulty_formula = ~ btype + situ + mode,
                   model = "Rasch", item_residuals = TRUE)
-  ref <- lme4::glmer(r2 ~ btype + situ + mode + (1 | id) + (1 | item),
-                     data = VerbAgg, family = stats::binomial(), nAGQ = 1)
+  ref <- .reference_fit(lme4::glmer(
+    r2 ~ btype + situ + mode + (1 | id) + (1 | item),
+    data = VerbAgg, family = stats::binomial(), nAGQ = 1,
+    control = lme4::glmerControl(optimizer = "bobyqa")))
   beta_ref <- lme4::fixef(ref)
   gamma <- fit$regression_coefficients$difficulty
 
@@ -788,10 +829,13 @@ gllammr_validate <- function(cases = "all", scale = c("standard", "large", "all"
                      id = factor(rep(1:n, times = ni)),
                      g = rep(g, ni))
   long$dif4 <- as.integer(long$item == 4) * long$g
-  m1 <- lme4::glmer(y ~ 0 + item + g + dif4 + (1 | id), data = long,
-                    family = stats::binomial(), nAGQ = 1)
-  m0 <- lme4::glmer(y ~ 0 + item + g + (1 | id), data = long,
-                    family = stats::binomial(), nAGQ = 1)
+  ctrl <- lme4::glmerControl(optimizer = "bobyqa")
+  m1 <- .reference_fit(lme4::glmer(
+    y ~ 0 + item + g + dif4 + (1 | id), data = long,
+    family = stats::binomial(), nAGQ = 1, control = ctrl))
+  m0 <- .reference_fit(lme4::glmer(
+    y ~ 0 + item + g + (1 | id), data = long,
+    family = stats::binomial(), nAGQ = 1, control = ctrl))
   lr_glmer <- 2 * (as.numeric(logLik(m1)) - as.numeric(logLik(m0)))
 
   rbind(

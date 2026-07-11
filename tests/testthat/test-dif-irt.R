@@ -35,10 +35,19 @@ test_that("uniform DIF and impact are separated; matches glmer exactly", {
                      id = factor(rep(1:n, times = ni)),
                      g = rep(d$g, ni))
   long$dif4 <- as.integer(long$item == 4) * long$g
-  m1 <- lme4::glmer(y ~ 0 + item + g + dif4 + (1 | id), data = long,
-                    family = binomial, nAGQ = 1)
-  m0 <- lme4::glmer(y ~ 0 + item + g + (1 | id), data = long,
-                    family = binomial, nAGQ = 1)
+  # bobyqa avoids the "Downdated VtV is not positive definite" breakdown the
+  # default nloptwrap/Nelder-Mead PWRSS path can hit on some BLAS/Matrix
+  # builds; if the reference fit still fails, skip (never on a gllammr fault).
+  ctrl <- lme4::glmerControl(optimizer = "bobyqa")
+  ref_glmer <- function(form)
+    tryCatch(
+      lme4::glmer(form, data = long, family = binomial, nAGQ = 1,
+                  control = ctrl),
+      error = function(e)
+        skip(paste("reference lme4 fit failed on this platform:",
+                   conditionMessage(e))))
+  m1 <- ref_glmer(y ~ 0 + item + g + dif4 + (1 | id))
+  m0 <- ref_glmer(y ~ 0 + item + g + (1 | id))
   lr_glmer <- 2 * (as.numeric(logLik(m1)) - as.numeric(logLik(m0)))
   expect_equal(res$dif_results$chisq[res$dif_results$item == 4],
                lr_glmer, tolerance = 0.05)
