@@ -6,7 +6,9 @@ test_that("gllammr estimates agree with reference packages", {
   skip_if_not_installed("lme4")
 
   set.seed(2026)
-  res <- gllammr_validate(verbose = FALSE)
+  # verbose: per-case progress on unbuffered stderr, so a hard native crash
+  # in one case (as on the Windows CI runner) names the case in the check log
+  res <- gllammr_validate(verbose = TRUE)
 
   # Rows with pass == NA are reference-package skips (a numerical breakdown
   # inside lme4 etc. on some platforms) - not gllammr failures. Every row
