@@ -6,6 +6,11 @@
 # reference fit erroring; gllammr's own fit is never wrapped, so a genuine
 # gllammr regression still fails the test loudly.
 ref_fit <- function(expr) {
+  # Cross-package numerical agreement is a continuous-integration concern, not a
+  # CRAN one: an upstream release changing another package's estimates (or the
+  # known lme4 2.0-1/Matrix 1.7-5 Windows segfault below) must never archive
+  # gllammr. skip_on_cran() no-ops when NOT_CRAN=true, so CI still runs these.
+  testthat::skip_on_cran()
   # lme4 2.0-1 with Matrix 1.7-5 segfaults (not errors) inside glmer/vcov on
   # the Windows GitHub runner, killing the R process before tryCatch can act
   # - confirmed with a from-source lme4 build, so it is an upstream bug, not

@@ -44,6 +44,7 @@ test_that("uniform vs nonuniform types separate correctly", {
 })
 
 test_that("multiple DIF factors are tested jointly", {
+  skip_on_cran()  # large-n multi-factor dif_test fit; smoke kept above
   set.seed(31)
   n <- 2000; ni <- 12
   theta <- rnorm(n)
@@ -66,6 +67,7 @@ test_that("multiple DIF factors are tested jointly", {
 })
 
 test_that("interaction DIF is detected only with the interaction term", {
+  skip_on_cran()  # n=3000 interaction dif_test fit; smoke kept above
   set.seed(41)
   n <- 3000; ni <- 12
   theta <- rnorm(n)
@@ -88,6 +90,7 @@ test_that("interaction DIF is detected only with the interaction term", {
 test_that("purification recovers a contaminated matching criterion", {
   # 3 of 14 items share same-direction DIF: matching is contaminated but
   # recoverable
+  skip_on_cran()  # iterative purification refits; smoke kept above
   set.seed(11)
   n <- 2000; ni <- 14
   theta <- rnorm(n); g <- rep(c(0, 1), length.out = n)
@@ -114,6 +117,7 @@ test_that("purification breakdown degrades gracefully", {
   # A third of the test with strong same-direction DIF: the DIF/impact
   # decomposition is unidentified and purification spirals; the analysis
   # must warn and return the last valid round, not crash
+  skip_on_cran()  # n=2500 purification-breakdown refit loop; CI-only
   d <- sim_dif(n = 2500, dif_items = c(1, 2, 3, 4), dif_size = 1.0,
                seed = 11)
   expect_warning(
@@ -127,6 +131,7 @@ test_that("purification breakdown degrades gracefully", {
 
 test_that("score matching reproduces difR::difLogistic flags", {
   skip_if_not_installed("difR")
+  skip_on_cran()  # cross-package agreement is CI-only
   d <- sim_dif(n = 1200, dif_items = c(3, 7), seed = 19)
   res <- dif_test(d$resp, dif = d$group, match = "score",
                   type = "both", purify = TRUE)

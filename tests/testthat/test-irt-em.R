@@ -12,6 +12,7 @@ simulate_2pl <- function(seed = 7, np = 800, ni = 20) {
 
 test_that("EM 2PL matches mirt to numerical agreement", {
   skip_if_not_installed("mirt")
+  skip_on_cran()  # cross-package agreement is CI-only
   s <- simulate_2pl()
   fit <- fit_irt(s$resp, model = "2PL", method = "em", se = FALSE)
   ref <- mirt::mirt(as.data.frame(s$resp), 1, itemtype = "2PL", verbose = FALSE)
@@ -40,6 +41,7 @@ test_that("EM Rasch agrees with the Laplace path and improves the logLik", {
 
 test_that("EM GRM matches mirt; EM PCM agrees with Laplace", {
   skip_if_not_installed("mirt")
+  skip_on_cran()  # cross-package agreement is CI-only
   set.seed(7)
   np <- 800
   theta <- rnorm(np)
@@ -63,6 +65,7 @@ test_that("EM GRM matches mirt; EM PCM agrees with Laplace", {
 
 test_that("EM handles the short-test 2PL case where Laplace diverges", {
   skip_if_not_installed("ltm")
+  skip_on_cran()  # cross-package agreement is CI-only
   data("LSAT", package = "ltm", envir = environment())
   fit <- fit_irt(as.matrix(LSAT), model = "2PL", method = "em", se = FALSE)
   ref_coef <- coef(ltm::ltm(LSAT ~ z1))

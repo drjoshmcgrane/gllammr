@@ -2,6 +2,7 @@
 
 test_that("polytomous LCA matches poLCA", {
   skip_if_not_installed("poLCA")
+  skip_on_cran()  # cross-package agreement is CI-only
   set.seed(101)
   n <- 800
   cls <- sample(1:2, n, TRUE, prob = c(0.6, 0.4))

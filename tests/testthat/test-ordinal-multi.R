@@ -16,6 +16,7 @@ sim_crossed_ordinal <- function(seed = 77, n_raters = 50, n_items = 30) {
 
 test_that("crossed-RE ordinal matches ordinal::clmm exactly", {
   skip_if_not_installed("ordinal")
+  skip_on_cran()  # cross-package agreement is CI-only
   d <- sim_crossed_ordinal()
   fit <- fit_ordinal(rating_num ~ x + (1 | rater) + (1 | item), data = d)
   ref <- ordinal::clmm(rating ~ x + (1 | rater) + (1 | item), data = d,
@@ -36,6 +37,7 @@ test_that("crossed-RE ordinal matches ordinal::clmm exactly", {
 
 test_that("crossed ordinal works on wine through gllamm() and probit", {
   skip_if_not_installed("ordinal")
+  skip_on_cran()  # cross-package agreement is CI-only
   data("wine", package = "ordinal", envir = environment())
   wine$rating_num <- as.integer(wine$rating)
 

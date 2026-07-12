@@ -36,6 +36,7 @@ sim_link_data <- function(link, n = 3000, seed = 3, beta = 0.9,
 
 test_that("crl_backward is a proper distribution and matches VGAM", {
   skip_if_not_installed("VGAM")
+  skip_on_cran()  # cross-package agreement is CI-only
   d <- sim_link_data("crl_backward")
   f <- fit_ordinal(y ~ x + (1 | g), data = d, link = "crl_backward")
   v <- VGAM::vglm(ordered(y) ~ x, data = d,
@@ -51,6 +52,7 @@ test_that("crl_backward is a proper distribution and matches VGAM", {
 
 test_that("acl and crl_forward match VGAM", {
   skip_if_not_installed("VGAM")
+  skip_on_cran()  # cross-package agreement is CI-only
   d1 <- sim_link_data("acl", seed = 5)
   f1 <- fit_ordinal(y ~ x + (1 | g), data = d1, link = "acl")
   v1 <- VGAM::vglm(ordered(y) ~ x, data = d1,

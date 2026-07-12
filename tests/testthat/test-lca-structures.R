@@ -34,6 +34,7 @@ test_that("'increasing' item_ordering shorthand uses column order", {
 })
 
 test_that("double monotonicity holds in both directions", {
+  skip_on_cran()  # two n=1000 constrained-EM fits; ordered-LCA smoke kept above
   d <- sim_located(seed = 11)
   J <- ncol(d$Y)
   dm <- fit_lca(d$Y, nclass = 4, ordering = "increasing",
@@ -50,6 +51,7 @@ test_that("double monotonicity holds in both directions", {
 })
 
 test_that("located latent classes equal the NPML Rasch model", {
+  skip_on_cran()  # located-class fit plus NPML cross-check on n=1000; CI-only
   d <- sim_located(n = 1000, seed = 9)
   J <- ncol(d$Y)
   lcr <- fit_lca(d$Y, nclass = 4, structure = "rasch",
@@ -86,6 +88,7 @@ test_that("structure and ordering arguments are validated", {
 })
 
 test_that("latent_structure_comparison fits all six models coherently", {
+  skip_on_cran()  # fits all six structure models; CI-only
   d <- sim_located(n = 800, J = 6, seed = 41)
   cmp <- latent_structure_comparison(d$Y, nclass = 3, n_starts = 3)
 

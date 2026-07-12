@@ -193,6 +193,7 @@ test_that("EIRT with multiple covariates", {
 
 test_that("EIRT print method works", {
   skip_if_not_installed("TMB")
+  skip_on_cran()  # extra EIRT fit; Rasch/2PL smoke fits run on CRAN
 
   set.seed(222)
   n_persons <- 100
@@ -222,6 +223,7 @@ test_that("EIRT print method works", {
 
 test_that("EIRT summary method works", {
   skip_if_not_installed("TMB")
+  skip_on_cran()  # extra EIRT fit; Rasch/2PL smoke fits run on CRAN
 
   set.seed(333)
   n_persons <- 80
@@ -340,6 +342,7 @@ test_that("EIRT handles missing data", {
 
 test_that("EIRT residual standard deviations are positive", {
   skip_if_not_installed("TMB")
+  skip_on_cran()  # extra EIRT fit; Rasch/2PL smoke fits run on CRAN
 
   set.seed(777)
   n_persons <- 100
@@ -368,6 +371,7 @@ test_that("EIRT residual standard deviations are positive", {
 
 test_that("EIRT comparison with two-stage approach", {
   skip_if_not_installed("TMB")
+  skip_on_cran()  # multiple EIRT/IRT fits for the two-stage comparison; CI-only
 
   set.seed(888)
   n_persons <- 150
@@ -462,6 +466,7 @@ test_that("EIRT with categorical item covariates", {
 
 test_that("EIRT convergence information is returned", {
   skip_if_not_installed("TMB")
+  skip_on_cran()  # extra EIRT fit; Rasch/2PL smoke fits run on CRAN
 
   set.seed(1111)
   n_persons <- 80
@@ -489,6 +494,7 @@ test_that("EIRT convergence information is returned", {
 
 test_that("EIRT AIC and BIC are computed", {
   skip_if_not_installed("TMB")
+  skip_on_cran()  # extra EIRT fit; Rasch/2PL smoke fits run on CRAN
 
   set.seed(1212)
   n_persons <- 100

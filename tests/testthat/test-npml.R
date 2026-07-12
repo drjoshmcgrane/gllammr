@@ -2,6 +2,7 @@
 
 test_that("NPML matches npmlreg on two-point binomial heterogeneity", {
   skip_if_not_installed("npmlreg")
+  skip_on_cran()  # cross-package agreement is CI-only
   set.seed(121)
   g <- 80; n_per <- 10; n <- g * n_per
   grp <- factor(rep(1:g, each = n_per))

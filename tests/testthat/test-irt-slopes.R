@@ -28,6 +28,7 @@ test_that("multilevel IRT recovers class-level intercept and slope variance", {
 })
 
 test_that("slope-only specification (0 + x | g) works", {
+  skip_on_cran()  # random-slope IRT fit; random-slope smoke kept above
   set.seed(142)
   n_class <- 20; per_class <- 25; np <- n_class * per_class; ni <- 10
   class_id <- rep(1:n_class, each = per_class)

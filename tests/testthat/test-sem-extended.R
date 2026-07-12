@@ -13,6 +13,7 @@ sim_two_factor <- function(n = 400, seed = 42, rho = 0.6) {
 
 test_that("correlated-factor CFA matches lavaan exactly", {
   skip_if_not_installed("lavaan")
+  skip_on_cran()  # cross-package agreement is CI-only
   d <- sim_two_factor()
   fit <- fit_sem(measurement = list(f1 = ~ x1 + x2 + x3,
                                     f2 = ~ y1 + y2 + y3), data = d)
@@ -30,6 +31,7 @@ test_that("correlated-factor CFA matches lavaan exactly", {
 
 test_that("fit measures match lavaan", {
   skip_if_not_installed("lavaan")
+  skip_on_cran()  # cross-package agreement is CI-only
   d <- sim_two_factor(seed = 7)
   fit <- fit_sem(measurement = list(f1 = ~ x1 + x2 + x3,
                                     f2 = ~ y1 + y2 + y3), data = d)
@@ -50,6 +52,7 @@ test_that("fit measures match lavaan", {
 
 test_that("MIMIC models match lavaan with fixed.x = FALSE", {
   skip_if_not_installed("lavaan")
+  skip_on_cran()  # cross-package agreement is CI-only
   set.seed(42)
   n <- 500
   w <- rnorm(n)
@@ -81,6 +84,7 @@ test_that("MIMIC models match lavaan with fixed.x = FALSE", {
 
 test_that("FIML matches lavaan missing = 'fiml'", {
   skip_if_not_installed("lavaan")
+  skip_on_cran()  # cross-package agreement is CI-only
   d <- sim_two_factor(n = 500, seed = 9)
   set.seed(10)
   for (v in c("x1", "x2", "y1", "y3")) d[[v]][sample(500, 60)] <- NA

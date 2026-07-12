@@ -29,6 +29,7 @@ test_that("saturated EIRT difficulty model equals descriptive IRT exactly", {
 })
 
 test_that("EIRT person fweights reproduce duplicated-data fits exactly", {
+  skip_on_cran()  # several EIRT/IRT fits for the weight-replication identity; CI-only
   d <- make_dichot(np = 120, ni = 8, seed = 8)
   np <- nrow(d$resp)
   z <- rnorm(ncol(d$resp))
@@ -65,6 +66,7 @@ test_that("EIRT person fweights reproduce duplicated-data fits exactly", {
 
 test_that("multilevel EIRT matches glmer on the crossed Rasch cross-walk", {
   skip_if_not_installed("lme4")
+  skip_on_cran()  # cross-package agreement + multilevel EIRT fit: CI-only
   d <- make_dichot(np = 200, ni = 8, seed = 99, school = TRUE)
   np <- nrow(d$resp); ni <- ncol(d$resp)
   fe <- fit_eirt(d$resp, data.frame(item = factor(seq_len(ni))),
@@ -91,6 +93,7 @@ test_that("multilevel EIRT matches glmer on the crossed Rasch cross-walk", {
 
 test_that("EIRT difficulty standard errors match glmer", {
   skip_if_not_installed("lme4")
+  skip_on_cran()  # cross-package agreement is CI-only
   d <- make_dichot(np = 300, ni = 8, seed = 7)
   np <- nrow(d$resp); ni <- ncol(d$resp)
   fe <- fit_eirt(d$resp, data.frame(item = factor(seq_len(ni))),
@@ -111,6 +114,7 @@ test_that("EIRT difficulty standard errors match glmer", {
 })
 
 test_that("multilevel EIRT simulate and marginal use the group REs", {
+  skip_on_cran()  # multilevel EIRT fit + simulate/marginal MC; CI-only
   d <- make_dichot(np = 200, ni = 10, seed = 99, school = TRUE)
   ni <- ncol(d$resp)
   z <- rnorm(ni)
@@ -152,6 +156,7 @@ test_that("fit_eirt rejects misuse instead of silently proceeding", {
 })
 
 test_that("multilevel fit_irt simulate and marginal use the group REs", {
+  skip_on_cran()  # multilevel IRT fit + simulate/marginal MC; CI-only
   d <- make_dichot(np = 200, ni = 10, seed = 21, school = TRUE)
   fm <- fit_irt(d$resp, model = "Rasch",
                 person_data = data.frame(sch = d$sch),
@@ -167,6 +172,7 @@ test_that("multilevel fit_irt simulate and marginal use the group REs", {
 })
 
 test_that("step-level predictors: recovery, identity, and identification", {
+  skip_on_cran()  # multiple polytomous EIRT fits for the step-property identities; CI-only
   set.seed(9)
   np <- 400; ni <- 10; K <- 4
   theta <- rnorm(np)
@@ -222,6 +228,7 @@ test_that("step-level predictors: recovery, identity, and identification", {
 })
 
 test_that("threshold regression is identified with shared covariates", {
+  skip_on_cran()  # polytomous EIRT threshold-regression fit; CI-only
   set.seed(9)
   np <- 400; ni <- 10; K <- 4
   theta <- rnorm(np); z <- rnorm(ni)

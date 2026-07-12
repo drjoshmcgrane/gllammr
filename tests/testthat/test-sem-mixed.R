@@ -2,6 +2,7 @@
 
 test_that("SEM with structural path matches lavaan", {
   skip_if_not_installed("lavaan")
+  skip_on_cran()  # cross-package agreement is CI-only
   set.seed(71)
   n <- 600
   f1 <- rnorm(n); f2 <- 0.6 * f1 + rnorm(n, 0, 0.8)
@@ -62,6 +63,7 @@ test_that("mixed-response input validation errors clearly", {
 
 test_that("SEM ML (default) agrees with the Laplace path and lavaan exactly", {
   skip_if_not_installed("lavaan")
+  skip_on_cran()  # cross-package agreement is CI-only
   set.seed(71)
   n <- 800
   f1 <- rnorm(n); f2 <- 0.6 * f1 + rnorm(n, 0, 0.8)

@@ -65,6 +65,7 @@ test_that("EIRT accepts polytomous data with GRM", {
 
 test_that("EIRT regression coefficients have correct structure for GRM", {
   skip_if_not_installed("TMB")
+  skip_on_cran()  # extra EIRT fit; GRM/PCM/GPCM smoke fits run on CRAN
 
   set.seed(456)
   n_persons <- 120
@@ -193,6 +194,7 @@ test_that("EIRT PCM with threshold_formula (threshold-difficulty regression)", {
 
 test_that("EIRT with mixed number of categories", {
   skip_if_not_installed("TMB")
+  skip_on_cran()  # extra EIRT fit; GRM/PCM/GPCM smoke fits run on CRAN
 
   set.seed(222)
   n_persons <- 100
@@ -222,6 +224,7 @@ test_that("EIRT with mixed number of categories", {
 
 test_that("EIRT polytomous with multiple covariates", {
   skip_if_not_installed("TMB")
+  skip_on_cran()  # extra EIRT fit; GRM/PCM/GPCM smoke fits run on CRAN
 
   set.seed(333)
   n_persons <- 120
@@ -257,6 +260,7 @@ test_that("EIRT polytomous with multiple covariates", {
 
 test_that("EIRT polytomous print method", {
   skip_if_not_installed("TMB")
+  skip_on_cran()  # extra EIRT fit; GRM/PCM/GPCM smoke fits run on CRAN
 
   set.seed(444)
   n_persons <- 80; n_items <- 8; n_categories <- 4
@@ -276,6 +280,7 @@ test_that("EIRT polytomous print method", {
 
 test_that("EIRT polytomous summary method", {
   skip_if_not_installed("TMB")
+  skip_on_cran()  # extra EIRT fit; GRM/PCM/GPCM smoke fits run on CRAN
 
   set.seed(555)
   n_persons <- 100; n_items <- 10; n_categories <- 3
@@ -293,6 +298,7 @@ test_that("EIRT polytomous summary method", {
 
 test_that("EIRT polytomous with missing data", {
   skip_if_not_installed("TMB")
+  skip_on_cran()  # extra EIRT fit; GRM/PCM/GPCM smoke fits run on CRAN
 
   set.seed(666)
   n_persons <- 100; n_items <- 10; n_categories <- 4
@@ -313,6 +319,7 @@ test_that("EIRT polytomous with missing data", {
 
 test_that("EIRT polytomous residual SDs are positive", {
   skip_if_not_installed("TMB")
+  skip_on_cran()  # extra EIRT fit; GRM/PCM/GPCM smoke fits run on CRAN
 
   set.seed(777)
   n_persons <- 100; n_items <- 10; n_categories <- 4
@@ -332,6 +339,7 @@ test_that("EIRT polytomous residual SDs are positive", {
 
 test_that("EIRT polytomous convergence structure", {
   skip_if_not_installed("TMB")
+  skip_on_cran()  # extra EIRT fit; GRM/PCM/GPCM smoke fits run on CRAN
 
   set.seed(888)
   n_persons <- 80; n_items <- 8; n_categories <- 3
@@ -350,6 +358,7 @@ test_that("EIRT polytomous convergence structure", {
 
 test_that("EIRT polytomous AIC/BIC computation", {
   skip_if_not_installed("TMB")
+  skip_on_cran()  # extra EIRT fit; GRM/PCM/GPCM smoke fits run on CRAN
 
   set.seed(999)
   n_persons <- 100; n_items <- 10; n_categories <- 4
@@ -371,6 +380,7 @@ test_that("EIRT polytomous AIC/BIC computation", {
 
 test_that("EIRT polytomous item parameter extraction", {
   skip_if_not_installed("TMB")
+  skip_on_cran()  # extra EIRT fit; GRM/PCM/GPCM smoke fits run on CRAN
 
   set.seed(1010)
   n_persons <- 100; n_items <- 10; n_categories <- 4

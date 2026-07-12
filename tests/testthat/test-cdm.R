@@ -39,6 +39,7 @@ test_that("DINA recovers guess/slip and attribute profiles", {
 
 test_that("DINA matches CDM::din", {
   skip_if_not_installed("CDM")
+  skip_on_cran()  # cross-package agreement is CI-only
   d <- sim_dina(n = 1000, seed = 101)
   fit <- fit_cdm(d$Y, d$Q, model = "dina")
   ref <- CDM::din(d$Y, q.matrix = d$Q, rule = "DINA", progress = FALSE)
@@ -52,6 +53,7 @@ test_that("DINA matches CDM::din", {
 
 test_that("saturated G-DINA matches CDM::gdina and nests DINA", {
   skip_if_not_installed("CDM")
+  skip_on_cran()  # cross-package agreement is CI-only
   set.seed(202)
   Q <- rbind(diag(3), diag(3), c(1, 1, 0), c(0, 1, 1), c(1, 0, 1),
              c(1, 1, 1))

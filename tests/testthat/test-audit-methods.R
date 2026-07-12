@@ -31,6 +31,7 @@ test_that("crossed GLMM simulate and marginal use every RE term", {
 
 test_that("multinomial matches nnet in the fixed-effect limit", {
   skip_if_not_installed("nnet")
+  skip_on_cran()  # cross-package agreement is CI-only
   set.seed(8)
   n <- 2000; x <- rnorm(n)
   e2 <- exp(0.5 + 0.7 * x); e3 <- exp(-0.3 + 1.1 * x)
@@ -52,6 +53,7 @@ test_that("multinomial matches nnet in the fixed-effect limit", {
 })
 
 test_that("weibull frailty matches survreg in the no-frailty limit", {
+  skip_on_cran()  # cross-package agreement is CI-only
   set.seed(8)
   n <- 2500; x <- rnorm(n)
   tt <- (rexp(n) / exp(-1 + 0.6 * x))^(1 / 1.5)
@@ -78,6 +80,7 @@ test_that("weibull frailty matches survreg in the no-frailty limit", {
 })
 
 test_that("rank-ordered logit equals exploded conditional logit", {
+  skip_on_cran()  # cross-package agreement is CI-only
   set.seed(8)
   n_cases <- 300; n_alt <- 4
   dr <- expand.grid(alt = 1:n_alt, chooser = 1:n_cases)

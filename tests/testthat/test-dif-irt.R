@@ -18,6 +18,7 @@ sim_dif_impact <- function(n = 500, ni = 8, seed = 55, dif_item = 4,
 
 test_that("uniform DIF and impact are separated; matches glmer exactly", {
   skip_if_not_installed("lme4")
+  skip_on_cran()  # cross-package agreement + slow joint dif_irt fit: CI-only
   d <- sim_dif_impact(n = 800, ni = 8, dif_size = 0.8)
   res <- dif_irt(d$resp, dif = d$grp, model = "Rasch")
 
@@ -63,6 +64,7 @@ test_that("pure impact yields no DIF flags", {
 })
 
 test_that("multiple DIF factors give multi-df tests", {
+  skip_on_cran()  # slow joint marginal-ML dif_irt fit; smoke covered below
   set.seed(91)
   n <- 900; ni <- 8
   pd <- data.frame(gender = factor(sample(c("M", "F"), n, TRUE)),
@@ -82,6 +84,7 @@ test_that("multiple DIF factors give multi-df tests", {
 })
 
 test_that("wald with anchors agrees with LR on the same hypothesis", {
+  skip_on_cran()  # multiple slow joint dif_irt fits; smoke covered below
   d <- sim_dif_impact(n = 800, ni = 8, seed = 33, dif_size = 1.0)
   # Single studied item: the LR and Wald tests address the same model,
   # so the statistics agree closely
@@ -109,6 +112,7 @@ test_that("wald with anchors agrees with LR on the same hypothesis", {
 })
 
 test_that("nonuniform DIF needs 2PL and is detected", {
+  skip_on_cran()  # slow 2PL joint dif_irt fit; smoke covered below
   expect_error(
     dif_irt(matrix(rbinom(400, 1, .5), 50, 8),
             dif = factor(rep(0:1, 25)), type = "both"),
@@ -121,6 +125,7 @@ test_that("nonuniform DIF needs 2PL and is detected", {
 })
 
 test_that("purified IRT-LR runs and stabilizes", {
+  skip_on_cran()  # iterative purification refits many dif_irt models; CI-only
   d <- sim_dif_impact(n = 700, ni = 8, seed = 13, dif_size = 1.0)
   res <- dif_irt(d$resp, dif = d$grp, model = "Rasch", purify = TRUE)
   expect_true(res$purification$converged)

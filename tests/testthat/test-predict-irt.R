@@ -43,6 +43,7 @@ test_that("Laplace polytomous fits carry the gllamm_irt_poly class", {
 })
 
 test_that("predict(type = 'probs') works for each Laplace polytomous model", {
+  skip_on_cran()  # four Laplace polytomous fits; probs smoke via gllamm() kept below
   n <- 300; J <- 5; K <- 3
   for (m in c("PCM", "GPCM", "GRM", "NRM")) {
     fit <- fit_irt(.sim_poly(m, n = n, J = J, K = K), model = m,
@@ -58,6 +59,7 @@ test_that("predict(type = 'probs') works for each Laplace polytomous model", {
 })
 
 test_that("EM and Laplace category probabilities agree closely", {
+  skip_on_cran()  # six polytomous fits (Laplace + EM) across three models; CI-only
   # Same data, two estimators: predicted category probabilities should be
   # near-identical (both maximize essentially the same marginal likelihood).
   for (m in c("PCM", "GPCM", "GRM")) {

@@ -36,6 +36,7 @@ test_that("multilevel Rasch-EIRT recovers item regression and variance component
 })
 
 test_that("multilevel fit beats single-level on clustered data", {
+  skip_on_cran()  # two multilevel EIRT fits; multilevel smoke kept above
   s <- simulate_ml_eirt()
   fit_ml <- fit_eirt(s$resp, item_data = s$item_data, difficulty_formula = ~ x,
                      person_data = s$person_data, random = ~ (1 | class),
@@ -62,6 +63,7 @@ test_that("single-level results are unchanged when random = NULL", {
 })
 
 test_that("multilevel polytomous (PCM) EIRT fits and recovers structure", {
+  skip_on_cran()  # multilevel polytomous EIRT fit; CI-only
   s <- simulate_ml_eirt()
   np <- nrow(s$resp); ni <- ncol(s$resp)
   set.seed(100)
