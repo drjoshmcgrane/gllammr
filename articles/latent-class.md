@@ -221,7 +221,7 @@ print(cmp)
 #>    MON                   ordinal -4726.43       35 9522.85 10.54 9694.63 118.87
 #>    IIO                   ordinal -4729.50       35 9529.01 16.69 9700.78 125.03
 #>     DM                   ordinal -4730.54       35 9531.08 18.76 9702.85 127.09
-#>    LCR   quantitative (discrete) -4749.37       14 9526.73 14.42 9595.44  19.69
+#>    LCR   quantitative (discrete) -4749.36       14 9526.73 14.41 9595.44  19.69
 #>     RM quantitative (continuous) -4756.79        9 9531.58 19.27 9575.75   0.00
 #> 
 #> Lowest BIC: RM 
@@ -240,7 +240,7 @@ located class model itself reports the interval-scale quantities:
 lcr <- attr(cmp, "fits")$LCR
 round(lcr$class_locations, 2)
 #> Class1 Class2 Class3 Class4 
-#>  -7.42  -1.27  -0.21   1.10
+#>  -8.20  -1.26  -0.21   1.10
 round(lcr$item_difficulties, 2)
 #> Item1 Item2 Item3 Item4 Item5 Item6 Item7 Item8 
 #>  1.41  0.90  0.52  0.29 -0.15 -0.52 -0.96 -1.49
