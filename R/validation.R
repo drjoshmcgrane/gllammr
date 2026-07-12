@@ -139,8 +139,9 @@ gllammr_validate <- function(cases = "all", scale = c("standard", "large", "all"
   data("sleepstudy", package = "lme4", envir = environment())
 
   fit <- gllamm(Reaction ~ Days + (Days | Subject), data = sleepstudy)
-  ref <- lme4::lmer(Reaction ~ Days + (Days | Subject),
-                    data = sleepstudy, REML = FALSE)
+  ref <- .reference_fit(lme4::lmer(
+    Reaction ~ Days + (Days | Subject), data = sleepstudy, REML = FALSE,
+    control = lme4::lmerControl(optimizer = "bobyqa")))
 
   Sigma <- fit$coefficients$random_var[[1]]
   Sigma_ref <- as.matrix(Matrix::bdiag(lme4::VarCorr(ref)$Subject))
@@ -173,8 +174,10 @@ gllammr_validate <- function(cases = "all", scale = c("standard", "large", "all"
 
   fit <- gllamm(y ~ treatment * time + (1 | patientID), data = toenail,
                 family = stats::binomial())
-  ref <- lme4::glmer(y ~ treatment * time + (1 | patientID), data = toenail,
-                     family = stats::binomial(), nAGQ = 1)
+  ref <- .reference_fit(lme4::glmer(
+    y ~ treatment * time + (1 | patientID), data = toenail,
+    family = stats::binomial(), nAGQ = 1,
+    control = lme4::glmerControl(optimizer = "bobyqa")))
 
   sigma_u <- sqrt(fit$coefficients$random_var[[1]][1, 1])
   sigma_ref <- attr(lme4::VarCorr(ref)$patientID, "stddev")
@@ -202,8 +205,10 @@ gllammr_validate <- function(cases = "all", scale = c("standard", "large", "all"
 
   fit <- gllamm(TICKS ~ YEAR + (1 | BROOD), data = grouseticks,
                 family = stats::poisson())
-  ref <- lme4::glmer(TICKS ~ YEAR + (1 | BROOD), data = grouseticks,
-                     family = stats::poisson(), nAGQ = 1)
+  ref <- .reference_fit(lme4::glmer(
+    TICKS ~ YEAR + (1 | BROOD), data = grouseticks,
+    family = stats::poisson(), nAGQ = 1,
+    control = lme4::glmerControl(optimizer = "bobyqa")))
 
   sigma_u <- sqrt(fit$coefficients$random_var[[1]][1, 1])
   sigma_ref <- attr(lme4::VarCorr(ref)$BROOD, "stddev")
@@ -439,8 +444,10 @@ gllammr_validate <- function(cases = "all", scale = c("standard", "large", "all"
 
   fit <- fit_survival(Surv(time, status) ~ x + (1 | grp), data = d,
                       distribution = "exponential")
-  ref <- lme4::glmer(status ~ x + offset(log(time)) + (1 | grp), data = d,
-                     family = stats::poisson(), nAGQ = 1)
+  ref <- .reference_fit(lme4::glmer(
+    status ~ x + offset(log(time)) + (1 | grp), data = d,
+    family = stats::poisson(), nAGQ = 1,
+    control = lme4::glmerControl(optimizer = "bobyqa")))
 
   rbind(
     .val_row("survival_exponential", "beta_x",
@@ -608,8 +615,10 @@ gllammr_validate <- function(cases = "all", scale = c("standard", "large", "all"
 
   fit <- gllamm(yb ~ x + (1 | grp), data = d, family = stats::binomial(),
                 integration = aghq(15))
-  ref <- lme4::glmer(yb ~ x + (1 | grp), data = d,
-                     family = stats::binomial(), nAGQ = 15)
+  ref <- .reference_fit(lme4::glmer(
+    yb ~ x + (1 | grp), data = d,
+    family = stats::binomial(), nAGQ = 15,
+    control = lme4::glmerControl(optimizer = "bobyqa")))
 
   rbind(
     .val_row("aghq_binomial", "beta_x",

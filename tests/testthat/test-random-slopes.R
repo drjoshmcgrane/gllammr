@@ -38,7 +38,8 @@ test_that("gaussian random slopes match lme4 (same Laplace approximation)", {
   d <- simulate_slopes_data()
 
   fit <- gllamm(y ~ x + (x | grp), data = d)
-  ref <- lme4::lmer(y ~ x + (x | grp), data = d, REML = FALSE)
+  ref <- ref_fit(lme4::lmer(y ~ x + (x | grp), data = d, REML = FALSE,
+                            control = lme4::lmerControl(optimizer = "bobyqa")))
 
   expect_equal(unname(coef(fit)$fixed), unname(lme4::fixef(ref)), tolerance = 1e-4)
   expect_equal(fit$logLik, as.numeric(logLik(ref)), tolerance = 1e-4)
@@ -52,7 +53,9 @@ test_that("binomial random slopes match lme4", {
   d <- simulate_slopes_data()
 
   fit <- gllamm(yb ~ x + (x | grp), data = d, family = stats::binomial())
-  ref <- lme4::glmer(yb ~ x + (x | grp), data = d, family = stats::binomial())
+  ref <- ref_fit(lme4::glmer(yb ~ x + (x | grp), data = d,
+                             family = stats::binomial(),
+                             control = lme4::glmerControl(optimizer = "bobyqa")))
 
   expect_equal(unname(coef(fit)$fixed), unname(lme4::fixef(ref)), tolerance = 1e-3)
   expect_equal(fit$logLik, as.numeric(logLik(ref)), tolerance = 1e-3)
@@ -68,9 +71,10 @@ test_that("poisson random slopes match lme4", {
   fit <- gllamm(yp ~ x + (x | grp), data = d, family = stats::poisson())
   # bobyqa with a generous budget: the default optimizer can stop short on
   # some datasets, which would test the optimizers rather than the likelihood
-  ref <- lme4::glmer(yp ~ x + (x | grp), data = d, family = stats::poisson(),
-                     control = lme4::glmerControl(optimizer = "bobyqa",
-                                                  optCtrl = list(maxfun = 1e5)))
+  ref <- ref_fit(lme4::glmer(
+    yp ~ x + (x | grp), data = d, family = stats::poisson(),
+    control = lme4::glmerControl(optimizer = "bobyqa",
+                                 optCtrl = list(maxfun = 1e5))))
 
   expect_equal(unname(coef(fit)$fixed), unname(lme4::fixef(ref)), tolerance = 1e-3)
   expect_equal(fit$logLik, as.numeric(logLik(ref)), tolerance = 1e-3)

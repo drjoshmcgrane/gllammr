@@ -11,6 +11,11 @@ name: test-coverage
 jobs:
   test-coverage:
     runs-on: ubuntu-latest
+    # Tokenless Codecov upload via OIDC (public repo): the job mints a
+    # short-lived id-token instead of a stored CODECOV_TOKEN secret.
+    permissions:
+      contents: read
+      id-token: write
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
 
@@ -25,19 +30,30 @@ jobs:
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          extra-packages: any::covr
+          extra-packages: any::covr, any::xml2
           needs: coverage
 
       - name: Test coverage
         run: |
-          covr::codecov(
+          cov <- covr::package_coverage(
             quiet = FALSE,
             clean = FALSE,
             install_path = file.path(normalizePath(Sys.getenv("RUNNER_TEMP"), winslash = "/"), "package")
           )
+          covr::to_cobertura(cov, "cobertura.xml")
+          print(cov)
         shell: Rscript {0}
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+      # Upload the Cobertura report with the Codecov v5 action using OIDC.
+      # No token is needed for this public repo; `if: always()` still attempts
+      # the upload when a report was produced even if some tests failed.
+      - name: Upload coverage to Codecov
+        if: always()
+        uses: codecov/codecov-action@v5
+        with:
+          use_oidc: true
+          files: ./cobertura.xml
+          fail_ci_if_error: false
 
       - name: Show testthat output
         if: always()
@@ -45,12 +61,13 @@ jobs:
           find '${{ runner.temp }}/package' -name 'testthat.Rout*' -exec cat '{}' \; || true
         shell: bash
 
-      # Fallback in case the Codecov upload step above fails or the token
-      # is not configured on this repo: keep the raw coverage report as a
-      # downloadable build artifact.
+      # Fallback in case the Codecov upload above fails: keep the raw
+      # coverage report and the Cobertura XML as downloadable build artifacts.
       - name: Upload coverage report artifact (fallback)
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: coverage-test-failures
-          path: ${{ runner.temp }}/package
+          path: |
+            ${{ runner.temp }}/package
+            cobertura.xml

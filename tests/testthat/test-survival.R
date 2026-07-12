@@ -17,8 +17,9 @@ test_that("exponential frailty equals Poisson GLMM with log-time offset", {
   d <- simulate_survival()
   fit <- fit_survival(Surv(time, status) ~ x + (1 | grp), data = d,
                       distribution = "exponential")
-  ref <- lme4::glmer(status ~ x + offset(log(time)) + (1 | grp), data = d,
-                     family = stats::poisson(), nAGQ = 1)
+  ref <- ref_fit(lme4::glmer(status ~ x + offset(log(time)) + (1 | grp),
+                             data = d, family = stats::poisson(), nAGQ = 1,
+                             control = lme4::glmerControl(optimizer = "bobyqa")))
 
   expect_equal(unname(coef(fit)$fixed), unname(lme4::fixef(ref)), tolerance = 1e-3)
   expect_equal(unname(fit$coefficients$random_sd),

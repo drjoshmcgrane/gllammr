@@ -16,8 +16,9 @@ test_that("aghq(15) matches glmer nAGQ=15 where Laplace is biased", {
 
   fit <- gllamm(yb ~ x + (1 | grp), data = d, family = stats::binomial(),
                 integration = aghq(15))
-  ref <- lme4::glmer(yb ~ x + (1 | grp), data = d,
-                     family = stats::binomial(), nAGQ = 15)
+  ref <- ref_fit(lme4::glmer(yb ~ x + (1 | grp), data = d,
+                             family = stats::binomial(), nAGQ = 15,
+                             control = lme4::glmerControl(optimizer = "bobyqa")))
 
   expect_equal(unname(coef(fit)$fixed), unname(lme4::fixef(ref)),
                tolerance = 2e-3)
@@ -34,8 +35,9 @@ test_that("aghq improves on Laplace toward the quadrature reference", {
   fit_lap <- gllamm(yb ~ x + (1 | grp), data = d, family = stats::binomial())
   fit_aghq <- gllamm(yb ~ x + (1 | grp), data = d, family = stats::binomial(),
                      integration = aghq(15))
-  ref <- lme4::glmer(yb ~ x + (1 | grp), data = d,
-                     family = stats::binomial(), nAGQ = 25)
+  ref <- ref_fit(lme4::glmer(yb ~ x + (1 | grp), data = d,
+                             family = stats::binomial(), nAGQ = 25,
+                             control = lme4::glmerControl(optimizer = "bobyqa")))
 
   s_lap <- sqrt(fit_lap$coefficients$random_var[[1]][1, 1])
   s_aghq <- sqrt(fit_aghq$coefficients$random_var[[1]][1, 1])

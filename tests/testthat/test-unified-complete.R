@@ -136,8 +136,9 @@ test_that("binomial() with integration = aghq(k) is honored", {
   expect_false(isTRUE(all.equal(f_aghq$logLik, f_lap$logLik,
                                 tolerance = 1e-8)))
   if (requireNamespace("lme4", quietly = TRUE)) {
-    ref <- lme4::glmer(yb ~ 1 + (1 | grp), data = d,
-                       family = stats::binomial(), nAGQ = 15)
+    ref <- ref_fit(lme4::glmer(yb ~ 1 + (1 | grp), data = d,
+                               family = stats::binomial(), nAGQ = 15,
+                               control = lme4::glmerControl(optimizer = "bobyqa")))
     expect_equal(f_aghq$logLik, as.numeric(logLik(ref)), tolerance = 0.05)
   }
 })

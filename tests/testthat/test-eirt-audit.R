@@ -76,9 +76,10 @@ test_that("multilevel EIRT matches glmer on the crossed Rasch cross-walk", {
                      item = factor(rep(seq_len(ni), np)),
                      id = factor(rep(seq_len(np), each = ni)),
                      sch = factor(rep(d$sch, each = ni)))
-  fg <- suppressWarnings(
+  fg <- ref_fit(suppressWarnings(
     lme4::glmer(y ~ 0 + item + (1 | id) + (1 | sch), data = long,
-                family = binomial()))
+                family = binomial(),
+                control = lme4::glmerControl(optimizer = "bobyqa"))))
   expect_equal(as.numeric(logLik(fe)), as.numeric(logLik(fg)),
                tolerance = 0.02)
   vc <- as.data.frame(lme4::VarCorr(fg))
@@ -101,9 +102,10 @@ test_that("EIRT difficulty standard errors match glmer", {
   long <- data.frame(y = as.vector(t(d$resp)),
                      item = factor(rep(seq_len(ni), np)),
                      id = factor(rep(seq_len(np), each = ni)))
-  fg <- suppressWarnings(
+  fg <- ref_fit(suppressWarnings(
     lme4::glmer(y ~ 0 + item + (1 | id), data = long,
-                family = binomial()))
+                family = binomial(),
+                control = lme4::glmerControl(optimizer = "bobyqa"))))
   expect_lt(max(abs(d_est - (-lme4::fixef(fg)))), 0.02)
   expect_lt(max(abs(d_se - sqrt(diag(as.matrix(vcov(fg)))))), 0.005)
 })

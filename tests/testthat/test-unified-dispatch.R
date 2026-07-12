@@ -12,7 +12,9 @@ test_that("crossed random effects match lme4 exactly", {
                   y = 1 + 0.5 * x + u1[as.integer(g1)] + u2[as.integer(g2)] + rnorm(n))
 
   fit <- gllamm(y ~ x + (1 | g1) + (1 | g2), data = d)
-  ref <- lme4::lmer(y ~ x + (1 | g1) + (1 | g2), data = d, REML = FALSE)
+  ref <- ref_fit(lme4::lmer(y ~ x + (1 | g1) + (1 | g2), data = d,
+                            REML = FALSE,
+                            control = lme4::lmerControl(optimizer = "bobyqa")))
 
   expect_equal(unname(coef(fit)$fixed), unname(lme4::fixef(ref)), tolerance = 1e-4)
   expect_equal(fit$logLik, as.numeric(logLik(ref)), tolerance = 1e-4)
@@ -33,7 +35,8 @@ test_that("nested (1 | a/b) expands and matches lme4", {
                   y = 2 + 0.3 * x + ua[as.integer(a)] + ub[as.integer(b)] + rnorm(n))
 
   fit <- gllamm(y ~ x + (1 | a/b), data = d)
-  ref <- lme4::lmer(y ~ x + (1 | a/b), data = d, REML = FALSE)
+  ref <- ref_fit(lme4::lmer(y ~ x + (1 | a/b), data = d, REML = FALSE,
+                            control = lme4::lmerControl(optimizer = "bobyqa")))
 
   expect_equal(fit$logLik, as.numeric(logLik(ref)), tolerance = 1e-4)
   expect_named(fit$coefficients$random_var, c("a", "a:b"))
@@ -50,8 +53,9 @@ test_that("crossed binomial random effects match lme4", {
   d$yb <- rbinom(n, 1, plogis(0.5 * x + u1[as.integer(g1)] + u2[as.integer(g2)]))
 
   fit <- gllamm(yb ~ x + (1 | g1) + (1 | g2), data = d, family = stats::binomial())
-  ref <- lme4::glmer(yb ~ x + (1 | g1) + (1 | g2), data = d,
-                     family = stats::binomial())
+  ref <- ref_fit(lme4::glmer(yb ~ x + (1 | g1) + (1 | g2), data = d,
+                             family = stats::binomial(),
+                             control = lme4::glmerControl(optimizer = "bobyqa")))
 
   expect_equal(fit$logLik, as.numeric(logLik(ref)), tolerance = 1e-3)
 })
@@ -95,7 +99,9 @@ test_that("gllammr binomial() stays usable by glm and lme4", {
   expect_s3_class(g, "glm")
 
   skip_if_not_installed("lme4")
-  m <- suppressMessages(lme4::glmer(yb ~ x + (1 | g), data = d, family = binomial()))
+  m <- ref_fit(suppressMessages(lme4::glmer(
+    yb ~ x + (1 | g), data = d, family = binomial(),
+    control = lme4::glmerControl(optimizer = "bobyqa"))))
   expect_s4_class(m, "glmerMod")
 })
 

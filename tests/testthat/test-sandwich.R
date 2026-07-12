@@ -51,7 +51,8 @@ test_that("sandwich vcov matches clubSandwich CR0 on the same ML LMM", {
 
   f <- gllamm(y ~ x + (1 | g), data = d)
   se_g <- sqrt(diag(vcov(f, type = "sandwich")))
-  fl <- lme4::lmer(y ~ x + (1 | g), data = d, REML = FALSE)
+  fl <- ref_fit(lme4::lmer(y ~ x + (1 | g), data = d, REML = FALSE,
+                           control = lme4::lmerControl(optimizer = "bobyqa")))
   se_c <- sqrt(diag(as.matrix(clubSandwich::vcovCR(fl, type = "CR0"))))
   expect_lt(max(abs(se_g - se_c) / se_c), 0.02)
 })
