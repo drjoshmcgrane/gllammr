@@ -35,6 +35,7 @@ LinkingTo:
     RcppEigen
 Suggests:
     testthat (>= 3.0.0),
+    R6,
     knitr,
     rmarkdown,
     ggplot2,

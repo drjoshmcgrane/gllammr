@@ -8,6 +8,7 @@ library(gllammr)
 # hides the crash location (as on the Windows CI runner). Built defensively:
 # any failure to construct the augmented reporter falls back to a plain run.
 reporter <- tryCatch({
+  if (!requireNamespace("R6", quietly = TRUE)) stop("R6 unavailable")
   marker <- R6::R6Class(
     "gllammrMarkerReporter", inherit = testthat::Reporter,
     public = list(
@@ -17,8 +18,10 @@ reporter <- tryCatch({
       }
     )
   )$new()
-  testthat::MultiReporter$new(
-    reporters = list(testthat::check_reporter(), marker))
+  multi <- testthat::MultiReporter$new(
+    reporters = list(testthat::CheckReporter$new(), marker))
+  if (!inherits(multi, "Reporter")) stop("not a Reporter")
+  multi
 }, error = function(e) NULL)
 
 if (is.null(reporter)) {
