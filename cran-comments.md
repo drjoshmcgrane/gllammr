@@ -15,7 +15,10 @@ New submission. This is the first submission of gllammr to CRAN.
   (with `--run-donttest`) on five platform / R-version combinations:
   macOS (release), Windows (release), Ubuntu (devel), Ubuntu (release),
   and Ubuntu (oldrel-1).
-* win-builder (R-devel): <RESULT PENDING — fill in after win-builder run>
+* win-builder (R-devel): the tarball was uploaded to win-builder before
+  submission; results were still queued at submission time. The GitHub
+  Actions matrix above includes a full `--as-cran` check on Windows
+  (release) which passes with 0 errors / 0 warnings.
 
 ## R CMD check results
 
