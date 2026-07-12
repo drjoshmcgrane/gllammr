@@ -17,43 +17,26 @@ make_dichot <- function(np = 300, ni = 8, seed = 42, school = FALSE) {
   list(resp = resp, sch = sch)
 }
 
-# Per-test / per-fit progress markers on stderr (unbuffered), mirroring the
-# per-file markers in tests/testthat.R. A hard native crash (segfault in
-# compiled TMB/Eigen code, uncatchable at the R level) then leaves the exact
-# test - and, in the multi-fit tests, the exact fit - as the last line in the
-# Windows check log. Terse and side-effect free; remove once the crash is
-# diagnosed and fixed.
-.mark <- function(x) {
-  cat(sprintf("[eirt-audit] %s\n", x), file = stderr())
-  flush(stderr())
-}
-
 test_that("saturated EIRT difficulty model equals descriptive IRT exactly", {
-  message("[eirt-audit] saturated EIRT difficulty model equals descriptive IRT exactly")
   d <- make_dichot()
   ni <- ncol(d$resp)
-  .mark("fe")
   fe <- fit_eirt(d$resp, data.frame(item = factor(seq_len(ni))),
                  difficulty_formula = ~ item, model = "Rasch",
                  item_residuals = FALSE)
-  .mark("fi")
   fi <- fit_irt(d$resp, model = "Rasch", method = "laplace", se = FALSE)
   expect_equal(as.numeric(logLik(fe)), as.numeric(logLik(fi)),
                tolerance = 1e-5)
 })
 
 test_that("EIRT person fweights reproduce duplicated-data fits exactly", {
-  message("[eirt-audit] EIRT person fweights reproduce duplicated-data fits exactly")
   d <- make_dichot(np = 120, ni = 8, seed = 8)
   np <- nrow(d$resp)
   z <- rnorm(ncol(d$resp))
   w <- sample(1:3, np, replace = TRUE)
   idx <- rep(seq_len(np), w)
 
-  .mark("fa")
   fa <- fit_eirt(d$resp, data.frame(z = z), difficulty_formula = ~ z,
                  model = "Rasch", item_residuals = FALSE, weights = w)
-  .mark("fb")
   fb <- fit_eirt(d$resp[idx, ], data.frame(z = z),
                  difficulty_formula = ~ z, model = "Rasch",
                  item_residuals = FALSE)
@@ -64,9 +47,7 @@ test_that("EIRT person fweights reproduce duplicated-data fits exactly", {
   expect_equal(fa$ability_sd, fb$ability_sd, tolerance = 1e-5)
 
   # EM route weights the log marginal likelihood directly: also exact
-  .mark("ea")
   ea <- fit_irt(d$resp, model = "Rasch", weights = w, se = FALSE)
-  .mark("eb")
   eb <- fit_irt(d$resp[idx, ], model = "Rasch", se = FALSE)
   expect_equal(as.numeric(logLik(ea)), as.numeric(logLik(eb)),
                tolerance = 1e-4)
@@ -83,11 +64,9 @@ test_that("EIRT person fweights reproduce duplicated-data fits exactly", {
 })
 
 test_that("multilevel EIRT matches glmer on the crossed Rasch cross-walk", {
-  message("[eirt-audit] multilevel EIRT matches glmer on the crossed Rasch cross-walk")
   skip_if_not_installed("lme4")
   d <- make_dichot(np = 200, ni = 8, seed = 99, school = TRUE)
   np <- nrow(d$resp); ni <- ncol(d$resp)
-  .mark("fe")
   fe <- fit_eirt(d$resp, data.frame(item = factor(seq_len(ni))),
                  difficulty_formula = ~ item, model = "Rasch",
                  item_residuals = FALSE,
@@ -97,7 +76,6 @@ test_that("multilevel EIRT matches glmer on the crossed Rasch cross-walk", {
                      item = factor(rep(seq_len(ni), np)),
                      id = factor(rep(seq_len(np), each = ni)),
                      sch = factor(rep(d$sch, each = ni)))
-  .mark("fg")
   fg <- ref_fit(suppressWarnings(
     lme4::glmer(y ~ 0 + item + (1 | id) + (1 | sch), data = long,
                 family = binomial(),
@@ -112,11 +90,9 @@ test_that("multilevel EIRT matches glmer on the crossed Rasch cross-walk", {
 })
 
 test_that("EIRT difficulty standard errors match glmer", {
-  message("[eirt-audit] EIRT difficulty standard errors match glmer")
   skip_if_not_installed("lme4")
   d <- make_dichot(np = 300, ni = 8, seed = 7)
   np <- nrow(d$resp); ni <- ncol(d$resp)
-  .mark("fe")
   fe <- fit_eirt(d$resp, data.frame(item = factor(seq_len(ni))),
                  difficulty_formula = ~ item, model = "Rasch",
                  item_residuals = FALSE)
@@ -126,7 +102,6 @@ test_that("EIRT difficulty standard errors match glmer", {
   long <- data.frame(y = as.vector(t(d$resp)),
                      item = factor(rep(seq_len(ni), np)),
                      id = factor(rep(seq_len(np), each = ni)))
-  .mark("fg")
   fg <- ref_fit(suppressWarnings(
     lme4::glmer(y ~ 0 + item + (1 | id), data = long,
                 family = binomial(),
@@ -136,18 +111,15 @@ test_that("EIRT difficulty standard errors match glmer", {
 })
 
 test_that("multilevel EIRT simulate and marginal use the group REs", {
-  message("[eirt-audit] multilevel EIRT simulate and marginal use the group REs")
   d <- make_dichot(np = 200, ni = 10, seed = 99, school = TRUE)
   ni <- ncol(d$resp)
   z <- rnorm(ni)
-  .mark("fm")
   fm <- fit_eirt(d$resp, data.frame(z = z), difficulty_formula = ~ z,
                  model = "Rasch", item_residuals = TRUE,
                  person_data = data.frame(sch = d$sch),
                  random = ~ (1 | sch))
 
   # Simulation must reproduce the school-level variance, not just theta
-  .mark("sm")
   sm <- simulate(fm, nsim = 20, seed = 2)
   smean <- mean(sapply(sm, function(s)
     var(tapply(rowMeans(s), d$sch, mean))))
@@ -155,13 +127,11 @@ test_that("multilevel EIRT simulate and marginal use the group REs", {
   expect_gt(smean, 0.5 * emp)
 
   # Marginal predictions integrate over the TOTAL latent distribution
-  .mark("mg")
   mg <- predict(fm, type = "marginal")
   expect_lt(abs(mean(mg) - mean(d$resp)), 0.03)
 })
 
 test_that("fit_eirt rejects misuse instead of silently proceeding", {
-  message("[eirt-audit] fit_eirt rejects misuse instead of silently proceeding")
   d <- make_dichot(np = 150, ni = 8, seed = 5)
   z <- rnorm(8)
 
@@ -182,26 +152,21 @@ test_that("fit_eirt rejects misuse instead of silently proceeding", {
 })
 
 test_that("multilevel fit_irt simulate and marginal use the group REs", {
-  message("[eirt-audit] multilevel fit_irt simulate and marginal use the group REs")
   d <- make_dichot(np = 200, ni = 10, seed = 21, school = TRUE)
-  .mark("fm")
   fm <- fit_irt(d$resp, model = "Rasch",
                 person_data = data.frame(sch = d$sch),
                 random = ~ (1 | sch), se = FALSE)
-  .mark("sm")
   sm <- simulate(fm, nsim = 20, seed = 2)
   smean <- mean(sapply(sm, function(s)
     var(tapply(rowMeans(s), d$sch, mean))))
   emp <- var(tapply(rowMeans(d$resp), d$sch, mean))
   expect_gt(smean, 0.5 * emp)
 
-  .mark("mg")
   mg <- predict(fm, type = "marginal")
   expect_lt(abs(mean(mg) - mean(d$resp)), 0.03)
 })
 
 test_that("step-level predictors: recovery, identity, and identification", {
-  message("[eirt-audit] step-level predictors: recovery, identity, and identification")
   set.seed(9)
   np <- 400; ni <- 10; K <- 4
   theta <- rnorm(np)
@@ -218,7 +183,6 @@ test_that("step-level predictors: recovery, identity, and identification", {
   step_data <- data.frame(x = as.vector(t(x_step)))
 
   # Item-level and step-level predictors estimated together, with SEs
-  .mark("f")
   f <- fit_eirt(resp, data.frame(z_item = z_item),
                 difficulty_formula = ~ z_item,
                 step_formula = ~ x, step_data = step_data,
@@ -240,12 +204,10 @@ test_that("step-level predictors: recovery, identity, and identification", {
     })
   })
   sd2 <- data.frame(zc = rep(zc, each = K - 1))
-  .mark("fa")
   fa <- fit_eirt(resp2, data.frame(one = rep(1, ni)),
                  difficulty_formula = ~ 0 + one,
                  step_formula = ~ zc, step_data = sd2,
                  model = "PCM", item_residuals = FALSE)
-  .mark("fb")
   fb <- fit_eirt(resp2, data.frame(zc = zc), difficulty_formula = ~ zc,
                  threshold_formula = ~ 1, model = "PCM",
                  item_residuals = FALSE)
@@ -260,7 +222,6 @@ test_that("step-level predictors: recovery, identity, and identification", {
 })
 
 test_that("threshold regression is identified with shared covariates", {
-  message("[eirt-audit] threshold regression is identified with shared covariates")
   set.seed(9)
   np <- 400; ni <- 10; K <- 4
   theta <- rnorm(np); z <- rnorm(ni)
@@ -274,7 +235,6 @@ test_that("threshold regression is identified with shared covariates", {
   # Same covariate at the item level AND with step-specific effects:
   # previously a flat ridge (all SEs NaN); xi rows now sum to zero so
   # the location effect and the deviations separate
-  .mark("f")
   f <- fit_eirt(resp, data.frame(z = z), difficulty_formula = ~ z,
                 threshold_formula = ~ z, model = "PCM",
                 item_residuals = FALSE)
@@ -287,7 +247,6 @@ test_that("threshold regression is identified with shared covariates", {
 })
 
 test_that("step_formula guards reject unsupported models and missing step_data", {
-  message("[eirt-audit] step_formula guards reject unsupported models and missing step_data")
   d <- make_dichot(np = 150, ni = 8, seed = 11)
   ni <- ncol(d$resp)
   sd_dummy <- data.frame(x = rnorm(ni))
