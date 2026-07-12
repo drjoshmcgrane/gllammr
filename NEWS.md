@@ -1,6 +1,4 @@
-# gllammr 1.2.0
-
-## Post-1.2.0 development
+# gllammr 1.3.0
 
 * **lme4 reference fits are skipped on the Windows CI runner.** lme4
   2.0-1 with Matrix 1.7-5 segfaults (rather than errors) inside
@@ -408,6 +406,8 @@
   standard errors (`se = TRUE`) require it. EM abilities are EAP scores.
 * `fit_irt(se = FALSE)` is the default (as in mirt); request SEs explicitly.
 * Single-pass AD tapes in the gaussian/binomial/poisson templates.
+
+# gllammr 1.2.0
 
 ## Build and infrastructure
 
