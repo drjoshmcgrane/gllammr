@@ -62,18 +62,6 @@ jobs:
           printf 'CXXFLAGS = %s\nCXX17FLAGS = %s\n' "$CXXF" "$CXXF" > "$MV"
           echo "R_MAKEVARS_USER=$MV" >> "$GITHUB_ENV"
 
-      # The P3M binary of lme4 can be built against a different Matrix ABI
-      # than the Matrix the runner installs; on Windows that mismatch
-      # segfaults the R process inside lme4's compiled code (glmer/vcov)
-      # during the cross-walk reference fits, killing the whole test run.
-      # Recompiling lme4 against the installed Matrix removes the mismatch
-      # (Rtools is already present - the package's own C++ compiles here).
-      - name: Rebuild lme4 from source against installed Matrix (Windows)
-        if: runner.os == 'Windows'
-        shell: bash
-        run: |
-          Rscript -e 'install.packages("lme4", type = "source", repos = "https://cloud.r-project.org")'
-
       - uses: r-lib/actions/check-r-package@v2
         with:
           upload-snapshots: true
