@@ -39,13 +39,12 @@ test_that("uniform DIF and impact are separated; matches glmer exactly", {
   # default nloptwrap/Nelder-Mead PWRSS path can hit on some BLAS/Matrix
   # builds; if the reference fit still fails, skip (never on a gllammr fault).
   ctrl <- lme4::glmerControl(optimizer = "bobyqa")
+  # Route through the shared ref_fit helper: it converts reference-fit
+  # errors to skips AND gates lme4 off entirely on the Windows CI runner,
+  # where lme4 2.0-1/Matrix 1.7-5 segfaults instead of erroring.
   ref_glmer <- function(form)
-    tryCatch(
-      lme4::glmer(form, data = long, family = binomial, nAGQ = 1,
-                  control = ctrl),
-      error = function(e)
-        skip(paste("reference lme4 fit failed on this platform:",
-                   conditionMessage(e))))
+    ref_fit(lme4::glmer(form, data = long, family = binomial, nAGQ = 1,
+                        control = ctrl))
   m1 <- ref_glmer(y ~ 0 + item + g + dif4 + (1 | id))
   m0 <- ref_glmer(y ~ 0 + item + g + (1 | id))
   lr_glmer <- 2 * (as.numeric(logLik(m1)) - as.numeric(logLik(m0)))
