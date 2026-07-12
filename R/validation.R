@@ -110,6 +110,16 @@ gllammr_validate <- function(cases = "all", scale = c("standard", "large", "all"
 #' handler.
 #' @keywords internal
 .reference_fit <- function(expr) {
+  # lme4 2.0-1 with Matrix 1.7-5 segfaults (not errors) inside glmer/vcov on
+  # the Windows GitHub runner - uncatchable at the R level, confirmed with a
+  # from-source lme4 build. Skip the reference fit there rather than lose the
+  # whole process; these cases still validate on every other platform.
+  if (identical(Sys.getenv("GITHUB_ACTIONS"), "true") &&
+      identical(.Platform$OS.type, "windows")) {
+    .reference_skip(paste0(
+      "reference fit skipped on the Windows CI runner: ",
+      "lme4/Matrix segfault (upstream bug, not a gllammr defect)"))
+  }
   tryCatch(expr, error = function(e)
     .reference_skip(paste0(
       "reference-package fit failed on this platform: ",

@@ -2,6 +2,15 @@
 
 ## Post-1.2.0 development
 
+* **lme4 reference fits are skipped on the Windows CI runner.** lme4
+  2.0-1 with Matrix 1.7-5 segfaults (rather than errors) inside
+  `glmer()`/`vcov()` on GitHub's Windows runner, even when lme4 is
+  compiled from source there — an upstream bug no R-level guard can
+  catch. `ref_fit()` (tests) and the validation harness's reference-fit
+  wrapper now skip lme4 reference fits on that runner only; the
+  cross-walks still run on macOS, all Linux CI platforms, and
+  everywhere locally. gllammr's own fits are unaffected.
+
 * **Test/validation robustness against reference-package numerical
   failures.** The cross-walk reference fits that back several IRT/DIF
   tests and validation cases (`rasch_lsat`, `eirt_verbagg`,
