@@ -129,12 +129,12 @@ print(confirm)
 #>  item   name   chisq df p_value  p_adj flagged delta_genderM delta_langminority
 #>     3  Item3  7.1750  3  0.0665 0.0665   FALSE        0.5442             0.1089
 #>     4  Item4 31.0143  3  0.0000 0.0000    TRUE       -0.7982             0.2075
-#>     8  Item8 19.7072  3  0.0002 0.0002    TRUE        0.1094            -0.5467
+#>     8  Item8 19.7072  3  0.0002 0.0002    TRUE        0.1093            -0.5467
 #>    11 Item11 21.9010  3  0.0001 0.0001    TRUE        0.0216            -0.1503
 #>  delta_genderM.langminority
-#>                     -0.4322
+#>                     -0.4323
 #>                      0.0606
-#>                     -0.2619
+#>                     -0.2618
 #>                     -0.9945
 ```
 
