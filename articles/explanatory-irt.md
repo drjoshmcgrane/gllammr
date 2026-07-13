@@ -213,7 +213,7 @@ gpcm_e <- fit_eirt(resp3, item_kw,
                    model = "GPCM", item_residuals = TRUE)
 exp(gpcm_e$regression_coefficients$discrimination)
 #> (Intercept)      modedo 
-#>   0.8480238   1.3109451
+#>   0.8480214   1.3109455
 ```
 
 “Do” items discriminate about 30% better than “want” items: behavioural
