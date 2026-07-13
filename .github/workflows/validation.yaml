@@ -60,6 +60,12 @@ jobs:
             echo "::error::Validation harness reported $pass / $total checks passing"
             exit 1
           fi
+          # Reference-package skips (pass = NA) are tolerated; a gllammr-side
+          # ERROR row is not.
+          if grep -qE '\| *ERROR *\|' validation/RESULTS.md; then
+            echo "::error::Validation harness recorded a gllammr-side ERROR row"
+            exit 1
+          fi
 
       - name: Upload validation results
         if: always()

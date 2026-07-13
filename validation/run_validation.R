@@ -21,7 +21,13 @@ lines <- c(
   "ordinal::clmm) agree to numerical precision; packages using different",
   "integration (mirt, ltm) agree within stated tolerances.",
   "",
-  paste0("**Overall: ", sum(res$pass), " / ", nrow(res), " checks pass.**"),
+  # Reference-package failures are recorded as skips (pass = NA) rather than
+  # failures; count only completed comparisons so the summary stays numeric.
+  paste0("**Overall: ", sum(res$pass, na.rm = TRUE), " / ",
+         sum(!is.na(res$pass)), " checks pass.**",
+         if (anyNA(res$pass))
+           paste0(" (", sum(is.na(res$pass)), " reference-package skips)")
+         else ""),
   "",
   "| Case | Statistic | gllammr | Reference | Rel. diff | Tolerance | Pass |",
   "|---|---|---|---|---|---|---|"
@@ -35,7 +41,7 @@ for (i in seq_len(nrow(res))) {
     " | ", fmt(res$reference[i]),
     " | ", fmt(res$rel_diff[i], 3),
     " | ", fmt(res$tolerance[i], 3),
-    " | ", ifelse(res$pass[i], "yes", "**NO**"),
+    " | ", if (is.na(res$pass[i])) "skip" else if (res$pass[i]) "yes" else "**NO**",
     " |"))
 }
 
@@ -49,4 +55,7 @@ lines <- c(lines, "",
   "")
 
 writeLines(lines, "validation/RESULTS.md")
-cat("\nWrote validation/RESULTS.md -", sum(res$pass), "/", nrow(res), "checks pass\n")
+cat("\nWrote validation/RESULTS.md -", sum(res$pass, na.rm = TRUE), "/",
+    sum(!is.na(res$pass)), "checks pass",
+    if (anyNA(res$pass)) paste0("(", sum(is.na(res$pass)), " reference skips)") else "",
+    "\n")
