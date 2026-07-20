@@ -327,12 +327,9 @@ construction:
   design in §2.
 
 **Current status.** The cross-package validation table reports **93/93 checks
-pass** (`validation/RESULTS.md:11`). *Flag:* that RESULTS.md was generated on
-2026-06-12 against gllammr **1.2.0** / R 4.5.1 / TMB 1.9.17 (`RESULTS.md:3-5`) —
-it has not been regenerated under the 1.3.0 tag, though 1.3.0's changes are test
-robustness and a polytomous-predict fix, not estimation changes. The testthat
-suite is 57 files; it is what runs under `R CMD check` (the cross-package subset
-gated off CRAN — §5).
+pass**, regenerated 2026-07-20 against gllammr **1.3.0** / R 4.5.1 / TMB 1.9.17
+(`validation/RESULTS.md:3-5,11`). The testthat suite is 57 files; it is what
+runs under `R CMD check` (the cross-package subset gated off CRAN — §5).
 
 **Known limitations (own them before the reviewer finds them).** 2PL/3PL
 discrimination on very short tests (≈5 items) can diverge under the Laplace
@@ -407,10 +404,11 @@ EM, Dykstra isotonic projection, SQUAREM S3), not copied code.
 **Q: Test runtime on CRAN?**
 A: With the cross-package and slow integration fits skipped, the CRAN subset is
 designed to complete well inside the check-time budget; the full suite runs on
-CI (`cran-comments.md:57-59`). *Flag:* the committed cran-comments give the
-qualitative statement, not a second-count — if a reviewer wants a number,
-measure it fresh (`R CMD check` on the tarball) rather than quoting a figure not
-recorded in the repo.
+CI (`cran-comments.md:57-59`). Measured at release prep (2026-07-12, Apple
+Silicon, under concurrent CPU load): the CRAN-simulated subset
+(`NOT_CRAN=false`) ran 3,223 assertions in ~101 s versus ~4 min for the full
+suite — roughly 2-3.5 min projected on CRAN hardware. If a reviewer wants an
+authoritative number, measure fresh with `R CMD check` on the tarball.
 
 **Q (procedural): what if the reviewer asks for changes?**
 A: Apply the fix, bump the version to 1.3.1 in `DESCRIPTION`, add a NEWS entry,
