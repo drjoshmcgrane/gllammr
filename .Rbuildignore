@@ -16,6 +16,7 @@
 ^validation$
 ^examples$
 ^\.claude$
+^dev$
 ^.*\.pdf$
 ^[^/]*_[^/]*\.md$
 ^QUICKREF\.md$
